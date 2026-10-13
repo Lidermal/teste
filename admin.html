@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMR — Painel Administrativo</title>
+  <link rel="icon" href="famrlogo.png" type="image/png">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div id="navContainer"></div>
+
+<main class="main-content" style="padding-top:20px">
+  <div class="page-header">
+    <h2>⚙️ Painel Administrativo — FAMR</h2>
+    <p>Gerenciamento completo do sistema. Acesso restrito a administradores e à Chefia.</p>
+  </div>
+
+  <div class="admin-tab-bar" id="adminTabBar"></div>
+  <div class="admin-content" id="adminContent">
+    <div class="loading-spinner"><div class="spinner"></div><p>Inicializando painel...</p></div>
+  </div>
+</main>
+
+<script src="auth.js"></script>
+<script src="app.js"></script>
+<script src="admin-logic.js"></script>
+<script>
+  initAdmin();
+</script>
+
+</body>
+</html>
