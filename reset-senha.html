@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMR — Redefinir Senha</title>
+  <link rel="icon" href="famrlogo.png" type="image/png">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-card-header">
+      <img src="famrlogo.png" alt="" onerror="this.style.display='none'">
+      <div>
+        <h1>REDEFINIR SENHA</h1>
+        <p>CRIE UMA NOVA SENHA PARA SUA CONTA</p>
+      </div>
+    </div>
+    <div class="login-card-body">
+      <div class="login-error" id="resetError"></div>
+      <div class="login-success" id="resetSuccess"></div>
+
+      <div id="resetStatus" class="loading-spinner">
+        <div class="spinner"></div>
+        <p>Validando token...</p>
+      </div>
+
+      <form class="login-form" id="resetForm" style="display:none" onsubmit="handleReset(event)">
+        <input type="hidden" id="resetToken">
+        <div class="form-group">
+          <label for="newPassword">Nova Senha</label>
+          <input type="password" id="newPassword" placeholder="Mínimo 6 caracteres" required minlength="6">
+        </div>
+        <div class="form-group">
+          <label for="newPasswordConfirm">Confirmar Nova Senha</label>
+          <input type="password" id="newPasswordConfirm" placeholder="Repita a nova senha" required>
+        </div>
+        <button type="submit" class="btn-login" id="btnReset">REDEFINIR SENHA</button>
+        <button type="button" class="btn-register" onclick="window.location.href='index.html'">← VOLTAR AO LOGIN</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="auth.js"></script>
+<script>
+  (async () => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const statusEl = document.getElementById('resetStatus');
+    const formEl = document.getElementById('resetForm');
+    const errEl = document.getElementById('resetError');
+
+    if (!token) {
+      statusEl.innerHTML = '<p style="color:var(--famr-danger)">❌ Token não fornecido.</p>';
+      return;
+    }
+
+    try {
+      const result = await validateResetToken(token);
+      if (!result.valid) {
+        statusEl.innerHTML = `<p style="color:var(--famr-danger)">❌ ${result.message}</p>
+          <button class="btn-register" onclick="window.location.href='index.html'" style="margin-top:16px">← Voltar ao Login</button>`;
+        return;
+      }
+      document.getElementById('resetToken').value = token;
+      statusEl.style.display = 'none';
+      formEl.style.display = 'block';
+    } catch (err) {
+      statusEl.innerHTML = `<p style="color:var(--famr-danger)">❌ Erro ao validar token: ${err.message}</p>`;
+    }
+  })();
+
+  async function handleReset(e) {
+    e.preventDefault();
+    const token = document.getElementById('resetToken').value;
+    const pass = document.getElementById('newPassword').value;
+    const confirm = document.getElementById('newPasswordConfirm').value;
+    const errEl = document.getElementById('resetError');
+    const successEl = document.getElementById('resetSuccess');
+    const btn = document.getElementById('btnReset');
+
+    errEl.style.display = 'none';
+
+    if (pass !== confirm) {
+      errEl.textContent = 'As senhas não coincidem.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'REDEFININDO...';
+
+    try {
+      await resetPassword(token, pass);
+      successEl.innerHTML = `
+        <strong>✅ Senha redefinida com sucesso!</strong><br><br>
+        Você será redirecionado para o login em 3 segundos...
+      `;
+      successEl.style.display = 'block';
+      document.getElementById('resetForm').style.display = 'none';
+      setTimeout(() => window.location.href = 'index.html', 3000);
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'REDEFINIR SENHA';
+    }
+  }
+</script>
+
+</body>
+</html>
