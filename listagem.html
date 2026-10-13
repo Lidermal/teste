@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMR — Listagem</title>
+  <link rel="icon" href="famrlogo.png" type="image/png">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div id="navContainer"></div>
+
+<main class="main-content">
+  <div class="page-header">
+    <h2>📋 Listagem</h2>
+    <p>Registros, tags e informações oficiais da FAMR. Gerenciado pelo CRH.</p>
+  </div>
+
+  <div id="listagemTopics" class="topics-grid">
+    <div class="loading-spinner"><div class="spinner"></div><p>Carregando...</p></div>
+  </div>
+
+  <div id="tagsSection" style="margin-top:30px">
+    <h3 style="font-family:var(--famr-font-brand);color:var(--famr-gold);margin-bottom:16px">🏷️ Tags Registradas</h3>
+    <div id="tagsGrid" class="topics-grid">
+      <div class="loading-spinner"><div class="spinner"></div><p>Carregando tags...</p></div>
+    </div>
+  </div>
+</main>
+
+<script src="auth.js"></script>
+<script src="app.js"></script>
+<script>
+  (async () => {
+    await initProtectedPage('listagem');
+    if (!window.currentProfile()) return;
+
+    // Tópicos da seção listagem
+    const topics = await fetchTopics('listagem');
+    renderTopicCards(topics, 'listagemTopics');
+
+    // Tags aprovadas
+    const { data: tags } = await window.sb
+      .from('tags')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    const tagsGrid = document.getElementById('tagsGrid');
+    if (tagsGrid) {
+      if (!tags || tags.length === 0) {
+        tagsGrid.innerHTML = '<div class="empty-state"><p>Nenhuma tag registrada ainda.</p></div>';
+      } else {
+        tagsGrid.innerHTML = tags.map(t => `
+          <div class="topic-card" style="border-left-color:${t.color}">
+            <div class="topic-card-header">
+              <h3 class="topic-card-title" style="color:${t.color}">🏷️ ${window.escapeHtml(t.name)}</h3>
+            </div>
+            <div class="topic-card-body">
+              <p>Categoria: <strong>${window.escapeHtml(t.category)}</strong></p>
+            </div>
+            <div class="topic-card-footer">
+              <span class="topic-date">${window.formatDate(t.created_at)}</span>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+  })();
+</script>
+
+</body>
+</html>
