@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMR — Companhias</title>
+  <link rel="icon" href="famrlogo.png" type="image/png">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div id="navContainer"></div>
+
+<main class="main-content">
+  <div class="page-header">
+    <h2>🏢 Companhias</h2>
+    <p>Organizações e companhias da FAMR.</p>
+  </div>
+
+  <div id="companhiasTopics" class="topics-grid" style="margin-bottom:30px">
+    <div class="loading-spinner"><div class="spinner"></div><p>Carregando...</p></div>
+  </div>
+
+  <h3 style="font-family:var(--famr-font-brand);color:var(--famr-gold);margin-bottom:16px">🏛️ Companhias Registradas</h3>
+  <div id="companiesGrid" class="groups-list">
+    <div class="loading-spinner"><div class="spinner"></div><p>Carregando companhias...</p></div>
+  </div>
+</main>
+
+<script src="auth.js"></script>
+<script src="app.js"></script>
+<script>
+  (async () => {
+    await initProtectedPage('companhias');
+    if (!window.currentProfile()) return;
+
+    // Tópicos
+    const topics = await fetchTopics('companhias');
+    renderTopicCards(topics, 'companhiasTopics');
+
+    // Companhias
+    const { data: companies } = await window.sb
+      .from('companies')
+      .select('*, profiles(nickname, avatar_url)')
+      .order('created_at', { ascending: false });
+
+    const grid = document.getElementById('companiesGrid');
+    if (grid) {
+      if (!companies || companies.length === 0) {
+        grid.innerHTML = '<div class="empty-state"><p>Nenhuma companhia registrada.</p></div>';
+      } else {
+        grid.innerHTML = companies.map(c => `
+          <div class="group-card" style="border-top-color:${c.color}">
+            <div class="group-card-header">
+              <div class="group-color-bar" style="background:${c.color}"></div>
+              <h3 class="group-card-title" style="color:${c.color}">${window.escapeHtml(c.name)}</h3>
+            </div>
+            <p class="group-card-desc">${window.escapeHtml(c.description || 'Sem descrição.')}</p>
+            <div class="group-card-meta">
+              <span>👤 Líder: ${c.profiles?.nickname || 'N/A'}</span>
+              <span>👥 ${Array.isArray(c.member_ids) ? c.member_ids.length : 0} membros</span>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+  })();
+</script>
+
+</body>
+</html>
