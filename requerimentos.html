@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMR — Requerimentos</title>
+  <link rel="icon" href="famrlogo.png" type="image/png">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div id="navContainer"></div>
+
+<main class="main-content">
+  <div class="page-header">
+    <h2>📝 Requerimentos</h2>
+    <p>Envie solicitações oficiais à FAMR. Acompanhe o status das suas requisições.</p>
+  </div>
+
+  <!-- Formulário de novo requerimento -->
+  <div class="req-form-container">
+    <h3>➕ Novo Requerimento</h3>
+    <form id="reqForm" onsubmit="submitRequirement(event)">
+      <div class="form-group" style="margin-bottom:14px">
+        <label style="display:block;font-size:0.85rem;font-weight:600;color:var(--famr-text-muted);margin-bottom:4px">Categoria</label>
+        <select id="reqCategory" class="form-input" required>
+          <option value="">Selecione...</option>
+          <option value="criacao_tag">Criação de Tag</option>
+          <option value="alteracao_graduacao">Alteração de Graduação</option>
+          <option value="transferencia_grupo">Transferência de Grupo</option>
+          <option value="documentacao">Documentação</option>
+          <option value="geral">Geral</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label style="display:block;font-size:0.85rem;font-weight:600;color:var(--famr-text-muted);margin-bottom:4px">Título</label>
+        <input type="text" id="reqTitle" class="form-input" placeholder="Título do requerimento" required maxlength="200">
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label style="display:block;font-size:0.85rem;font-weight:600;color:var(--famr-text-muted);margin-bottom:4px">Descrição / Justificativa</label>
+        <textarea id="reqDescription" class="form-input" rows="4" placeholder="Descreva detalhadamente seu pedido..." required></textarea>
+      </div>
+      <!-- Campos dinâmicos para criação de tag -->
+      <div id="tagFields" style="display:none">
+        <div class="form-group" style="margin-bottom:14px">
+          <label style="display:block;font-size:0.85rem;font-weight:600;color:var(--famr-text-muted);margin-bottom:4px">Nome da Tag</label>
+          <input type="text" id="tagName" class="form-input" placeholder="Ex: BRIGADIER, CORONEL...">
+        </div>
+        <div class="form-group" style="margin-bottom:14px">
+          <label style="display:block;font-size:0.85rem;font-weight:600;color:var(--famr-text-muted);margin-bottom:4px">Cor da Tag (hex)</label>
+          <input type="color" id="tagColor" value="#FFD700" class="form-color">
+        </div>
+        <div class="form-group" style="margin-bottom:14px">
+          <label style="display:block;font-size:0.85rem;font-weight:600;color:var(--famr-text-muted);margin-bottom:4px">Categoria da Tag</label>
+          <input type="text" id="tagCategory" class="form-input" placeholder="Ex: graduacao, funcao...">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary" id="btnSubmitReq" style="width:100%;padding:12px">📤 ENVIAR REQUERIMENTO</button>
+    </form>
+  </div>
+
+  <!-- Meus requerimentos -->
+  <div class="req-my-list">
+    <h3 style="font-family:var(--famr-font-brand);color:var(--famr-gold);margin-bottom:16px">📂 Meus Requerimentos</h3>
+    <div id="myRequirements">
+      <div class="loading-spinner"><div class="spinner"></div><p>Carregando...</p></div>
+    </div>
+  </div>
+</main>
+
+<script src="auth.js"></script>
+<script src="app.js"></script>
+<script>
+  (async () => {
+    await initProtectedPage('requerimentos');
+    if (!window.currentProfile()) return;
+
+    // Mostrar campos de tag quando categoria = criacao_tag
+    document.getElementById('reqCategory').addEventListener('change', (e) => {
+      document.getElementById('tagFields').style.display = e.target.value === 'criacao_tag' ? 'block' : 'none';
+    });
+
+    // Carregar meus requerimentos
+    await loadMyRequirements();
+  })();
+
+  async function submitRequirement(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmitReq');
+    btn.disabled = true;
+    btn.textContent = 'ENVIANDO...';
+
+    const category = document.getElementById('reqCategory').value;
+    const title = document.getElementById('reqTitle').value.trim();
+    const description = document.getElementById('reqDescription').value.trim();
+
+    const formData = { descricao: description };
+    if (category === 'criacao_tag') {
+      formData.nome_tag = document.getElementById('tagName').value.trim();
+      formData.cor = document.getElementById('tagColor').value;
+      formData.categoria = document.getElementById('tagCategory').value.trim() || 'geral';
+    }
+
+    try {
+      const { error } = await window.sb.from('requirements').insert({
+        category,
+        title,
+        form_data: formData,
+        user_id: window.currentProfile().id,
+        status: 'pendente'
+      });
+      if (error) throw error;
+
+      window.showToast('Requerimento enviado com sucesso! Aguarde análise do CRH.');
+      document.getElementById('reqForm').reset();
+      document.getElementById('tagFields').style.display = 'none';
+      await loadMyRequirements();
+    } catch (err) {
+      window.showToast('Erro: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '📤 ENVIAR REQUERIMENTO';
+    }
+  }
+
+  async function loadMyRequirements() {
+    const container = document.getElementById('myRequirements');
+    const profile = window.currentProfile();
+
+    const { data, error } = await window.sb
+      .from('requirements')
+      .select('*')
+      .eq('user_id', profile.id)
+      .order('created_at', { ascending: false });
+
+    if (error || !data || data.length === 0) {
+      container.innerHTML = '<div class="empty-state"><p>Você ainda não enviou nenhum requerimento.</p></div>';
+      return;
+    }
+
+    container.innerHTML = data.map(r => `
+      <div class="req-item status-${r.status}">
+        <div class="req-item-header">
+          <span class="req-item-title">${window.escapeHtml(r.title)}</span>
+          <span class="status-badge status-${r.status}">${r.status.toUpperCase()}</span>
+        </div>
+        <div class="req-item-meta">
+          Categoria: <strong>${r.category}</strong> · Enviado em: ${window.formatDate(r.created_at)}
+          ${r.review_note ? ` · Nota: "${window.escapeHtml(r.review_note)}"` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+</script>
+
+</body>
+</html>
