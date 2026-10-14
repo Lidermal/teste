@@ -153,7 +153,7 @@ async function doLogin(e){
   if(!sbOk()){ console.error('[FAMR] cliente Supabase indisponível no login.'); loginAlert(MSG_SERVIDOR, 'err'); return; }
 
   const nick = document.getElementById('login-nick').value.trim();
-  const pass = document.getElementById('login-pass').value;
+  const pass = document.getElementById('login-pass').value.trim();
   if(!nick || !pass) return;
 
   const nk = nick.toLowerCase();
