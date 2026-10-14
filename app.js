@@ -1,556 +1,386 @@
-// FAMR System - Core Application Logic
-// Integrates with Supabase, handles UI rendering, permissions, and dynamic content.
+/* ══════════ FAMR • NÚCLEO (router, home, seções, listagem, requerimentos...) ══════════ */
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Initialize Navigation
-    setupNavigation();
-    
-    // Initialize Global Search
-    setupGlobalSearch();
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+const groupChip = g => g ? `<span class="chip" style="background:${g.color}18;color:${g.color};border:1px solid ${g.color}55">${esc(g.name)}</span>` : '<span class="chip chip-neutral">Geral</span>';
+const statusChip = s => s==='approved' ? '<span class="chip chip-ok">APROVADO</span>' : s==='rejected' ? '<span class="chip chip-no">REPROVADO</span>' : '<span class="chip chip-wait">EM ANÁLISE</span>';
+const powerStars = p => '★'.repeat(Math.max(1, Math.min(5, Math.ceil((p||0)/20)))) + '☆'.repeat(Math.max(0, 5-Math.min(5, Math.ceil((p||0)/20))));
 
-    // Check if user is logged in (handled by auth.js, but we ensure UI state here)
-    if (!currentUser) {
-        // If no user is loaded yet, ensure login screen is visible (fallback)
-        document.getElementById('login-screen').classList.remove('hidden');
-        document.getElementById('dashboard').classList.add('hidden');
-    } else {
-        loadDashboardContent();
-    }
-});
+function toast(msg, type='ok'){
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type==='ok'?'':type);
+  el.innerHTML = `<i class="fas ${type==='err'?'fa-circle-exclamation text-red-600':type==='warn'?'fa-triangle-exclamation text-gold-500':'fa-circle-check text-famr-600'} mt-0.5"></i><span>${esc(msg)}</span>`;
+  document.getElementById('toast-root').appendChild(el);
+  setTimeout(() => el.remove(), 4500);
+}
+function openModal(title, bodyHTML, footerHTML=''){
+  document.getElementById('modal-title').innerHTML = title;
+  document.getElementById('modal-body').innerHTML = bodyHTML;
+  document.getElementById('modal-footer').innerHTML = footerHTML;
+  document.getElementById('modal-root').classList.remove('hidden');
+}
+function closeModal(){ document.getElementById('modal-root').classList.add('hidden'); }
+function confirmDlg(msg){ return new Promise(res => {
+  openModal('<i class="fas fa-triangle-exclamation text-gold-500 mr-2"></i>Confirmar', `<p class="text-sm text-muted">${esc(msg)}</p>`,
+    `<button class="btn btn-outline btn-sm" onclick="closeModal();window._cf(false)">Cancelar</button>
+     <button class="btn btn-primary btn-sm" onclick="closeModal();window._cf(true)">Confirmar</button>`);
+  window._cf = res;
+});}
 
-// --- NAVIGATION & SETUP ---
-
-function setupNavigation() {
-    const navItems = document.querySelectorAll('.nav-link');
-    navItems.forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.preventDefault();
-            const page = item.getAttribute('data-page');
-            
-            // Update Active State
-            navItems.forEach(nav => {
-                nav.classList.remove('active', 'bg-famr-gold/10', 'text-famr-gold', 'border-l-2', 'border-famr-gold');
-                nav.classList.add('text-gray-400');
-            });
-            item.classList.remove('text-gray-400');
-            item.classList.add('active', 'bg-famr-gold/10', 'text-famr-gold', 'border-l-2', 'border-famr-gold');
-
-            // Load Content
-            loadPageContent(page);
-        });
-    });
+/* ── ROUTER (hash = funciona no GitHub Pages e Vercel) ── */
+window.addEventListener('hashchange', route);
+async function route(){
+  if(!STATE.profile) return;
+  const [, page, param] = location.hash.replace('#/','').split('/');
+  const c = document.getElementById('content');
+  c.innerHTML = '<div class="skeleton h-40"></div><div class="skeleton h-64 mt-4"></div>';
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.route === (page||'home')));
+  try{
+    if(page === 'admin')        return await renderAdmin(c);          // admin.js
+    if(page === 'perfil')       return await renderProfile(c, param);
+    if(page === 'section')      return await renderSection(c, param);
+    return await renderHome(c);
+  }catch(err){ console.error(err); c.innerHTML = `<div class="card card-body text-red-600 text-sm"><i class="fas fa-plug-circle-xmark mr-2"></i>Falha de conexão com o Supabase. Tente novamente.</div>`; }
 }
 
-function setupGlobalSearch() {
-    const searchInput = document.getElementById('global-search');
-    if (searchInput) {
-        searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const query = searchInput.value.trim();
-                if (query.length > 2) {
-                    performSearch(query);
-                }
-            }
-        });
-    }
+/* ── SIDEBAR dinâmica (tópicos criados pelo admin) ── */
+async function buildSidebar(){
+  const { data: sections } = await supabase.from('sections').select('*').order('order_index');
+  STATE.sections = sections || [];
+  let html = `<a class="nav-item" data-route="home" href="#/home"><i class="fas fa-house"></i> Início</a>
+              <div class="nav-sep">Tópicos oficiais</div>`;
+  for(const s of STATE.sections){
+    const locked = s.required_group_id && !canAccessGroup(s.required_group_id) && !isAdmin();
+    html += `<a class="nav-item" data-route="section" href="#/section/${s.slug}">
+      <i class="fas ${esc(s.icon)}"></i> ${esc(s.name)} ${locked?'<i class="fas fa-lock lock-badge ml-auto text-xs"></i>':''}</a>`;
+  }
+  html += `<div class="nav-sep">Minha conta</div>
+           <a class="nav-item" href="#/perfil/me"><i class="fas fa-id-badge"></i> Meu perfil</a>`;
+  if(isAdmin()) html += `<div class="nav-sep">Comando</div>
+           <a class="nav-item" data-route="admin" href="#/admin"><i class="fas fa-shield-halved"></i> Painel Admin</a>`;
+  document.getElementById('sidebar-nav').innerHTML = html;
+  if(STATE.settings.maintenance?.enabled && isAdmin()) document.getElementById('maintenance-banner').classList.remove('hidden');
 }
 
-// --- CONTENT LOADING ENGINE ---
+/* Acesso a grupo: membro direto, membro do grupo-pai ou admin */
+function canAccessGroup(gid){
+  if(!gid) return true;
+  if(isAdmin()) return true;
+  return STATE.groups.some(g => g.id === gid);
+}
 
-async function loadPageContent(page) {
-    const contentArea = document.getElementById('content-area');
-    
-    // Loading Spinner
-    contentArea.innerHTML = `
-        <div class="flex flex-col items-center justify-center py-20 fade-in">
-            <i class="fas fa-circle-notch fa-spin text-5xl text-famr-gold mb-4"></i>
-            <p class="text-gray-400 text-sm uppercase tracking-widest">Carregando Módulo...</p>
+/* ── HOME ── */
+async function renderHome(c){
+  const [{ count: nEff }, { count: nPosts }, { data: myReq }, { data: groups }] = await Promise.all([
+    supabase.from('profiles').select('*', { count:'planned', head:true }).eq('status','active'),
+    supabase.from('posts').select('*', { count:'planned', head:true }),
+    supabase.from('requests').select('status').eq('author_id', STATE.profile.id).eq('status','pending'),
+    supabase.from('groups').select('name,color,power_level').eq('visible', true).order('power_level',{ascending:false}).limit(6)
+  ]);
+  const { data: feed } = await supabase.from('posts')
+    .select('id,title,content,created_at,author_id,profiles(nickname),subtopics(name,required_group_id,sections(name))')
+    .order('created_at',{ascending:false}).limit(6);
+
+  const visibleFeed = (feed||[]).filter(p => canAccessGroup(p.subtopics?.required_group_id));
+
+  c.innerHTML = `
+  <section class="hero p-8 md:p-10 fade-up">
+    <div class="stars-pattern absolute inset-0"></div>
+    <div class="relative flex flex-wrap items-center gap-6 justify-between">
+      <div>
+        <p class="text-gold-300 text-xs font-bold tracking-[0.3em] uppercase">Quartel-general • Habbo BR</p>
+        <h1 class="font-display text-3xl md:text-4xl font-extrabold mt-2">Bem-vindo, ${esc(STATE.profile.nickname)}</h1>
+        <div class="flex flex-wrap gap-2 mt-4">${STATE.groups.map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}</div>
+      </div>
+      <img src="${CONFIG.logoUrl}" class="w-24 md:w-32 drop-shadow-xl hidden sm:block" onerror="this.style.display='none'">
+    </div>
+  </section>
+
+  <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 fade-up">
+    ${statCard('fa-users','Efetivo ativo', nEff ?? '—')}
+    ${statCard('fa-inbox','Meus protocolos pendentes', (myReq||[]).length)}
+    ${statCard('fa-newspaper','Publicações', nPosts ?? '—')}
+    ${statCard('fa-shield-halved','Companhias visíveis', (groups||[]).length)}
+  </section>
+
+  <div class="grid lg:grid-cols-3 gap-6">
+    <section class="lg:col-span-2 space-y-4 fade-up">
+      <div class="card"><div class="card-head"><h2 class="font-display font-bold"><i class="fas fa-bullhorn text-gold-500 mr-2"></i>Ordens & Comunicados</h2></div>
+        <div class="divide-y divide-line">
+          ${visibleFeed.map(p => `
+            <article class="p-4 hover:bg-gold-100/50 transition-colors">
+              <div class="flex items-start justify-between gap-3">
+                <h3 class="font-bold text-famr-800">${esc(p.title)}</h3>
+                <time class="text-[11px] text-muted shrink-0">${fmtDate(p.created_at)}</time>
+              </div>
+              <p class="text-sm text-muted mt-1 line-clamp-2">${esc(p.content)}</p>
+              <div class="flex items-center gap-2 mt-2 text-[11px] text-muted">
+                <i class="fas fa-user-pen text-gold-500"></i>${esc(p.profiles?.nickname||'—')}
+                <span class="chip chip-neutral ml-auto">${esc(p.subtopics?.sections?.name||'')} / ${esc(p.subtopics?.name||'')}</span>
+              </div>
+            </article>`).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhuma publicação visível para o seu nível de acesso.</p>'}
         </div>
-    `;
+      </div>
 
-    try {
-        switch (page) {
-            case 'home':
-                await loadDashboardContent();
-                break;
-            case 'listagem':
-                await loadListagem(contentArea);
-                break;
-            case 'requerimentos':
-                await loadRequerimentos(contentArea);
-                break;
-            case 'documentos':
-                await loadDocumentos(contentArea);
-                break;
-            case 'admin':
-                await loadAdminPanel(contentArea);
-                break;
-            default:
-                contentArea.innerHTML = `<div class="text-center text-gray-500 py-10">Módulo em desenvolvimento.</div>`;
-        }
-    } catch (error) {
-        console.error("Erro ao carregar página:", error);
-        contentArea.innerHTML = `
-            <div class="bg-red-900/20 border border-red-500/50 p-6 rounded-lg text-center">
-                <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-2"></i>
-                <h3 class="text-white font-bold">Erro de Conexão</h3>
-                <p class="text-gray-400 text-sm">Não foi possível carregar os dados. Verifique sua conexão ou tente novamente.</p>
-            </div>
-        `;
-    }
-}
-
-// --- PAGE: DASHBOARD (HOME) ---
-
-async function loadDashboardContent() {
-    const contentArea = document.getElementById('content-area');
-    
-    // Fetch News/Topics from Supabase (Filtered by RLS automatically)
-    // Assumindo tabela 'topics' com colunas: id, title, content, author_nickname, created_at, group_id, icon
-    const { data: topics, error } = await supabase
-        .from('topics')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-    if (error) throw error;
-
-    // Determine User's Main Group Color for Banner
-    const mainGroup = currentUser.groups && currentUser.groups[0] ? currentUser.groups[0] : { color: '#14532d', name: 'Recruta' };
-
-    let html = `
-        <!-- Hero Banner -->
-        <div class="relative rounded-xl overflow-hidden shadow-2xl border border-famr-gold/30 mb-8 group fade-in">
-            <div class="absolute inset-0 bg-gradient-to-r from-[${mainGroup.color}] to-famr-dark/95 z-10 opacity-90"></div>
-            <!-- Placeholder Background Image -->
-            <img src="https://raw.githubusercontent.com/SEU_USUARIO/famrlogo/main/background.png" class="w-full h-48 object-cover opacity-30 group-hover:scale-105 transition-transform duration-700">
-            <div class="absolute inset-0 z-20 flex flex-col justify-center px-8">
-                <span class="text-famr-gold text-xs font-bold tracking-[0.3em] uppercase mb-2">Bem-vindo, ${currentUser.nickname}</span>
-                <h2 class="font-serif text-3xl md:text-4xl text-white font-bold drop-shadow-lg">Painel de Controle</h2>
-                <p class="text-gray-300 mt-2 max-w-lg text-sm">Você está acessando como <span class="text-white font-bold">${mainGroup.name}</span>. Mantenha a disciplina revolucionária.</p>
-            </div>
-        </div>
-
-        <!-- Grid Layout -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 fade-in">
-            
-            <!-- Feed de Notícias (Esquerda/Centro) -->
-            <div class="lg:col-span-2 space-y-4">
-                <div class="flex items-center justify-between mb-2">
-                    <h3 class="font-serif text-xl text-famr-gold"><i class="fas fa-newspaper mr-2"></i> Ordens do Dia</h3>
-                    <button onclick="loadPageContent('listagem')" class="text-xs text-gray-400 hover:text-white underline cursor-pointer">Ver Arquivo Completo</button>
-                </div>
-
-                ${topics && topics.length > 0 ? topics.map(topic => `
-                    <div class="widget-box flex items-start p-4 hover:border-famr-gold/50 transition-colors cursor-pointer group" onclick="alert('Visualização detalhada em breve')">
-                        <div class="w-12 h-12 rounded bg-gray-800 flex-shrink-0 flex items-center justify-center text-xl text-gray-500 group-hover:text-famr-gold transition-colors">
-                            <i class="fas ${topic.icon || 'fa-bullhorn'}"></i>
-                        </div>
-                        <div class="ml-4 flex-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-900/50 text-blue-400 border border-blue-500/30">OFICIAL</span>
-                                <span class="text-xs text-gray-500">Por <span class="text-gray-300">${topic.author_nickname || 'Comando'}</span> • ${new Date(topic.created_at).toLocaleDateString()}</span>
-                            </div>
-                            <h4 class="text-lg font-bold text-white group-hover:text-famr-gold transition-colors">${topic.title}</h4>
-                            <p class="text-sm text-gray-400 line-clamp-2 mt-1">${topic.content}</p>
-                        </div>
-                    </div>
-                `).join('') : `
-                    <div class="widget-box p-8 text-center text-gray-500">
-                        <i class="fas fa-inbox text-4xl mb-3 opacity-50"></i>
-                        <p>Nenhuma ordem recente para seu nível de acesso.</p>
-                    </div>
-                `}
-            </div>
-
-            <!-- Sidebar Direita (Estatísticas & Avisos) -->
-            <div class="space-y-6">
-                <!-- Aviso de Manutenção (Simulado) -->
-                <div class="widget-box p-4 border-l-4 border-yellow-500 bg-yellow-900/10">
-                    <h4 class="font-bold text-white mb-2 flex items-center"><i class="fas fa-exclamation-triangle text-yellow-500 mr-2"></i> Aviso</h4>
-                    <p class="text-xs text-gray-400 leading-relaxed">
-                        O sistema de requerimentos passará por manutenção na próxima sexta-feira às 03:00h.
-                    </p>
-                </div>
-
-                <!-- Quem está Online (Mockup visual, idealmente viria do DB) -->
-                <div class="widget-box">
-                    <div class="bg-gray-800 p-3 border-b border-gray-700 font-bold text-sm text-gray-300 flex justify-between">
-                        <span><i class="fas fa-users mr-2"></i> Online Agora</span>
-                        <span class="text-green-500 text-xs">● 12 Militares</span>
-                    </div>
-                    <div class="p-3 text-xs text-gray-400 flex flex-wrap gap-2">
-                        <span class="text-famr-gold font-bold cursor-pointer hover:underline">Chefia_Policial</span>,
-                        <span class="text-blue-400 cursor-pointer hover:underline">Coronel_Silva</span>,
-                        <span class="text-green-400 cursor-pointer hover:underline">Major_Costa</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
-    contentArea.innerHTML = html;
-}
-
-// --- PAGE: LISTAGEM (EFETIVO) ---
-
-async function loadListagem(container) {
-    // Busca perfis ativos
-    const { data: users, error } = await supabase
-        .from('profiles')
-        .select('nickname, status, groups')
-        .eq('status', 'active')
-        .order('nickname');
-
-    if (error) throw error;
-
-    container.innerHTML = `
-        <div class="widget-box fade-in">
-            <div class="widget-header bg-gradient-to-r from-famr-green to-famr-dark border-b border-famr-gold/50 p-4 flex flex-col md:flex-row justify-between items-center gap-4">
-                <h2 class="font-serif text-xl text-famr-gold"><i class="fas fa-list mr-2"></i> Efetivo Ativo</h2>
-                <div class="relative w-full md:w-64">
-                    <input type="text" id="filter-listagem" placeholder="Filtrar por nome..." class="w-full bg-black/30 border border-gray-600 rounded px-3 py-2 text-xs text-white focus:border-famr-gold outline-none">
-                    <i class="fas fa-search absolute right-3 top-2.5 text-gray-500 text-xs"></i>
-                </div>
-            </div>
-            
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm text-gray-400">
-                    <thead class="bg-gray-800 text-gray-200 uppercase text-xs">
-                        <tr>
-                            <th class="p-4 w-12">#</th>
-                            <th class="p-4">Posto/Graduação</th>
-                            <th class="p-4">Nickname</th>
-                            <th class="p-4">Companhia</th>
-                            <th class="p-4 text-right">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-700" id="listagem-body">
-                        ${users ? users.map((u, index) => {
-                            const groupName = u.groups && u.groups[0] ? u.groups[0].name : 'Recruta';
-                            const groupColor = u.groups && u.groups[0] ? u.groups[0].color : '#9ca3af';
-                            return `
-                            <tr class="hover:bg-white/5 transition-colors">
-                                <td class="p-4 text-gray-600 font-mono">${index + 1}</td>
-                                <td class="p-4 font-bold" style="color: ${groupColor}">${groupName}</td>
-                                <td class="p-4 font-bold text-white">${u.nickname}</td>
-                                <td class="p-4">1ª Companhia</td>
-                                <td class="p-4 text-right">
-                                    <button class="text-famr-gold hover:text-white text-xs border border-famr-gold/50 px-2 py-1 rounded transition-colors">Perfil</button>
-                                </td>
-                            </tr>
-                        `}).join('') : '<tr><td colspan="5" class="p-4 text-center">Nenhum militar encontrado.</td></tr>'}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    `;
-
-    // Simple Filter Logic
-    const filterInput = document.getElementById('filter-listagem');
-    if(filterInput) {
-        filterInput.addEventListener('input', (e) => {
-            const term = e.target.value.toLowerCase();
-            const rows = document.querySelectorAll('#listagem-body tr');
-            rows.forEach(row => {
-                const text = row.innerText.toLowerCase();
-                row.style.display = text.includes(term) ? '' : 'none';
-            });
-        });
-    }
-}
-
-// --- PAGE: REQUERIMENTOS ---
-
-async function loadRequerimentos(container) {
-    // Busca requerimentos do usuário atual
-    const { data: requests, error } = await supabase
-        .from('requests')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    container.innerHTML = `
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 fade-in">
-            <!-- Formulário -->
-            <div class="md:col-span-1 widget-box h-fit">
-                <div class="widget-header bg-gradient-to-r from-famr-green to-famr-dark border-b border-famr-gold/50 p-3">
-                    <span class="font-serif font-bold text-famr-gold text-sm">NOVO PROTOCOLO</span>
-                </div>
-                <div class="p-4 space-y-4">
-                    <div>
-                        <label class="text-xs text-gray-400 uppercase font-bold block mb-1">Tipo de Solicitação</label>
-                        <select id="req-type" class="w-full bg-black/30 border border-gray-600 rounded p-2 text-white text-sm focus:border-famr-gold outline-none">
-                            <option value="tag">Solicitação de Tag</option>
-                            <option value="promocao">Promoção por Mérito</option>
-                            <option value="transferencia">Transferência de Companhia</option>
-                            <option value="outros">Outros Assuntos</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-400 uppercase font-bold block mb-1">Detalhes</label>
-                        <textarea id="req-content" class="w-full bg-black/30 border border-gray-600 rounded p-2 text-white text-sm h-32 focus:border-famr-gold outline-none" placeholder="Descreva sua solicitação detalhadamente..."></textarea>
-                    </div>
-                    <button onclick="submitRequest()" class="w-full bg-famr-gold hover:bg-yellow-600 text-black font-bold py-2 rounded text-sm uppercase transition-colors shadow-lg">
-                        <i class="fas fa-paper-plane mr-2"></i> Enviar Protocolo
-                    </button>
-                </div>
-            </div>
-
-            <!-- Lista de Meus Requerimentos -->
-            <div class="md:col-span-2 widget-box">
-                <div class="widget-header bg-gradient-to-r from-famr-green to-famr-dark border-b border-famr-gold/50 p-3 flex justify-between items-center">
-                    <span class="font-serif font-bold text-famr-gold text-sm">MEUS PROTOCOLOS</span>
-                    <span class="text-xs text-gray-500">Total: ${requests ? requests.length : 0}</span>
-                </div>
-                <div class="p-4 space-y-3" id="my-requests-list">
-                    ${requests && requests.length > 0 ? requests.map(req => `
-                        <div class="flex items-center justify-between p-3 bg-black/20 rounded border-l-4 ${getStatusColor(req.status)} mb-2">
-                            <div>
-                                <div class="font-bold text-white text-sm capitalize">${req.type}</div>
-                                <div class="text-xs text-gray-500">${new Date(req.created_at).toLocaleDateString()} • ID: #${req.id.toString().slice(0,4)}</div>
-                            </div>
-                            <span class="text-xs font-bold px-2 py-1 rounded uppercase bg-opacity-20 border border-current" style="color: ${getStatusTextColor(req.status)}; background-color: ${getStatusBgColor(req.status)}">
-                                ${req.status}
-                            </span>
-                        </div>
-                    `).join('') : `
-                        <div class="text-center py-10 text-gray-500">
-                            <i class="fas fa-folder-open text-3xl mb-2 opacity-50"></i>
-                            <p class="text-sm">Nenhum requerimento aberto.</p>
-                        </div>
-                    `}
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-// Helper Functions for Request Status Colors
-function getStatusColor(status) {
-    if (status === 'approved') return 'border-green-500';
-    if (status === 'rejected') return 'border-red-500';
-    return 'border-yellow-500';
-}
-function getStatusTextColor(status) {
-    if (status === 'approved') return '#22c55e';
-    if (status === 'rejected') return '#ef4444';
-    return '#eab308';
-}
-function getStatusBgColor(status) {
-    if (status === 'approved') return 'rgba(34, 197, 94, 0.1)';
-    if (status === 'rejected') return 'rgba(239, 68, 68, 0.1)';
-    return 'rgba(234, 179, 8, 0.1)';
-}
-
-// Function to Submit Request
-window.submitRequest = async () => {
-    const type = document.getElementById('req-type').value;
-    const content = document.getElementById('req-content').value;
-
-    if (!content.trim()) {
-        alert("Por favor, preencha os detalhes da solicitação.");
-        return;
-    }
-
-    const btn = document.querySelector('button[onclick="submitRequest()"]');
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
-    btn.disabled = true;
-
-    const { error } = await supabase.from('requests').insert([
-        { user_id: currentUser.id, nickname: currentUser.nickname, type: type, content: content, status: 'pending' }
-    ]);
-
-    if (!error) {
-        alert("Protocolo enviado com sucesso! Aguarde a análise do RH.");
-        loadRequerimentos(document.getElementById('content-area')); // Reload list
-    } else {
-        alert("Erro ao enviar: " + error.message);
-        btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i> Enviar Protocolo';
-        btn.disabled = false;
-    }
-};
-
-// --- PAGE: DOCUMENTOS ---
-
-async function loadDocumentos(container) {
-    container.innerHTML = `
-        <div class="widget-box fade-in p-8 text-center">
-            <i class="fas fa-book-open text-6xl text-famr-gold mb-4"></i>
-            <h2 class="text-2xl font-serif text-white mb-2">Código Penal & Documentos</h2>
-            <p class="text-gray-400 max-w-md mx-auto mb-6">Aqui você encontra todas as leis, regulamentos e documentos oficiais da FAMR.</p>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto text-left">
-                <a href="#" class="block p-4 bg-gray-800 rounded border border-gray-700 hover:border-famr-gold transition-colors group">
-                    <div class="flex items-center gap-3">
-                        <i class="fas fa-file-pdf text-red-500 text-2xl"></i>
-                        <div>
-                            <h4 class="font-bold text-white group-hover:text-famr-gold">Código Penal Militar</h4>
-                            <span class="text-xs text-gray-500">PDF • 2.4 MB</span>
-                        </div>
-                    </div>
-                </a>
-                <a href="#" class="block p-4 bg-gray-800 rounded border border-gray-700 hover:border-famr-gold transition-colors group">
-                    <div class="flex items-center gap-3">
-                        <i class="fas fa-file-word text-blue-500 text-2xl"></i>
-                        <div>
-                            <h4 class="font-bold text-white group-hover:text-famr-gold">Regulamento de Uniformes</h4>
-                            <span class="text-xs text-gray-500">DOCX • 1.1 MB</span>
-                        </div>
-                    </div>
-                </a>
-            </div>
-        </div>
-    `;
-}
-
-// --- PAGE: ADMIN PANEL (RESTRICTED) ---
-
-async function loadAdminPanel(container) {
-    // Security Check
-    if (!currentUser || !currentUser.groups.some(g => g.permissions && g.permissions.includes('admin'))) {
-        container.innerHTML = `
-            <div class="text-center py-20 fade-in">
-                <i class="fas fa-lock text-6xl text-red-500 mb-4"></i>
-                <h2 class="text-2xl font-bold text-white">ACESSO NEGADO</h2>
-                <p class="text-gray-400">Você não possui permissão de administrador para visualizar esta área.</p>
-            </div>
-        `;
-        return;
-    }
-
-    // Fetch Users for Management
-    const { data: users, error } = await supabase.from('profiles').select('id, nickname, status, email').limit(50);
-    if (error) throw error;
-
-    container.innerHTML = `
-        <div class="fade-in space-y-6">
+      <div class="grid sm:grid-cols-2 gap-4">
+        ${STATE.sections.map(s => {
+          const locked = s.required_group_id && !canAccessGroup(s.required_group_id);
+          return `<a href="#/section/${s.slug}" class="card card-hover p-5 block ${locked?'opacity-70':''}">
             <div class="flex items-center justify-between">
-                <h2 class="text-2xl font-serif text-famr-gold"><i class="fas fa-cogs mr-2"></i> Painel Administrativo</h2>
-                <button onclick="toggleMaintenanceMode()" class="bg-gray-700 hover:bg-yellow-600 text-white px-4 py-2 rounded text-xs font-bold transition-colors border border-gray-600">
-                    <i class="fas fa-tools mr-1"></i> Alternar Manutenção
-                </button>
+              <span class="w-11 h-11 rounded-xl grid place-items-center text-white text-lg" style="background:linear-gradient(135deg,#1a6b4f,#0b3d2c)"><i class="fas ${esc(s.icon)}"></i></span>
+              ${locked ? '<i class="fas fa-lock lock-badge"></i>' : '<i class="fas fa-arrow-right text-gold-500"></i>'}
             </div>
-            
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Gerenciamento de Usuários -->
-                <div class="lg:col-span-2 widget-box">
-                    <div class="widget-header bg-gradient-to-r from-famr-green to-famr-dark border-b border-famr-gold/50 p-3">
-                        <span class="font-serif font-bold text-famr-gold text-sm">GERENCIAR MILITARES</span>
-                    </div>
-                    <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
-                        <table class="w-full text-left text-sm text-gray-400">
-                            <thead class="bg-gray-800 text-gray-200 uppercase text-xs sticky top-0">
-                                <tr>
-                                    <th class="p-3">Nickname</th>
-                                    <th class="p-3">Status</th>
-                                    <th class="p-3 text-right">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-700" id="admin-user-list">
-                                ${users.map(u => `
-                                    <tr class="hover:bg-white/5">
-                                        <td class="p-3 font-bold text-white">${u.nickname}</td>
-                                        <td class="p-3">
-                                            <span class="text-[10px] px-2 py-1 rounded uppercase font-bold ${u.status === 'active' ? 'bg-green-900/50 text-green-400' : 'bg-yellow-900/50 text-yellow-400'}">
-                                                ${u.status}
-                                            </span>
-                                        </td>
-                                        <td class="p-3 text-right space-x-2">
-                                            ${u.status !== 'active' ? `<button onclick="activateUser('${u.id}')" class="text-green-500 hover:text-white" title="Ativar"><i class="fas fa-check"></i></button>` : ''}
-                                            <button class="text-red-500 hover:text-white" title="Banir"><i class="fas fa-ban"></i></button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+            <h3 class="font-display font-bold mt-3">${esc(s.name)}</h3>
+            <p class="text-xs text-muted mt-1 line-clamp-2">${esc(s.description||'')}</p>
+          </a>`; }).join('')}
+      </div>
+    </section>
 
-                <!-- Logs do Sistema -->
-                <div class="widget-box flex flex-col h-full">
-                    <div class="widget-header bg-gradient-to-r from-famr-green to-famr-dark border-b border-famr-gold/50 p-3">
-                        <span class="font-serif font-bold text-famr-gold text-sm">LOGS DE AÇÃO</span>
-                    </div>
-                    <div class="p-0 flex-1 bg-black/40 font-mono text-[10px] text-green-400 overflow-y-auto h-[500px]" id="system-logs">
-                        <div class="p-2 border-b border-gray-800">[SYSTEM] Admin panel accessed by ${currentUser.nickname}</div>
-                        <div class="p-2 border-b border-gray-800">[AUTH] Session validated via RLS</div>
-                        <div class="p-2 border-b border-gray-800">[DB] Connected to Supabase Project</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
+    <aside class="space-y-4 fade-up">
+      <div class="card"><div class="card-head"><h2 class="font-display font-bold text-sm"><i class="fas fa-bell text-gold-500 mr-2"></i>Aviso do comando</h2></div>
+        <p class="card-body text-sm text-muted">${esc(STATE.settings.announcement?.text || 'Sem avisos no momento.')}</p></div>
+      <div class="card"><div class="card-head"><h2 class="font-display font-bold text-sm"><i class="fas fa-ranking-star text-gold-500 mr-2"></i>Hierarquia visível</h2></div>
+        <div class="card-body space-y-2">
+          ${(groups||[]).map(g => `<div class="flex items-center justify-between text-sm">
+            <span class="flex items-center gap-2"><span class="group-dot" style="background:${g.color}"></span>${esc(g.name)}</span>
+            <span class="text-gold-500 text-xs">${powerStars(g.power_level)}</span></div>`).join('') || '<p class="text-xs text-muted">Nenhuma companhia visível.</p>'}
+        </div></div>
+      <div class="card p-4 text-[11px] text-muted flex items-center gap-3">
+        <span class="w-2 h-2 rounded-full bg-famr-500 animate-pulse"></span> Sistema online • Banco Supabase com RLS ativo • Imagens via Google Drive
+      </div>
+    </aside>
+  </div>`;
+}
+const statCard = (icon,label,val) => `
+  <div class="card card-hover card-body flex items-center gap-4">
+    <span class="w-11 h-11 rounded-xl grid place-items-center bg-famr-100 text-famr-700 text-lg"><i class="fas ${icon}"></i></span>
+    <div><p class="text-[11px] uppercase tracking-wider text-muted font-bold">${label}</p>
+    <p class="font-display text-2xl font-extrabold text-famr-800">${val}</p></div>
+  </div>`;
+
+/* ── SEÇÃO GENÉRICA (listagem / requerimentos / documentos / companhias / custom) ── */
+async function renderSection(c, slug){
+  const { data: sec } = await supabase.from('sections').select('*').eq('slug', slug).single();
+  if(!sec) { c.innerHTML = '<div class="card card-body text-sm text-muted">Seção não encontrada.</div>'; return; }
+  if(sec.required_group_id && !canAccessGroup(sec.required_group_id)){
+    c.innerHTML = `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i>
+      <h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2>
+      <p class="text-sm text-muted mt-1">Somente membros do grupo designado podem visualizar "${esc(sec.name)}".</p></div>`;
+    return;
+  }
+
+  let head = `<div class="flex flex-wrap items-center justify-between gap-3 fade-up">
+    <div><p class="text-xs font-bold tracking-[0.3em] uppercase text-gold-600">Tópico oficial</p>
+    <h1 class="font-display text-2xl md:text-3xl font-extrabold text-famr-900"><i class="fas ${esc(sec.icon)} text-gold-500 mr-2"></i>${esc(sec.name)}</h1>
+    <p class="text-sm text-muted mt-1">${esc(sec.description||'')}</p></div><div class="star-row text-sm">★★★★</div></div>`;
+
+  if(slug === 'listagem')      return await renderListagem(c, head);
+  if(slug === 'requerimentos') return await renderRequerimentos(c, head, sec);
+  if(slug === 'companhias')    return await renderCompanhias(c, head);
+  if(slug === 'documentos')    return await renderDocumentos(c, head, sec);
+  return await renderGenericSection(c, head, sec);
 }
 
-// Admin Actions
-window.activateUser = async (userId) => {
-    if(!confirm("Tem certeza que deseja ativar este usuário?")) return;
-    
-    const { error } = await supabase.from('profiles').update({ status: 'active' }).eq('id', userId);
-    if (!error) {
-        addLog(`User ${userId} activated by Admin.`);
-        loadAdminPanel(document.getElementById('content-area')); // Refresh
-    } else {
-        alert("Erro ao ativar usuário.");
-    }
+/* LISTAGEM: entradas oficiais + originadas de requerimentos aprovados */
+async function renderListagem(c, head, offset=0, cat=null){
+  let q = supabase.from('listagem_entries').select('*').order('created_at',{ascending:false}).range(offset, offset+24);
+  if(cat) q = q.eq('category', cat);
+  const [{ data: entries }, { data: allCats }] = await Promise.all([
+    q, supabase.from('listagem_entries').select('category').limit(1000)
+  ]);
+  const cats = [...new Set((allCats||[]).map(e => e.category))];
+  c.innerHTML = head + `
+  <div class="card fade-up">
+    <div class="card-head flex-wrap gap-2">
+      <button class="chip ${!cat?'chip-ok':'chip-neutral'} cursor-pointer" onclick="renderListagem(document.getElementById('content'),'',0,null)">TODAS</button>
+      ${cats.map(k => `<button class="chip ${cat===k?'chip-ok':'chip-neutral'} cursor-pointer" onclick="renderListagem(document.getElementById('content'),'',0,'${esc(k)}')">${esc(k).toUpperCase()}</button>`).join('')}
+    </div>
+    <div class="overflow-x-auto"><table class="table-famr">
+      <thead><tr><th>Registro</th><th>Categoria</th><th>Detalhes</th><th>Origem</th><th>Data</th></tr></thead>
+      <tbody>${(entries||[]).map(e => `<tr>
+        <td class="font-bold text-famr-800">${esc(e.title)}</td>
+        <td><span class="chip chip-neutral">${esc(e.category)}</span></td>
+        <td class="text-xs text-muted">${Object.entries(e.data||{}).map(([k,v])=>`<b>${esc(k)}:</b> ${esc(v)}`).join(' • ')}</td>
+        <td class="text-xs">${e.source_request_id ? '<span class="chip chip-ok"><i class="fas fa-link"></i> requerimento</span>' : '<span class="chip chip-neutral">manual</span>'}</td>
+        <td class="text-xs text-muted">${fmtDate(e.created_at)}</td></tr>`).join('')
+        || '<tr><td colspan="5" class="text-center text-muted py-8">Nenhum registro publicado ainda.</td></tr>'}</tbody>
+    </table></div>
+    ${(entries||[]).length === 25 ? `<div class="p-3 text-center"><button class="btn btn-outline btn-sm" onclick="renderListagem(document.getElementById('content'),'',${offset+25},'${esc(cat||'')}')">Carregar mais</button></div>` : ''}
+  </div>`;
+}
+
+/* REQUERIMENTOS: formulários por subtópico + meus protocolos */
+async function renderRequerimentos(c, head, sec){
+  const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id).order('order_index');
+  const { data: mine } = await supabase.from('requests').select('*,subtopics(name)').eq('author_id', STATE.profile.id).order('created_at',{ascending:false}).limit(30);
+  c.innerHTML = head + `
+  <div class="grid lg:grid-cols-3 gap-6">
+    <div class="space-y-4 fade-up">
+      ${(subs||[]).map(s => {
+        const locked = s.required_group_id && !canAccessGroup(s.required_group_id);
+        return `<div class="card card-hover p-5 ${locked?'opacity-60':''}">
+          <div class="flex items-center justify-between"><h3 class="font-display font-bold">${esc(s.name)}</h3>
+          ${locked?'<i class="fas fa-lock lock-badge"></i>':''}</div>
+          <p class="text-xs text-muted mt-1">${esc(s.description||'')}</p>
+          ${locked ? '' : `<button class="btn btn-gold btn-sm mt-3" onclick='openRequestForm(${JSON.stringify(s).replace(/'/g,"&#39;")})'><i class="fas fa-pen-to-square"></i> Abrir protocolo</button>`}
+        </div>`; }).join('') || '<div class="card card-body text-sm text-muted">Nenhum formulário disponível.</div>'}
+    </div>
+    <div class="lg:col-span-2 card fade-up">
+      <div class="card-head"><h2 class="font-display font-bold text-sm"><i class="fas fa-inbox text-gold-500 mr-2"></i>Meus protocolos</h2></div>
+      <div class="divide-y divide-line max-h-[560px] overflow-auto">
+        ${(mine||[]).map(r => `<div class="p-4 flex items-center justify-between gap-3 hover:bg-gold-100/40 transition-colors">
+          <div><p class="font-bold text-sm">${esc(r.title)}</p>
+          <p class="text-[11px] text-muted mt-0.5">${esc(r.subtopics?.name||'')} • ${fmtDate(r.created_at)} ${r.review_note?`• <i>"${esc(r.review_note)}"</i>`:''}</p></div>
+          ${statusChip(r.status)}</div>`).join('') || '<p class="p-8 text-center text-sm text-muted">Você ainda não abriu protocolos.</p>'}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* Formulário dinâmico (campos definidos pelo admin) */
+window.openRequestForm = function(sub){
+  const fields = sub.form_fields || [];
+  openModal(`<i class="fas fa-file-signature text-gold-500 mr-2"></i>${esc(sub.name)}`,
+    fields.map(f => `<label class="field"><span>${esc(f.label)}${f.required?' *':''}</span>
+      ${f.type==='textarea' ? `<textarea data-f="${esc(f.label)}" data-req="${!!f.required}" class="input" rows="3"></textarea>`
+                            : `<input data-f="${esc(f.label)}" data-req="${!!f.required}" class="input" type="${f.type||'text'}">`}</label>`).join(''),
+    `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
+     <button class="btn btn-primary btn-sm" onclick="submitRequest('${sub.id}')"><i class="fas fa-paper-plane"></i> Enviar ao CRH</button>`);
 };
 
-window.toggleMaintenanceMode = () => {
-    const overlay = document.getElementById('maintenance-overlay');
-    overlay.classList.toggle('hidden');
-    addLog("Maintenance mode toggled.");
-    alert("Modo de manutenção alternado. (Nota: Para persistir, salve no banco de dados)");
+window.submitRequest = async function(subtopicId){
+  const inputs = [...document.querySelectorAll('#modal-body [data-f]')];
+  const data = {}; let ok = true;
+  inputs.forEach(i => { data[i.dataset.f] = i.value.trim(); if(i.dataset.req==='true' && !i.value.trim()) ok = false; });
+  if(!ok){ toast('Preencha todos os campos obrigatórios.', 'warn'); return; }
+  const title = (Object.values(data)[0] || 'Protocolo') + '';
+  const { error } = await supabase.from('requests').insert([{ subtopic_id: subtopicId, author_id: STATE.profile.id, title, form_data: data }]);
+  if(error){ toast('Erro ao enviar: '+error.message, 'err'); return; }
+  closeModal(); toast('Protocolo enviado! Aguarde a análise do CRH/RH.');
+  route();
 };
 
-function addLog(message) {
-    const logContainer = document.getElementById('system-logs');
-    if(logContainer) {
-        const time = new Date().toLocaleTimeString();
-        const div = document.createElement('div');
-        div.className = "p-2 border-b border-gray-800";
-        div.innerText = `[${time}] ${message}`;
-        logContainer.prepend(div);
-    }
+/* DOCUMENTOS: publicações com link (Google Drive) */
+async function renderDocumentos(c, head, sec){
+  const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id);
+  const ids = (subs||[]).map(s => s.id);
+  const { data: docs } = ids.length ? await supabase.from('posts').select('*,subtopics(name,required_group_id),profiles(nickname)').in('subtopic_id', ids).order('created_at',{ascending:false}).limit(60) : { data: [] };
+  c.innerHTML = head + `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up">
+    ${(docs||[]).filter(d => canAccessGroup(d.subtopics?.required_group_id)).map(d => `
+      <div class="card card-hover p-5">
+        <div class="flex items-center justify-between"><span class="w-10 h-10 rounded-lg grid place-items-center bg-gold-100 text-gold-600"><i class="fas fa-file-lines"></i></span>
+        <span class="chip chip-neutral">${esc(d.subtopics?.name||'')}</span></div>
+        <h3 class="font-bold mt-3">${esc(d.title)}</h3>
+        <p class="text-xs text-muted mt-1 line-clamp-3">${esc(d.content)}</p>
+        ${d.link ? `<a href="${esc(d.link)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm mt-3"><i class="fab fa-google-drive"></i> Abrir documento</a>` : ''}
+      </div>`).join('') || '<div class="card card-body text-sm text-muted sm:col-span-2 lg:col-span-3">Nenhum documento publicado.</div>'}
+  </div>`;
 }
 
-// --- GLOBAL SEARCH FUNCTION ---
-
-async function performSearch(query) {
-    const contentArea = document.getElementById('content-area');
-    contentArea.innerHTML = `<div class="flex justify-center py-20"><i class="fas fa-circle-notch fa-spin text-4xl text-famr-gold"></i></div>`;
-
-    // Search in Profiles
-    const { data: users, error } = await supabase
-        .from('profiles')
-        .select('nickname, status')
-        .ilike('nickname', `%${query}%`)
-        .limit(10);
-
-    if (error) {
-        contentArea.innerHTML = `<div class="text-center text-red-500">Erro na busca.</div>`;
-        return;
-    }
-
-    let html = `
-        <div class="widget-box fade-in p-6">
-            <h2 class="text-xl font-bold text-white mb-4">Resultados para: "${query}"</h2>
-            ${users && users.length > 0 ? `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    ${users.map(u => `
-                        <div class="bg-gray-800 p-4 rounded border border-gray-700 flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center font-bold text-white">${u.nickname.charAt(0)}</div>
-                            <div>
-                                <div class="font-bold text-white">${u.nickname}</div>
-                                <div class="text-xs text-gray-500 uppercase">${u.status}</div>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            ` : `<p class="text-gray-400">Nenhum militar encontrado com esse nome.</p>`}
-        </div>
-    `;
-    contentArea.innerHTML = html;
+/* COMPANHIAS: grupos visíveis */
+async function renderCompanhias(c, head){
+  const { data: groups } = await supabase.from('groups').select('*, groups(name)').eq('visible', true).order('power_level',{ascending:false});
+  const { data: members } = await supabase.from('user_groups').select('group_id').limit(5000);
+  const count = {}; (members||[]).forEach(m => count[m.group_id] = (count[m.group_id]||0)+1);
+  c.innerHTML = head + `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up">
+    ${(groups||[]).map(g => `<div class="card card-hover overflow-hidden">
+      <div class="h-2" style="background:linear-gradient(90deg,${g.color},${g.color}88)"></div>
+      <div class="p-5">
+        <div class="flex items-center justify-between"><h3 class="font-display font-bold" style="color:${g.color}">${esc(g.name)}</h3>
+        <span class="text-gold-500 text-xs">${powerStars(g.power_level)}</span></div>
+        <p class="text-xs text-muted mt-1">${g.groups ? 'Subgrupo de <b>'+esc(g.groups.name)+'</b>' : 'Companhia principal'}</p>
+        <div class="flex items-center justify-between mt-4 text-xs text-muted">
+          <span><i class="fas fa-users mr-1 text-famr-600"></i>${count[g.id]||0} membro(s)</span>
+          <span class="chip chip-ok">VISÍVEL</span></div>
+      </div></div>`).join('') || '<div class="card card-body text-sm text-muted">Nenhuma companhia visível.</div>'}
+  </div>`;
 }
+
+/* SEÇÃO GENÉRICA: subtópicos + posts + publicação */
+async function renderGenericSection(c, head, sec){
+  const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id).order('order_index');
+  const ids = (subs||[]).map(s => s.id);
+  const { data: posts } = ids.length ? await supabase.from('posts').select('*,profiles(nickname)').in('subtopic_id', ids).order('created_at',{ascending:false}).limit(40) : { data: [] };
+  c.innerHTML = head + `<div class="space-y-5 fade-up">` + (subs||[]).map(s => {
+    const locked = s.required_group_id && !canAccessGroup(s.required_group_id);
+    const list = (posts||[]).filter(p => p.subtopic_id === s.id);
+    return `<div class="card">
+      <div class="card-head justify-between">
+        <h2 class="font-display font-bold text-sm"><i class="fas fa-folder-open text-gold-500 mr-2"></i>${esc(s.name)}
+        ${locked?'<i class="fas fa-lock lock-badge ml-2"></i>':''}</h2>
+        ${!locked && s.allow_posts ? `<button class="btn btn-primary btn-sm" onclick="document.getElementById('nf-${s.id}').classList.toggle('hidden')"><i class="fas fa-plus"></i> Publicar</button>` : ''}
+      </div>
+      ${!locked && s.allow_posts ? `<form id="nf-${s.id}" class="hidden p-4 grid gap-3 bg-famr-50 border-b border-line" onsubmit="return newPost(event,'${s.id}')">
+        <input name="title" class="input" placeholder="Título da publicação" required>
+        <textarea name="content" class="input" rows="3" placeholder="Conteúdo..." required></textarea>
+        <input name="link" class="input" placeholder="Link (Google Drive) — opcional">
+        <button class="btn btn-gold btn-sm justify-self-start"><i class="fas fa-paper-plane"></i> Publicar</button></form>` : ''}
+      <div class="divide-y divide-line">
+        ${locked ? '<p class="p-6 text-sm text-muted text-center"><i class="fas fa-lock mr-2"></i>Conteúdo exclusivo de grupo específico.</p>' :
+          list.map(p => `<article class="p-4">
+            <div class="flex justify-between gap-3"><h3 class="font-bold text-famr-800">${p.pinned?'<i class="fas fa-thumbtack text-gold-500 mr-1"></i>':''}${esc(p.title)}</h3>
+            <time class="text-[11px] text-muted shrink-0">${fmtDate(p.created_at)}</time></div>
+            <p class="text-sm text-muted mt-1 whitespace-pre-wrap">${esc(p.content)}</p>
+            <div class="flex items-center gap-3 mt-2 text-[11px] text-muted"><i class="fas fa-user-pen text-gold-500"></i>${esc(p.profiles?.nickname||'—')}
+              ${p.link?`<a class="text-famr-700 font-bold hover:underline" target="_blank" rel="noopener" href="${esc(p.link)}"><i class="fas fa-arrow-up-right-from-square"></i> anexo</a>`:''}
+              ${(p.author_id===STATE.profile.id||isAdmin())?`<button class="ml-auto text-red-500 hover:underline" onclick="delPost('${p.id}')"><i class="fas fa-trash"></i></button>`:''}</div>
+          </article>`).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhuma publicação neste subtópico.</p>'}
+      </div></div>`;
+  }).join('') + `</div>`;
+}
+window.newPost = async function(e, subtopicId){
+  e.preventDefault();
+  const f = e.target;
+  const { error } = await supabase.from('posts').insert([{ subtopic_id: subtopicId, title: f.title.value, content: f.content.value, link: f.link.value||null, author_id: STATE.profile.id }]);
+  if(error){ toast('Erro: '+error.message,'err'); return false; }
+  await supabase.rpc('log_action', { action:'POST_CRIADO', details:{ subtopicId } });
+  toast('Publicação criada!'); route(); return false;
+};
+window.delPost = async function(id){
+  if(!await confirmDlg('Excluir esta publicação?')) return;
+  await supabase.from('posts').delete().eq('id', id);
+  await supabase.rpc('log_action', { action:'POST_EXCLUIDO', details:{ id } });
+  toast('Publicação excluída.'); route();
+};
+
+/* PERFIL */
+async function renderProfile(c, param){
+  const me = (!param || param === 'me');
+  const id = me ? STATE.profile.id : param;
+  const { data: p } = await supabase.from('profiles').select('*').eq('id', id).single();
+  if(!p){ c.innerHTML = '<div class="card card-body text-sm text-muted">Perfil não encontrado.</div>'; return; }
+  const { data: ug } = await supabase.from('user_groups').select('groups(*)').eq('user_id', id);
+  const gs = (ug||[]).map(r => r.groups).filter(g => g && (g.visible || me || isAdmin()));
+  c.innerHTML = `
+  <div class="card fade-up overflow-hidden">
+    <div class="h-24" style="background:linear-gradient(120deg,#0e4433,#14563f 60%,#c9a227)"></div>
+    <div class="p-6 -mt-12">
+      <div class="flex flex-wrap items-end gap-4">
+        <span class="w-20 h-20 rounded-2xl grid place-items-center text-3xl font-extrabold text-white border-4 border-white shadow-lg" style="background:${gs[0]?.color||'#14563f'}">${esc(p.nickname.charAt(0).toUpperCase())}</span>
+        <div class="flex-1"><h1 class="font-display text-2xl font-extrabold">${esc(p.nickname)}</h1>
+        <p class="text-xs text-muted">No sistema desde ${fmtDate(p.created_at)} ${me?`• ${esc(p.email)}`:''}</p></div>
+        <span class="chip ${p.status==='active'?'chip-ok':p.status==='pending'?'chip-wait':'chip-no'}">${p.status.toUpperCase()}</span>
+      </div>
+      <div class="flex flex-wrap gap-2 mt-4">${gs.map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}</div>
+    </div>
+  </div>`;
+}
+
+/* BUSCA GLOBAL (dropdown fluido) */
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('global-search'), drop = document.getElementById('search-drop');
+  let t;
+  inp?.addEventListener('input', () => {
+    clearTimeout(t);
+    t = setTimeout(async () => {
+      const q = inp.value.trim();
+      if(q.length < 2){ drop.classList.add('hidden'); return; }
+      const { data } = await supabase.from('profiles').select('id,nickname').eq('status','active').eq('is_invisible', false).ilike('nickname', `%${q}%`).limit(6);
+      drop.innerHTML = (data||[]).map(u => `<a href="#/perfil/${u.id}" onclick="document.getElementById('search-drop').classList.add('hidden')" class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-famr-100 transition-colors">
+        <span class="w-8 h-8 rounded-full bg-famr-700 text-white grid place-items-center text-xs font-bold">${esc(u.nickname.charAt(0).toUpperCase())}</span>
+        <span class="text-sm font-bold">${esc(u.nickname)}</span></a>`).join('') || '<p class="p-3 text-xs text-muted">Nenhum militar encontrado.</p>';
+      drop.classList.remove('hidden');
+    }, 300);
+  });
+  document.addEventListener('click', e => { if(!e.target.closest('#global-search')) drop?.classList.add('hidden'); });
+});
