@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP + ADMIN v4 ══════════ */
+/* ══════════ FAMR • APP v5 — índice estilo fórum + admin ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -39,6 +39,7 @@ async function route(){
     if(page === 'admin')   return await renderAdmin(c);
     if(page === 'perfil')  return await renderProfile(c, param);
     if(page === 'section') return await renderSection(c, param);
+    if(page === 'sub')     return await renderSubtopic(c, param);
     return await renderHome(c);
   }catch(err){ console.error(err); c.innerHTML = `<div class="card card-body text-red-600 text-sm"><i class="fas fa-plug-circle-xmark mr-2"></i>Falha de conexão com o Supabase.</div>`; }
 }
@@ -62,122 +63,179 @@ function canAccessGroup(gid){
   return STATE.groups.some(g => g.id === gid);
 }
 
-/* ── HOME ─ */
+/* ══════════ ÍNDICE ESTILO FÓRUM (HOME) ══════════ */
 async function renderHome(c){
-  const [{ count: nEff }, { count: nPosts }, { data: myReq }, { data: groups }] = await Promise.all([
+  const [{ data: sections }, { data: subs }, { data: posts }, { count: nMembers }, { data: newest }] = await Promise.all([
+    supabase.from('sections').select('*').order('order_index'),
+    supabase.from('subtopics').select('id,name,description,section_id,required_group_id,is_request_form,allow_posts').order('order_index'),
+    supabase.from('posts').select('id,subtopic_id,title,created_at,profiles(nickname)').order('created_at',{ascending:false}).limit(300),
     supabase.from('profiles').select('*', { count:'planned', head:true }).eq('status','active'),
-    supabase.from('posts').select('*', { count:'planned', head:true }),
-    supabase.from('requests').select('status').eq('author_id', STATE.profile.id).eq('status','pending'),
-    supabase.from('groups').select('name,color,power_level').eq('visible', true).order('power_level',{ascending:false}).limit(6)
+    supabase.from('profiles').select('nickname,created_at').eq('status','active').eq('is_invisible',false).order('created_at',{ascending:false}).limit(5)
   ]);
-  const { data: feed } = await supabase.from('posts')
-    .select('id,title,content,created_at,profiles(nickname),subtopics(name,required_group_id,sections(name))')
-    .order('created_at',{ascending:false}).limit(6);
-  const visibleFeed = (feed||[]).filter(p => canAccessGroup(p.subtopics?.required_group_id));
+  const counts = {}, lastMap = {};
+  (posts||[]).forEach(p => { counts[p.subtopic_id] = (counts[p.subtopic_id]||0)+1; if(!lastMap[p.subtopic_id]) lastMap[p.subtopic_id] = p; });
+  const visibleSubs = (subs||[]).filter(s => canAccessGroup(s.required_group_id));
 
   c.innerHTML = `
-  <section class="hero p-8 md:p-10 fade-up">
-    <div class="stars-pattern absolute inset-0"></div>
+  <section class="hero p-6 md:p-8 fade-up">
     <div class="relative flex flex-wrap items-center gap-6 justify-between">
       <div>
-        <p class="text-gold-300 text-xs font-bold tracking-[0.3em] uppercase">Quartel-general • Habbo BR</p>
-        <h1 class="font-display text-3xl md:text-4xl font-extrabold mt-2">Bem-vindo, ${esc(STATE.profile.nickname)}</h1>
-        <div class="flex flex-wrap gap-2 mt-4">${STATE.groups.map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}</div>
+        <p class="text-gold-300 text-xs font-bold tracking-[0.3em] uppercase">Índice do quartel • Habbo BR</p>
+        <h1 class="font-display text-2xl md:text-3xl font-extrabold mt-1">Bem-vindo, ${esc(STATE.profile.nickname)}</h1>
+        <div class="flex flex-wrap gap-2 mt-3">${STATE.groups.map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}</div>
       </div>
-      <img src="${CONFIG.logoUrl}" class="w-24 md:w-32 drop-shadow-xl hidden sm:block" onerror="this.style.display='none'">
+      <img src="${CONFIG.logoUrl}" class="w-20 md:w-28 drop-shadow-xl hidden sm:block" onerror="this.style.display='none'">
     </div>
   </section>
-  <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 fade-up">
-    ${statCard('fa-users','Efetivo ativo', nEff ?? '—')}
-    ${statCard('fa-inbox','Meus protocolos pendentes', (myReq||[]).length)}
-    ${statCard('fa-newspaper','Publicações', nPosts ?? '—')}
-    ${statCard('fa-shield-halved','Companhias visíveis', (groups||[]).length)}
+
+  <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 fade-up">
+    <div class="stat-tile"><span class="forum-ico"><i class="fas fa-users"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Efetivo ativo</p><p class="font-display text-xl font-extrabold text-famr-800">${nMembers ?? 0}</p></div></div>
+    <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-comments"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Publicações</p><p class="font-display text-xl font-extrabold text-famr-800">${(posts||[]).length}+</p></div></div>
+    <div class="stat-tile"><span class="forum-ico"><i class="fas fa-folder-open"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Subtópicos</p><p class="font-display text-xl font-extrabold text-famr-800">${visibleSubs.length}</p></div></div>
+    <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-user-plus"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Mais recente</p><p class="font-display text-sm font-extrabold text-famr-800 truncate">${esc(newest?.[0]?.nickname || '—')}</p></div></div>
   </section>
-  <div class="grid lg:grid-cols-3 gap-6">
-    <section class="lg:col-span-2 space-y-4 fade-up">
-      <div class="card"><div class="card-head"><h2 class="font-display font-bold"><i class="fas fa-bullhorn text-gold-500 mr-2"></i>Ordens & Comunicados</h2></div>
-        <div class="divide-y divide-line">
-          ${visibleFeed.map(p => `
-            <article class="p-4 hover:bg-gold-100/50 transition-colors">
-              <div class="flex items-start justify-between gap-3">
-                <h3 class="font-bold text-famr-800">${esc(p.title)}</h3>
-                <time class="text-[11px] text-muted shrink-0">${fmtDate(p.created_at)}</time>
-              </div>
-              <p class="text-sm text-muted mt-1 line-clamp-2">${esc(p.content)}</p>
-              <div class="flex items-center gap-2 mt-2 text-[11px] text-muted">
-                <i class="fas fa-user-pen text-gold-500"></i>${esc(p.profiles?.nickname||'—')}
-                <span class="chip chip-neutral ml-auto">${esc(p.subtopics?.sections?.name||'')} / ${esc(p.subtopics?.name||'')}</span>
-              </div>
-            </article>`).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhuma publicação visível para o seu nível de acesso.</p>'}
-        </div>
+
+  ${(sections||[]).map(sec => {
+    const rows = visibleSubs.filter(s => s.section_id === sec.id);
+    const secLocked = sec.required_group_id && !canAccessGroup(sec.required_group_id);
+    if(secLocked && rows.length === 0) return '';
+    return `<section class="card overflow-hidden fade-up">
+      <div class="cat-head"><i class="fas ${esc(sec.icon)}"></i> ${esc(sec.name)}
+        <a href="#/section/${sec.slug}" class="ml-auto text-[10px] font-bold text-gold-300 hover:text-white normal-case tracking-normal">ver setor →</a></div>
+      <div class="divide-y divide-line">
+        ${rows.map(s => forumRow(s, counts, lastMap)).join('') || '<p class="p-5 text-sm text-muted text-center">Nenhum subtópico visível neste setor.</p>'}
       </div>
-      <div class="grid sm:grid-cols-2 gap-4">
-        ${STATE.sections.map(s => {
-          const locked = s.required_group_id && !canAccessGroup(s.required_group_id);
-          return `<a href="#/section/${s.slug}" class="card card-hover p-5 block ${locked?'opacity-70':''}">
-            <div class="flex items-center justify-between">
-              <span class="w-11 h-11 rounded-xl grid place-items-center text-white text-lg" style="background:linear-gradient(135deg,#1a6b4f,#0b3d2c)"><i class="fas ${esc(s.icon)}"></i></span>
-              ${locked ? '<i class="fas fa-lock lock-badge"></i>' : '<i class="fas fa-arrow-right text-gold-500"></i>'}
-            </div>
-            <h3 class="font-display font-bold mt-3">${esc(s.name)}</h3>
-            <p class="text-xs text-muted mt-1 line-clamp-2">${esc(s.description||'')}</p>
-          </a>`; }).join('')}
-      </div>
-    </section>
-    <aside class="space-y-4 fade-up">
-      <div class="card"><div class="card-head"><h2 class="font-display font-bold text-sm"><i class="fas fa-bell text-gold-500 mr-2"></i>Aviso do comando</h2></div>
-        <p class="card-body text-sm text-muted">${esc(STATE.settings.announcement?.text || 'Sem avisos no momento.')}</p></div>
-      <div class="card"><div class="card-head"><h2 class="font-display font-bold text-sm"><i class="fas fa-ranking-star text-gold-500 mr-2"></i>Hierarquia visível</h2></div>
-        <div class="card-body space-y-2">
-          ${(groups||[]).map(g => `<div class="flex items-center justify-between text-sm">
-            <span class="flex items-center gap-2"><span class="group-dot" style="background:${g.color}"></span>${esc(g.name)}</span>
-            <span class="text-gold-500 text-xs">${powerStars(g.power_level)}</span></div>`).join('') || '<p class="text-xs text-muted">Nenhuma companhia visível.</p>'}
-        </div></div>
-      <div class="card p-4 text-[11px] text-muted flex items-center gap-3">
-        <span class="w-2 h-2 rounded-full bg-famr-500 animate-pulse"></span> Sistema online • RLS ativo • Imagens via Google Drive
-      </div>
-    </aside>
+    </section>`;
+  }).join('')}
+
+  <div class="grid md:grid-cols-2 gap-4 fade-up">
+    <div class="card"><div class="card-head"><h2 class="font-display font-bold text-sm"><i class="fas fa-user-clock text-gold-500 mr-2"></i>Últimos alistamentos</h2></div>
+      <div class="p-4 flex flex-wrap gap-2">${(newest||[]).map(u => `<span class="chip chip-ok"><i class="fas fa-user"></i> ${esc(u.nickname)}</span>`).join('') || '<span class="text-xs text-muted">—</span>'}</div>
+      <div class="px-4 pb-4 text-xs text-muted">Novo recruta: <b class="text-famr-700">${esc(newest?.[0]?.nickname || '—')}</b> • Total de militares: <b>${nMembers ?? 0}</b></div></div>
+    <div class="card"><div class="card-head"><h2 class="font-display font-bold text-sm"><i class="fas fa-circle-info text-gold-500 mr-2"></i>Legenda do índice</h2></div>
+      <div class="p-4 space-y-2 text-xs text-muted">
+        <p><span class="forum-ico inline-grid !w-6 !h-6 text-[10px] mr-2"><i class="fas fa-comments"></i></span> Subtópico liberado para você</p>
+        <p><span class="forum-ico lock inline-grid !w-6 !h-6 text-[10px] mr-2"><i class="fas fa-lock"></i></span> Restrito a grupo/companhia específica</p>
+        <p><span class="forum-ico new inline-grid !w-6 !h-6 text-[10px] mr-2"><i class="fas fa-file-signature"></i></span> Formulário de requerimento (CRH/RH)</p>
+        <p class="pt-2 border-t border-line"><i class="fas fa-shield-halved text-famr-600 mr-1"></i> Banco Supabase com RLS ativo • sessão expira em 1h de inatividade</p>
+      </div></div>
   </div>`;
 }
-const statCard = (icon,label,val) => `
-  <div class="card card-hover card-body flex items-center gap-4">
-    <span class="w-11 h-11 rounded-xl grid place-items-center bg-famr-100 text-famr-700 text-lg"><i class="fas ${icon}"></i></span>
-    <div><p class="text-[11px] uppercase tracking-wider text-muted font-bold">${label}</p>
-    <p class="font-display text-2xl font-extrabold text-famr-800">${val}</p></div>
-  </div>`;
 
-/* ── SEÇÕES ── */
+function forumRow(s, counts, lastMap){
+  const locked = s.required_group_id && !canAccessGroup(s.required_group_id);
+  const last = lastMap[s.id];
+  const ico = locked ? 'lock fa-lock' : s.is_request_form ? 'new fa-file-signature' : 'fa-comments';
+  return `<a href="${locked ? '#' : '#/sub/'+s.id}" class="forum-row ${locked?'opacity-70 cursor-not-allowed':''}" ${locked?'onclick="return false"':''}>
+    <span class="forum-ico ${locked?'lock':s.is_request_form?'new':''}"><i class="fas ${ico.split(' ').length>1?ico.split(' ')[1]:ico}"></i></span>
+    <div class="flex-1 min-w-0">
+      <b class="text-sm text-famr-800">${esc(s.name)}</b>
+      <p class="text-xs text-muted truncate">${esc(s.description||'')}</p>
+    </div>
+    <div class="w-20 text-center hidden sm:block"><b class="text-sm">${locked?'—':(counts[s.id]||0)}</b><span class="block text-[10px] text-muted uppercase">tópicos</span></div>
+    <div class="w-44 hidden md:block text-[11px] text-muted truncate">
+      ${locked ? '<i class="fas fa-lock lock-badge"></i> acesso restrito' : last ? `<i class="fas fa-clock text-gold-500 mr-1"></i>${fmtDate(last.created_at)}<br><span class="ml-4">por <b class="text-famr-700">${esc(last.profiles?.nickname||'—')}</b></span>` : 'sem publicações'}
+    </div>
+  </a>`;
+}
+
+/* ── SETOR (categoria) ── */
 async function renderSection(c, slug){
   const { data: sec } = await supabase.from('sections').select('*').eq('slug', slug).single();
   if(!sec){ c.innerHTML = '<div class="card card-body text-sm text-muted">Seção não encontrada.</div>'; return; }
+  if(slug === 'listagem')      return await renderListagem(c, sec);
+  if(slug === 'requerimentos') return await renderRequerimentos(c, sec);
+  if(slug === 'companhias')    return await renderCompanhias(c, sec);
+  if(slug === 'documentos')    return await renderDocumentos(c, sec);
   if(sec.required_group_id && !canAccessGroup(sec.required_group_id)){
     c.innerHTML = `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i>
-      <h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2>
-      <p class="text-sm text-muted mt-1">Somente membros do grupo designado visualizam "${esc(sec.name)}".</p></div>`;
-    return;
+      <h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2></div>`; return;
   }
-  const head = `<div class="flex flex-wrap items-center justify-between gap-3 fade-up">
-    <div><p class="text-xs font-bold tracking-[0.3em] uppercase text-gold-600">Tópico oficial</p>
+  const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id).order('order_index');
+  const ids = (subs||[]).map(s => s.id);
+  const { data: posts } = ids.length ? await supabase.from('posts').select('id,subtopic_id,title,created_at,profiles(nickname)').in('subtopic_id', ids).order('created_at',{ascending:false}).limit(300) : { data: [] };
+  const counts = {}, lastMap = {};
+  (posts||[]).forEach(p => { counts[p.subtopic_id] = (counts[p.subtopic_id]||0)+1; if(!lastMap[p.subtopic_id]) lastMap[p.subtopic_id] = p; });
+  c.innerHTML = `
+  <div class="flex flex-wrap items-center justify-between gap-3 fade-up">
+    <div><p class="text-xs font-bold tracking-[0.3em] uppercase text-gold-600">Setor</p>
     <h1 class="font-display text-2xl md:text-3xl font-extrabold text-famr-900"><i class="fas ${esc(sec.icon)} text-gold-500 mr-2"></i>${esc(sec.name)}</h1>
-    <p class="text-sm text-muted mt-1">${esc(sec.description||'')}</p></div><div class="star-row text-sm">★★★★</div></div>`;
-  if(slug === 'listagem')      return await renderListagem(c, head);
-  if(slug === 'requerimentos') return await renderRequerimentos(c, head, sec);
-  if(slug === 'companhias')    return await renderCompanhias(c, head);
-  if(slug === 'documentos')    return await renderDocumentos(c, head, sec);
-  return await renderGenericSection(c, head, sec);
+    <p class="text-sm text-muted mt-1">${esc(sec.description||'')}</p></div><div class="star-row text-sm">★★★★</div></div>
+  <section class="card overflow-hidden fade-up">
+    <div class="cat-head"><i class="fas ${esc(sec.icon)}"></i> ${esc(sec.name)}</div>
+    <div class="divide-y divide-line">${(subs||[]).map(s => forumRow(s, counts, lastMap)).join('') || '<p class="p-5 text-sm text-muted text-center">Nenhum subtópico.</p>'}</div>
+  </section>`;
 }
 
-async function renderListagem(c, head, offset=0, cat=null){
-  let q = supabase.from('listagem_entries').select('*').order('created_at',{ascending:false}).range(offset, offset+24);
-  if(cat) q = q.eq('category', cat);
-  const [{ data: entries }, { data: allCats }] = await Promise.all([ q, supabase.from('listagem_entries').select('category').limit(1000) ]);
-  const cats = [...new Set((allCats||[]).map(e => e.category))];
+/* ── SUBTÓPICO (fórum → lista de tópicos) ── */
+async function renderSubtopic(c, id){
+  const { data: sub } = await supabase.from('subtopics').select('*,sections(name,slug)').eq('id', id).single();
+  if(!sub){ c.innerHTML = '<div class="card card-body text-sm text-muted">Subtópico não encontrado.</div>'; return; }
+  if(sub.required_group_id && !canAccessGroup(sub.required_group_id)){
+    c.innerHTML = `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i>
+      <h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2><p class="text-sm text-muted mt-1">Conteúdo exclusivo de grupo específico.</p></div>`; return;
+  }
+  const { data: posts } = await supabase.from('posts').select('*,profiles(nickname)').eq('subtopic_id', id).order('created_at',{ascending:false}).limit(50);
+  window._postsCache = Object.fromEntries((posts||[]).map(p => [p.id, p]));
+  c.innerHTML = `
+  <div class="fade-up">
+    <p class="text-xs text-muted mb-2"><a href="#/section/${sub.sections?.slug}" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>${esc(sub.sections?.name||'')}</a> / <b>${esc(sub.name)}</b></p>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="font-display text-xl md:text-2xl font-extrabold text-famr-900"><i class="fas fa-comments text-gold-500 mr-2"></i>${esc(sub.name)}</h1>
+      ${sub.is_request_form ? `<button class="btn btn-gold btn-sm" onclick='openRequestForm(${JSON.stringify(sub).replace(/'/g,"&#39;")})'><i class="fas fa-pen-to-square"></i> Abrir protocolo</button>`
+        : sub.allow_posts ? `<button class="btn btn-primary btn-sm" onclick="document.getElementById('new-topic').classList.toggle('hidden')"><i class="fas fa-plus"></i> Novo tópico</button>` : ''}
+    </div>
+  </div>
+  ${sub.allow_posts && !sub.is_request_form ? `<form id="new-topic" class="hidden card card-body grid gap-3 fade-up" onsubmit="return newPost(event,'${sub.id}')">
+      <input name="title" class="input" placeholder="Título do tópico" required>
+      <textarea name="content" class="input" rows="4" placeholder="Conteúdo da publicação..." required></textarea>
+      <input name="link" class="input" placeholder="Link de anexo (Google Drive) — opcional">
+      <button class="btn btn-gold btn-sm justify-self-start"><i class="fas fa-paper-plane"></i> Publicar tópico</button></form>` : ''}
+  <section class="card overflow-hidden fade-up">
+    <div class="cat-head"><i class="fas fa-inbox"></i> Tópicos de ${esc(sub.name)}</div>
+    <div class="divide-y divide-line">
+      ${(posts||[]).map(p => `<div class="topic-row" onclick="openTopic('${p.id}')">
+        <span class="forum-ico ${p.pinned?'new':''}"><i class="fas ${p.pinned?'fa-thumbtack':'fa-comment'}"></i></span>
+        <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(p.title)}</b>
+          <p class="text-[11px] text-muted">por <b class="text-famr-700">${esc(p.profiles?.nickname||'—')}</b> • ${fmtDate(p.created_at)}</p></div>
+        <i class="fas fa-chevron-right text-xs text-muted"></i>
+      </div>`).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhum tópico publicado ainda.</p>'}
+    </div>
+  </section>`;
+}
+window.openTopic = id => {
+  const p = window._postsCache?.[id]; if(!p) return;
+  const mine = p.author_id === STATE.profile.id;
+  openModal(`<i class="fas fa-comment text-gold-500 mr-2"></i>${esc(p.title)}`,
+    `<div class="text-[11px] text-muted mb-3"><i class="fas fa-user-pen text-gold-500 mr-1"></i>${esc(p.profiles?.nickname||'—')} • ${fmtDate(p.created_at)}</div>
+     <p class="text-sm whitespace-pre-wrap text-ink">${esc(p.content)}</p>
+     ${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm mt-4"><i class="fab fa-google-drive"></i> Abrir anexo</a>` : ''}`,
+    `${mine||isAdmin() ? `<button class="btn btn-danger btn-sm mr-auto" onclick="delPost('${p.id}')"><i class="fas fa-trash"></i> Excluir</button>` : ''}
+     <button class="btn btn-outline btn-sm" onclick="closeModal()">Fechar</button>`);
+};
+window.newPost = async function(e, subtopicId){
+  e.preventDefault();
+  const f = e.target;
+  const { error } = await supabase.from('posts').insert([{ subtopic_id: subtopicId, title: f.title.value, content: f.content.value, link: f.link.value||null, author_id: STATE.profile.id }]);
+  if(error){ toast('Erro: '+error.message,'err'); return false; }
+  await supabase.rpc('log_action', { action:'POST_CRIADO', details:{ subtopicId } });
+  toast('Tópico publicado!'); route(); return false;
+};
+window.delPost = async function(id){
+  if(!await confirmDlg('Excluir esta publicação?')) return;
+  await supabase.from('posts').delete().eq('id', id);
+  await supabase.rpc('log_action', { action:'POST_EXCLUIDO', details:{ id } });
+  closeModal(); toast('Publicação excluída.'); route();
+};
+
+/* ── LISTAGEM / REQUERIMENTOS / DOCUMENTOS / COMPANHIAS ── */
+async function renderListagem(c, sec){
+  const head = secHead(sec);
+  const { data: entries } = await supabase.from('listagem_entries').select('*').order('created_at',{ascending:false}).limit(100);
+  const cats = [...new Set((entries||[]).map(e => e.category))];
   c.innerHTML = head + `
   <div class="card fade-up">
-    <div class="card-head flex-wrap gap-2">
-      <button class="chip ${!cat?'chip-ok':'chip-neutral'} cursor-pointer" onclick="renderListagem(document.getElementById('content'),'',0,null)">TODAS</button>
-      ${cats.map(k => `<button class="chip ${cat===k?'chip-ok':'chip-neutral'} cursor-pointer" onclick="renderListagem(document.getElementById('content'),'',0,'${esc(k)}')">${esc(k).toUpperCase()}</button>`).join('')}
-    </div>
+    <div class="cat-head"><i class="fas fa-list-ul"></i> Registros oficiais ${cats.map(k => `<span class="chip chip-neutral ml-2 normal-case">${esc(k)}</span>`).join('')}</div>
     <div class="overflow-x-auto"><table class="table-famr">
       <thead><tr><th>Registro</th><th>Categoria</th><th>Detalhes</th><th>Origem</th><th>Data</th></tr></thead>
       <tbody>${(entries||[]).map(e => `<tr>
@@ -187,35 +245,35 @@ async function renderListagem(c, head, offset=0, cat=null){
         <td class="text-xs">${e.source_request_id ? '<span class="chip chip-ok"><i class="fas fa-link"></i> requerimento</span>' : '<span class="chip chip-neutral">manual</span>'}</td>
         <td class="text-xs text-muted">${fmtDate(e.created_at)}</td></tr>`).join('')
         || '<tr><td colspan="5" class="text-center text-muted py-8">Nenhum registro publicado ainda.</td></tr>'}</tbody>
-    </table></div>
-    ${(entries||[]).length === 25 ? `<div class="p-3 text-center"><button class="btn btn-outline btn-sm" onclick="renderListagem(document.getElementById('content'),'',${offset+25},'${esc(cat||'')}')">Carregar mais</button></div>` : ''}
-  </div>`;
+    </table></div></div>`;
 }
+const secHead = sec => `<div class="flex flex-wrap items-center justify-between gap-3 fade-up">
+  <div><p class="text-xs font-bold tracking-[0.3em] uppercase text-gold-600">Setor</p>
+  <h1 class="font-display text-2xl md:text-3xl font-extrabold text-famr-900"><i class="fas ${esc(sec.icon)} text-gold-500 mr-2"></i>${esc(sec.name)}</h1>
+  <p class="text-sm text-muted mt-1">${esc(sec.description||'')}</p></div><div class="star-row text-sm">★★★★</div></div>`;
 
-async function renderRequerimentos(c, head, sec){
+async function renderRequerimentos(c, sec){
   const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id).order('order_index');
   const { data: mine } = await supabase.from('requests').select('*,subtopics(name)').eq('author_id', STATE.profile.id).order('created_at',{ascending:false}).limit(30);
-  c.innerHTML = head + `
+  c.innerHTML = secHead(sec) + `
   <div class="grid lg:grid-cols-3 gap-6">
     <div class="space-y-4 fade-up">
       ${(subs||[]).map(s => {
         const locked = s.required_group_id && !canAccessGroup(s.required_group_id);
         return `<div class="card card-hover p-5 ${locked?'opacity-60':''}">
-          <div class="flex items-center justify-between"><h3 class="font-display font-bold">${esc(s.name)}</h3>
-          ${locked?'<i class="fas fa-lock lock-badge"></i>':''}</div>
+          <div class="flex items-center justify-between"><h3 class="font-display font-bold">${esc(s.name)}</h3>${locked?'<i class="fas fa-lock lock-badge"></i>':''}</div>
           <p class="text-xs text-muted mt-1">${esc(s.description||'')}</p>
           ${locked ? '' : `<button class="btn btn-gold btn-sm mt-3" onclick='openRequestForm(${JSON.stringify(s).replace(/'/g,"&#39;")})'><i class="fas fa-pen-to-square"></i> Abrir protocolo</button>`}
         </div>`; }).join('') || '<div class="card card-body text-sm text-muted">Nenhum formulário disponível.</div>'}
     </div>
     <div class="lg:col-span-2 card fade-up">
-      <div class="card-head"><h2 class="font-display font-bold text-sm"><i class="fas fa-inbox text-gold-500 mr-2"></i>Meus protocolos</h2></div>
+      <div class="cat-head"><i class="fas fa-inbox"></i> Meus protocolos</div>
       <div class="divide-y divide-line max-h-[560px] overflow-auto">
         ${(mine||[]).map(r => `<div class="p-4 flex items-center justify-between gap-3 hover:bg-gold-100/40 transition-colors">
           <div><p class="font-bold text-sm">${esc(r.title)}</p>
           <p class="text-[11px] text-muted mt-0.5">${esc(r.subtopics?.name||'')} • ${fmtDate(r.created_at)} ${r.review_note?`• <i>"${esc(r.review_note)}"</i>`:''}</p></div>
           ${statusChip(r.status)}</div>`).join('') || '<p class="p-8 text-center text-sm text-muted">Você ainda não abriu protocolos.</p>'}
-      </div>
-    </div>
+      </div></div>
   </div>`;
 }
 window.openRequestForm = function(sub){
@@ -235,18 +293,17 @@ window.submitRequest = async function(subtopicId){
   const title = (Object.values(data)[0] || 'Protocolo') + '';
   const { error } = await supabase.from('requests').insert([{ subtopic_id: subtopicId, author_id: STATE.profile.id, title, form_data: data }]);
   if(error){ toast('Erro ao enviar: '+error.message, 'err'); return; }
-  closeModal(); toast('Protocolo enviado! Aguarde a análise do CRH/RH.');
-  route();
+  closeModal(); toast('Protocolo enviado! Aguarde a análise do CRH/RH.'); route();
 };
 
-async function renderDocumentos(c, head, sec){
+async function renderDocumentos(c, sec){
   const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id);
   const ids = (subs||[]).map(s => s.id);
   const { data: docs } = ids.length ? await supabase.from('posts').select('*,subtopics(name,required_group_id)').in('subtopic_id', ids).order('created_at',{ascending:false}).limit(60) : { data: [] };
-  c.innerHTML = head + `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up">
+  c.innerHTML = secHead(sec) + `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up">
     ${(docs||[]).filter(d => canAccessGroup(d.subtopics?.required_group_id)).map(d => `
       <div class="card card-hover p-5">
-        <div class="flex items-center justify-between"><span class="w-10 h-10 rounded-lg grid place-items-center bg-gold-100 text-gold-600"><i class="fas fa-file-lines"></i></span>
+        <div class="flex items-center justify-between"><span class="forum-ico"><i class="fas fa-file-lines"></i></span>
         <span class="chip chip-neutral">${esc(d.subtopics?.name||'')}</span></div>
         <h3 class="font-bold mt-3">${esc(d.title)}</h3>
         <p class="text-xs text-muted mt-1 line-clamp-3">${esc(d.content)}</p>
@@ -255,11 +312,11 @@ async function renderDocumentos(c, head, sec){
   </div>`;
 }
 
-async function renderCompanhias(c, head){
+async function renderCompanhias(c, sec){
   const { data: groups } = await supabase.from('groups').select('*, groups(name)').eq('visible', true).order('power_level',{ascending:false});
   const { data: members } = await supabase.from('user_groups').select('group_id').limit(5000);
   const count = {}; (members||[]).forEach(m => count[m.group_id] = (count[m.group_id]||0)+1);
-  c.innerHTML = head + `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up">
+  c.innerHTML = secHead(sec) + `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up">
     ${(groups||[]).map(g => `<div class="card card-hover overflow-hidden">
       <div class="h-2" style="background:linear-gradient(90deg,${g.color},${g.color}88)"></div>
       <div class="p-5">
@@ -267,56 +324,10 @@ async function renderCompanhias(c, head){
         <span class="text-gold-500 text-xs">${powerStars(g.power_level)}</span></div>
         <p class="text-xs text-muted mt-1">${g.groups ? 'Subgrupo de <b>'+esc(g.groups.name)+'</b>' : 'Companhia principal'}</p>
         <div class="flex items-center justify-between mt-4 text-xs text-muted">
-          <span><i class="fas fa-users mr-1 text-famr-600"></i>${count[g.id]||0} membro(s)</span>
-          <span class="chip chip-ok">VISÍVEL</span></div>
+          <span><i class="fas fa-users mr-1 text-famr-600"></i>${count[g.id]||0} membro(s)</span><span class="chip chip-ok">VISÍVEL</span></div>
       </div></div>`).join('') || '<div class="card card-body text-sm text-muted">Nenhuma companhia visível.</div>'}
   </div>`;
 }
-
-async function renderGenericSection(c, head, sec){
-  const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id).order('order_index');
-  const ids = (subs||[]).map(s => s.id);
-  const { data: posts } = ids.length ? await supabase.from('posts').select('*,profiles(nickname)').in('subtopic_id', ids).order('created_at',{ascending:false}).limit(40) : { data: [] };
-  c.innerHTML = head + `<div class="space-y-5 fade-up">` + (subs||[]).map(s => {
-    const locked = s.required_group_id && !canAccessGroup(s.required_group_id);
-    const list = (posts||[]).filter(p => p.subtopic_id === s.id);
-    return `<div class="card">
-      <div class="card-head justify-between">
-        <h2 class="font-display font-bold text-sm"><i class="fas fa-folder-open text-gold-500 mr-2"></i>${esc(s.name)} ${locked?'<i class="fas fa-lock lock-badge ml-2"></i>':''}</h2>
-        ${!locked && s.allow_posts ? `<button class="btn btn-primary btn-sm" onclick="document.getElementById('nf-${s.id}').classList.toggle('hidden')"><i class="fas fa-plus"></i> Publicar</button>` : ''}
-      </div>
-      ${!locked && s.allow_posts ? `<form id="nf-${s.id}" class="hidden p-4 grid gap-3 bg-famr-50 border-b border-line" onsubmit="return newPost(event,'${s.id}')">
-        <input name="title" class="input" placeholder="Título da publicação" required>
-        <textarea name="content" class="input" rows="3" placeholder="Conteúdo..." required></textarea>
-        <input name="link" class="input" placeholder="Link (Google Drive) — opcional">
-        <button class="btn btn-gold btn-sm justify-self-start"><i class="fas fa-paper-plane"></i> Publicar</button></form>` : ''}
-      <div class="divide-y divide-line">
-        ${locked ? '<p class="p-6 text-sm text-muted text-center"><i class="fas fa-lock mr-2"></i>Conteúdo exclusivo de grupo específico.</p>' :
-          list.map(p => `<article class="p-4">
-            <div class="flex justify-between gap-3"><h3 class="font-bold text-famr-800">${p.pinned?'<i class="fas fa-thumbtack text-gold-500 mr-1"></i>':''}${esc(p.title)}</h3>
-            <time class="text-[11px] text-muted shrink-0">${fmtDate(p.created_at)}</time></div>
-            <p class="text-sm text-muted mt-1 whitespace-pre-wrap">${esc(p.content)}</p>
-            <div class="flex items-center gap-3 mt-2 text-[11px] text-muted"><i class="fas fa-user-pen text-gold-500"></i>${esc(p.profiles?.nickname||'—')}
-              ${p.link?`<a class="text-famr-700 font-bold hover:underline" target="_blank" rel="noopener" href="${esc(p.link)}"><i class="fas fa-arrow-up-right-from-square"></i> anexo</a>`:''}
-              ${(p.author_id===STATE.profile.id||isAdmin())?`<button class="ml-auto text-red-500 hover:underline" onclick="delPost('${p.id}')"><i class="fas fa-trash"></i></button>`:''}</div>
-          </article>`).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhuma publicação neste subtópico.</p>'}
-      </div></div>`;
-  }).join('') + `</div>`;
-}
-window.newPost = async function(e, subtopicId){
-  e.preventDefault();
-  const f = e.target;
-  const { error } = await supabase.from('posts').insert([{ subtopic_id: subtopicId, title: f.title.value, content: f.content.value, link: f.link.value||null, author_id: STATE.profile.id }]);
-  if(error){ toast('Erro: '+error.message,'err'); return false; }
-  await supabase.rpc('log_action', { action:'POST_CRIADO', details:{ subtopicId } });
-  toast('Publicação criada!'); route(); return false;
-};
-window.delPost = async function(id){
-  if(!await confirmDlg('Excluir esta publicação?')) return;
-  await supabase.from('posts').delete().eq('id', id);
-  await supabase.rpc('log_action', { action:'POST_EXCLUIDO', details:{ id } });
-  toast('Publicação excluída.'); route();
-};
 
 /* ── PERFIL ── */
 async function renderProfile(c, param){
@@ -338,8 +349,7 @@ async function renderProfile(c, param){
         ${p.login_locked ? '<span class="chip chip-no"><i class="fas fa-lock mr-1"></i>BLOQUEADA</span>' : ''}
       </div>
       <div class="flex flex-wrap gap-2 mt-4">${gs.map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}</div>
-    </div>
-  </div>`;
+    </div></div>`;
 }
 
 /* ── BUSCA GLOBAL ── */
@@ -364,10 +374,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* ══════════════════ PAINEL ADMIN ══════════════════ */
 const A = { tab:'usuarios', page:0, q:'' };
-
 async function renderAdmin(c){
   if(!isAdmin()){ c.innerHTML = `<div class="card card-body text-center py-16"><i class="fas fa-lock text-3xl text-red-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso negado</h2></div>`; return; }
-  const tabs = [['usuarios','fa-users','Usuários'],['grupos','fa-layer-group','Grupos & Hierarquia'],['topicos','fa-sitemap','Tópicos'],['protocolos','fa-inbox','Protocolos'],['logs','fa-scroll','Logs'],['config','fa-sliders','Configurações']];
+  const tabs = [['usuarios','fa-users','Usuários'],['grupos','fa-layer-group','Grupos'],['topicos','fa-sitemap','Tópicos'],['protocolos','fa-inbox','Protocolos'],['logs','fa-scroll','Logs'],['config','fa-sliders','Config']];
   c.innerHTML = `
   <div class="fade-up"><p class="text-xs font-bold tracking-[0.3em] uppercase text-gold-600">Comando</p>
   <h1 class="font-display text-2xl md:text-3xl font-extrabold text-famr-900"><i class="fas fa-shield-halved text-gold-500 mr-2"></i>Painel Administrativo</h1>
@@ -470,10 +479,10 @@ window.groupForm = async id => {
   openModal(`<i class="fas fa-layer-group text-gold-500 mr-2"></i>${id?'Editar':'Novo'} grupo`, `
     <label class="field"><span>Nome</span><input id="g-name" class="input" value="${esc(g.name)}"></label>
     <div class="grid grid-cols-2 gap-3">
-      <label class="field"><span>Cor no sistema</span><input id="g-color" type="color" class="input !p-1 h-11" value="${g.color}"></label>
-      <label class="field"><span>Nível de poder (0-100)</span><input id="g-power" type="number" min="0" max="100" class="input" value="${g.power_level}"></label>
+      <label class="field"><span>Cor</span><input id="g-color" type="color" class="input !p-1 h-11" value="${g.color}"></label>
+      <label class="field"><span>Poder (0-100)</span><input id="g-power" type="number" min="0" max="100" class="input" value="${g.power_level}"></label>
     </div>
-    <label class="field"><span>Subgrupo de (opcional)</span><select id="g-parent" class="input"><option value="">— nenhum —</option>
+    <label class="field"><span>Subgrupo de</span><select id="g-parent" class="input"><option value="">— nenhum —</option>
       ${(all||[]).map(p => `<option value="${p.id}" ${g.parent_id===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label>
     <label class="flex items-center gap-3 text-sm font-bold"><input id="g-visible" type="checkbox" class="w-4 h-4 accent-[#14563f]" ${g.visible?'checked':''}> Grupo visível no sistema</label>
     <div><span class="text-xs font-bold uppercase tracking-wider text-muted">Permissões</span>
@@ -506,11 +515,11 @@ async function tabTopicos(b){
     supabase.from('groups').select('id,name')]);
   window._groupsCache = groups || [];
   b.innerHTML = `<div class="space-y-4 fade-up">
-    <div class="flex justify-end"><button class="btn btn-gold btn-sm" onclick="sectionForm()"><i class="fas fa-plus"></i> Novo tópico (seção)</button></div>
+    <div class="flex justify-end"><button class="btn btn-gold btn-sm" onclick="sectionForm()"><i class="fas fa-plus"></i> Novo tópico (setor)</button></div>
     ${(secs||[]).map(s => `<div class="card">
-      <div class="card-head justify-between"><h2 class="font-display font-bold text-sm"><i class="fas ${esc(s.icon)} text-gold-500 mr-2"></i>${esc(s.name)} <span class="chip chip-neutral ml-2">/${esc(s.slug)}</span></h2>
-      <div class="space-x-1"><button class="btn btn-outline btn-sm" onclick="subtopicForm('${s.id}')"><i class="fas fa-plus"></i> Subtópico</button>
-      <button class="btn btn-danger btn-sm" onclick="delSection('${s.id}')"><i class="fas fa-trash"></i></button></div></div>
+      <div class="cat-head"><i class="fas ${esc(s.icon)}"></i> ${esc(s.name)} <span class="chip chip-neutral ml-2 normal-case">/${esc(s.slug)}</span>
+        <span class="ml-auto flex gap-1"><button class="btn btn-outline btn-sm" onclick="subtopicForm('${s.id}')"><i class="fas fa-plus"></i> Subtópico</button>
+        <button class="btn btn-danger btn-sm" onclick="delSection('${s.id}')"><i class="fas fa-trash"></i></button></span></div>
       <div class="divide-y divide-line">${(subs||[]).filter(x => x.section_id===s.id).map(x => `
         <div class="p-3.5 flex flex-wrap items-center gap-3 text-sm">
           <i class="fas fa-folder-open text-muted"></i><b>${esc(x.name)}</b>
@@ -521,12 +530,12 @@ async function tabTopicos(b){
         </div>`).join('') || '<p class="p-4 text-xs text-muted">Sem subtópicos.</p>'}</div></div>`).join('')}
   </div>`;
 }
-window.sectionForm = () => openModal('<i class="fas fa-sitemap text-gold-500 mr-2"></i>Novo tópico', `
+window.sectionForm = () => openModal('<i class="fas fa-sitemap text-gold-500 mr-2"></i>Novo setor', `
   <label class="field"><span>Nome</span><input id="s-name" class="input" placeholder="Ex: Condecorações"></label>
   <label class="field"><span>Slug (url)</span><input id="s-slug" class="input" placeholder="condecoracoes"></label>
   <label class="field"><span>Ícone (FontAwesome)</span><input id="s-icon" class="input" value="fa-folder-open"></label>
   <label class="field"><span>Descrição</span><textarea id="s-desc" class="input" rows="2"></textarea></label>
-  <label class="field"><span>Restrito ao grupo (opcional)</span><select id="s-group" class="input"><option value="">— todos —</option>${(window._groupsCache||[]).map(g=>`<option value="${g.id}">${esc(g.name)}</option>`).join('')}</select></label>`,
+  <label class="field"><span>Restrito ao grupo</span><select id="s-group" class="input"><option value="">— todos —</option>${(window._groupsCache||[]).map(g=>`<option value="${g.id}">${esc(g.name)}</option>`).join('')}</select></label>`,
   `<button class="btn btn-primary btn-sm" onclick="saveSection()"><i class="fas fa-floppy-disk"></i> Criar</button>`);
 window.saveSection = async () => {
   const { count } = await supabase.from('sections').select('*', { count:'exact', head:true });
@@ -536,9 +545,9 @@ window.saveSection = async () => {
     required_group_id: document.getElementById('s-group').value || null, order_index: (count||0)+1 }]);
   if(error) return toast('Erro: '+error.message,'err');
   await supabase.rpc('log_action', { action:'SECTION_CRIADA', details:{} });
-  closeModal(); toast('Tópico criado.'); buildSidebar(); tabTopicos(document.getElementById('admin-body'));
+  closeModal(); toast('Setor criado.'); buildSidebar(); tabTopicos(document.getElementById('admin-body'));
 };
-window.delSection = async id => { if(await confirmDlg('Excluir seção e todos os subtópicos?')) { await supabase.from('sections').delete().eq('id', id); buildSidebar(); tabTopicos(document.getElementById('admin-body')); } };
+window.delSection = async id => { if(await confirmDlg('Excluir setor e todos os subtópicos?')) { await supabase.from('sections').delete().eq('id', id); buildSidebar(); tabTopicos(document.getElementById('admin-body')); } };
 window.delSubtopic = async id => { if(await confirmDlg('Excluir subtópico?')) { await supabase.from('subtopics').delete().eq('id', id); tabTopicos(document.getElementById('admin-body')); } };
 window.subtopicForm = sid => openModal('<i class="fas fa-folder-plus text-gold-500 mr-2"></i>Novo subtópico', `
   <label class="field"><span>Nome</span><input id="t-name" class="input"></label>
@@ -546,8 +555,8 @@ window.subtopicForm = sid => openModal('<i class="fas fa-folder-plus text-gold-5
   <label class="field"><span>Restrito ao grupo</span><select id="t-group" class="input"><option value="">— todos —</option>${(window._groupsCache||[]).map(g=>`<option value="${g.id}">${esc(g.name)}</option>`).join('')}</select></label>
   <label class="flex items-center gap-2 text-sm font-bold"><input id="t-posts" type="checkbox" checked class="w-4 h-4 accent-[#14563f]"> Permite publicações</label>
   <label class="flex items-center gap-2 text-sm font-bold"><input id="t-form" type="checkbox" class="w-4 h-4 accent-[#14563f]"> É formulário de requerimento</label>
-  <label class="field"><span>Campos do formulário (um por linha: Nome:tipo → text|textarea|number)</span><textarea id="t-fields" class="input" rows="3" placeholder="Nome da Tag:text&#10;Descrição:textarea"></textarea></label>
-  <label class="field"><span>Ao aprovar, publicar na listagem como categoria (opcional)</span><input id="t-cat" class="input" placeholder="ex: tags"></label>
+  <label class="field"><span>Campos (um por linha: Nome:tipo → text|textarea|number)</span><textarea id="t-fields" class="input" rows="3" placeholder="Nome da Tag:text&#10;Descrição:textarea"></textarea></label>
+  <label class="field"><span>Ao aprovar, publicar na listagem como categoria</span><input id="t-cat" class="input" placeholder="ex: tags"></label>
   <input type="hidden" id="t-sid" value="${sid}">`,
   `<button class="btn btn-primary btn-sm" onclick="saveSubtopic()"><i class="fas fa-floppy-disk"></i> Criar</button>`);
 window.saveSubtopic = async () => {
@@ -565,7 +574,7 @@ window.saveSubtopic = async () => {
 
 async function tabProtocolos(b){
   const { data } = await supabase.from('requests').select('*,profiles(nickname),subtopics(name,auto_listagem_category)').eq('status','pending').order('created_at');
-  b.innerHTML = `<div class="card fade-up"><div class="card-head"><h2 class="font-display font-bold text-sm">Pendentes de análise (${(data||[]).length})</h2></div>
+  b.innerHTML = `<div class="card fade-up"><div class="cat-head"><i class="fas fa-inbox"></i> Pendentes de análise (${(data||[]).length})</div>
   <div class="divide-y divide-line">${(data||[]).map(r => `<div class="p-4">
     <div class="flex flex-wrap items-center gap-3 justify-between">
       <div><b class="text-sm">${esc(r.title)}</b> <span class="chip chip-neutral ml-1">${esc(r.subtopics?.name||'')}</span>
@@ -576,10 +585,17 @@ async function tabProtocolos(b){
     <div class="mt-3 grid sm:grid-cols-2 gap-2 text-xs bg-famr-50 rounded-lg p-3">${Object.entries(r.form_data||{}).map(([k,v])=>`<p><b class="text-famr-700">${esc(k)}:</b> ${esc(v)}</p>`).join('')}</div>
   </div>`).join('') || '<p class="p-8 text-center text-sm text-muted">Nenhum protocolo pendente. ✦</p>'}</div></div>`;
 }
-window.review = async (id, status) => {
-  const note = status==='rejected' ? (prompt('Motivo da reprovação (opcional):') || '') : '';
-  const { error } = await supabase.rpc('review_request', { req_id: id, new_status: status, note });
+window.review = (id, status) => {
+  if(status === 'approved') return doReview(id, 'approved', '');
+  openModal('<i class="fas fa-xmark text-red-500 mr-2"></i>Motivo da reprovação',
+    `<label class="field"><span>Motivo (opcional, aparece ao militar)</span><input id="rev-note" class="input"></label>`,
+    `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
+     <button class="btn btn-danger btn-sm" onclick="doReview('${id}','rejected', document.getElementById('rev-note').value)">Reprovar</button>`);
+};
+window.doReview = async (id, status, note) => {
+  const { error } = await supabase.rpc('review_request', { req_id: id, new_status: status, note: note || null });
   if(error) return toast('Erro: '+error.message,'err');
+  closeModal();
   toast(status==='approved' ? 'Aprovado! Registro publicado na Listagem automaticamente.' : 'Protocolo reprovado.');
   tabProtocolos(document.getElementById('admin-body'));
 };
@@ -587,7 +603,7 @@ window.review = async (id, status) => {
 async function tabLogs(b){
   const from = A.page*30;
   const { data } = await supabase.from('logs').select('*').order('created_at',{ascending:false}).range(from, from+29);
-  b.innerHTML = `<div class="card fade-up"><div class="card-head"><h2 class="font-display font-bold text-sm"><i class="fas fa-scroll text-gold-500 mr-2"></i>Logs de ações e logins</h2></div>
+  b.innerHTML = `<div class="card fade-up"><div class="cat-head"><i class="fas fa-scroll"></i> Logs de ações e logins</div>
   <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Data</th><th>Ação</th><th>Autor</th><th>Detalhes</th></tr></thead><tbody>
   ${(data||[]).map(l => `<tr><td class="text-xs text-muted whitespace-nowrap">${fmtDate(l.created_at)}</td>
     <td><span class="chip ${l.action==='LOGIN'?'chip-ok':(l.action.includes('DEL')||l.action.includes('BAN')||l.action.includes('BLOQ'))?'chip-no':'chip-wait'}">${esc(l.action)}</span></td>
@@ -602,12 +618,12 @@ async function tabConfig(b){
   const m = STATE.settings.maintenance || { enabled:false, message:'' };
   const a = STATE.settings.announcement || { text:'' };
   b.innerHTML = `<div class="grid md:grid-cols-2 gap-4 fade-up">
-    <div class="card"><div class="card-head"><h2 class="font-display font-bold text-sm"><i class="fas fa-screwdriver-wrench text-gold-500 mr-2"></i>Modo manutenção</h2></div>
+    <div class="card"><div class="cat-head"><i class="fas fa-screwdriver-wrench"></i> Modo manutenção</div>
       <div class="card-body space-y-3">
         <label class="flex items-center gap-3 text-sm font-bold"><input id="c-maint" type="checkbox" class="w-5 h-5 accent-[#c9a227]" ${m.enabled?'checked':''}> Sistema em manutenção (bloqueia não-admins)</label>
         <label class="field"><span>Mensagem exibida</span><input id="c-maint-msg" class="input" value="${esc(m.message||'')}"></label>
         <button class="btn btn-primary btn-sm" onclick="saveMaint()"><i class="fas fa-floppy-disk"></i> Salvar</button></div></div>
-    <div class="card"><div class="card-head"><h2 class="font-display font-bold text-sm"><i class="fas fa-bullhorn text-gold-500 mr-2"></i>Aviso do comando (home)</h2></div>
+    <div class="card"><div class="cat-head"><i class="fas fa-bullhorn"></i> Aviso do comando (home)</div>
       <div class="card-body space-y-3">
         <textarea id="c-ann" class="input" rows="4">${esc(a.text||'')}</textarea>
         <button class="btn btn-gold btn-sm" onclick="saveAnn()"><i class="fas fa-floppy-disk"></i> Publicar aviso</button></div></div>
