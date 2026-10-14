@@ -24,7 +24,7 @@ tailwind.config = { theme: { extend: {
 <body class="bg-paper text-ink font-sans antialiased">
 
 <!-- ══════════ LOGIN ══════════ -->
-<div id="screen-login" class="auth-bg hidden min-h-screen flex items-center justify-center p-6">
+<div id="screen-login" class="auth-bg min-h-screen flex items-center justify-center p-6">
   <div class="w-full max-w-md fade-up">
     <div class="text-center mb-6">
       <img src="famrlogo.png" class="w-24 mx-auto drop-shadow-xl" onerror="this.style.display='none'">
@@ -172,6 +172,29 @@ tailwind.config = { theme: { extend: {
 </div>
 <div id="toast-root" class="fixed top-20 right-4 z-[80] space-y-2 w-80"></div>
 
+<script>
+/* Rede de segurança: se algum script falhar, demorar ou vier cache antigo,
+   o login é exibido mesmo assim e o usuário vê o motivo. */
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    const ids = ['screen-login','screen-register','screen-forgot','screen-reset','screen-maintenance','shell'];
+    const algumaVisivel = ids.some(id => {
+      const el = document.getElementById(id);
+      return el && !el.classList.contains('hidden');
+    });
+    if(!algumaVisivel){
+      document.getElementById('screen-login').classList.remove('hidden');
+      const box = document.getElementById('login-alert');
+      if(box){
+        box.className = 'mb-4 rounded-lg border px-4 py-3 text-sm font-semibold border-red-400 bg-red-50 text-red-700';
+        box.innerHTML = 'O sistema não iniciou (erro de script ou cache antigo). Pressione <b>Ctrl+F5</b>. Se persistir, abra o console (F12) e envie a mensagem de erro.';
+        box.classList.remove('hidden');
+      }
+    }
+  }, 2500);
+});
+window.addEventListener('error', e => console.error('[FAMR] erro de script:', e.message));
+</script>  
 <script src="config.js"></script>
 <script src="app.js"></script>
 <script src="auth.js"></script>
