@@ -11,56 +11,51 @@
 <link rel="stylesheet" href="style.css">
 <link rel="icon" type="image/png" href="famrlogo.png">
 <script>
-tailwind.config = {
-  theme: { extend: {
-    colors: {
-      famr: {900:'#0b3d2c',800:'#0e4433',700:'#14563f',600:'#1a6b4f',500:'#278563',100:'#e6f2ec',50:'#f2f8f5'},
-      gold: {600:'#a8861d',500:'#c9a227',300:'#e6c65c',100:'#faf3dc'},
-      ink:'#182420', muted:'#5f6d66', line:'#e4e9e6', paper:'#f4f6f5'
-    },
-    fontFamily: { display:['Sora','sans-serif'], sans:['Manrope','sans-serif'] }
-  }}
-}
+tailwind.config = { theme: { extend: {
+  colors: {
+    famr: {900:'#0b3d2c',800:'#0e4433',700:'#14563f',600:'#1a6b4f',500:'#278563',100:'#e6f2ec',50:'#f2f8f5'},
+    gold: {600:'#a8861d',500:'#c9a227',300:'#e6c65c',100:'#faf3dc'},
+    ink:'#182420', muted:'#5f6d66', line:'#e4e9e6', paper:'#f4f6f5'
+  },
+  fontFamily: { display:['Sora','sans-serif'], sans:['Manrope','sans-serif'] }
+}}}
 </script>
 </head>
 <body class="bg-paper text-ink font-sans antialiased">
 
 <!-- ══════════ LOGIN ══════════ -->
-<div id="screen-login" class="min-h-screen flex flex-col lg:flex-row">
-  <div class="login-brand relative lg:w-[46%] flex flex-col items-center justify-center p-10 text-center overflow-hidden">
-    <div class="stars-pattern absolute inset-0"></div>
-    <img src="famrlogo.png" alt="Emblema FAMR" class="brand-logo relative w-40 lg:w-52 drop-shadow-2xl" onerror="this.style.display='none'">
-    <h1 class="relative font-display text-3xl lg:text-4xl text-white tracking-wide mt-6" style="font-weight:800">POLÍCIA FAMR</h1>
-    <p class="relative text-emerald-100/80 text-sm tracking-[0.35em] uppercase mt-2">Força Armada Militar Revolucionária</p>
-    <div class="star-row relative mt-5">★★★★</div>
-    <p class="relative text-emerald-100/60 text-xs mt-6 max-w-xs">Honor • Disciplina • Revolução — Sistema interno oficial do Habbo BR</p>
-  </div>
-  <div class="flex-1 flex items-center justify-center p-6 lg:p-12 bg-paper">
-    <div class="w-full max-w-md fade-up">
-      <p class="text-xs font-bold tracking-[0.3em] uppercase text-gold-600">Acesso restrito</p>
-      <h2 class="font-display text-3xl font-extrabold mt-2">Entrar no sistema</h2>
-      <p class="text-sm text-muted mt-2">Identifique-se com seu nickname Habbo para acessar o quartel.</p>
-      <div id="login-alert" class="hidden mt-4 rounded-lg border px-4 py-3 text-sm font-semibold"></div>
-      <form id="form-login" class="mt-6 space-y-4">
-        <label class="field"><span>Nickname Habbo</span>
-          <div class="input-wrap"><i class="fas fa-user"></i><input id="login-nick" class="input" placeholder="Ex: Chefia de Polícia" autocomplete="username" required></div>
-        </label>
-        <label class="field"><span>Senha</span>
-          <div class="input-wrap"><i class="fas fa-lock"></i><input id="login-pass" type="password" class="input" placeholder="••••••••" autocomplete="current-password" required></div>
-        </label>
-        <button class="btn btn-primary w-full justify-center" type="submit"><i class="fas fa-right-to-bracket"></i> ACESSAR O QUARTEL</button>
-      </form>
-      <div class="flex items-center justify-between mt-6 text-sm font-semibold">
-        <a href="#" id="link-forgot" class="text-muted hover:text-famr-700 transition-colors"><i class="fas fa-key mr-1 text-gold-500"></i>Esqueci a senha</a>
-        <a href="#" id="link-register" class="text-famr-700 hover:text-famr-900 transition-colors"><i class="fas fa-user-plus mr-1 text-gold-500"></i>Alistamento</a>
+<div id="screen-login" class="auth-bg hidden min-h-screen flex items-center justify-center p-6">
+  <div class="w-full max-w-md fade-up">
+    <div class="text-center mb-6">
+      <img src="famrlogo.png" class="w-24 mx-auto drop-shadow-xl" onerror="this.style.display='none'">
+      <h1 class="font-display text-2xl font-extrabold text-famr-900 mt-3 tracking-wide">POLÍCIA FAMR</h1>
+      <p class="text-[11px] tracking-[0.35em] uppercase text-muted mt-1">Força Armada Militar Revolucionária</p>
+      <div class="star-row mt-2 text-sm">★★★★</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2 class="font-display font-bold"><i class="fas fa-right-to-bracket text-gold-500 mr-2"></i>Acesso ao quartel</h2></div>
+      <div class="p-6">
+        <div id="login-alert" class="hidden mb-4 rounded-lg border px-4 py-3 text-sm font-semibold"></div>
+        <form id="form-login" class="space-y-4">
+          <label class="field"><span>Nickname Habbo</span>
+            <div class="input-wrap"><i class="fas fa-user"></i><input id="login-nick" class="input" placeholder="Ex: Chefia de Polícia" autocomplete="username" required></div>
+          </label>
+          <label class="field"><span>Senha</span>
+            <div class="input-wrap"><i class="fas fa-lock"></i><input id="login-pass" type="password" class="input" placeholder="••••••••" autocomplete="current-password" required></div>
+          </label>
+          <button class="btn btn-primary w-full justify-center" type="submit"><i class="fas fa-right-to-bracket"></i> ACESSAR O QUARTEL</button>
+        </form>
+        <div class="flex items-center justify-between mt-5 text-sm font-semibold">
+          <a href="#" id="link-forgot" class="text-muted hover:text-famr-700"><i class="fas fa-key mr-1 text-gold-500"></i>Esqueci a senha</a>
+          <a href="#" id="link-register" class="text-famr-700 hover:text-famr-900"><i class="fas fa-user-plus mr-1 text-gold-500"></i>Alistamento</a>
+        </div>
       </div>
-      <div class="star-divider mt-10">★ ★ ★ ★</div>
     </div>
   </div>
 </div>
 
-<!-- ══════════ REGISTRO ══════════ -->
-<div id="screen-register" class="hidden min-h-screen flex items-center justify-center p-6 bg-paper">
+<!-- ══════════ ALISTAMENTO (padrão do anexo) ══════════ -->
+<div id="screen-register" class="auth-bg hidden min-h-screen flex items-center justify-center p-6">
   <div class="w-full max-w-md card fade-up">
     <div class="card-head"><h2 class="font-display font-bold text-lg"><i class="fas fa-user-plus text-gold-500 mr-2"></i>Alistamento FAMR</h2></div>
     <div class="p-6 space-y-4">
@@ -79,12 +74,30 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- ══════════ REDEFINIR SENHA ══════════ -->
-<div id="screen-reset" class="hidden min-h-screen flex items-center justify-center p-6 bg-paper">
+<!-- ══════════ ESQUECI A SENHA (tela própria, sem prompt nativo) ══════════ -->
+<div id="screen-forgot" class="auth-bg hidden min-h-screen flex items-center justify-center p-6">
+  <div class="w-full max-w-md card fade-up">
+    <div class="card-head"><h2 class="font-display font-bold text-lg"><i class="fas fa-key text-gold-500 mr-2"></i>Recuperar acesso</h2></div>
+    <div class="p-6 space-y-4">
+      <p class="text-sm text-muted">Informe seu nickname. Enviaremos um link de redefinição para o e-mail cadastrado. <b>O link expira em 10 minutos.</b></p>
+      <form id="form-forgot" class="space-y-4">
+        <label class="field"><span>Nickname Habbo</span><div class="input-wrap"><i class="fas fa-user"></i><input id="forgot-nick" class="input" required></div></label>
+        <button class="btn btn-primary w-full justify-center" type="submit"><i class="fas fa-paper-plane"></i> ENVIAR LINK DE REDEFINIÇÃO</button>
+      </form>
+      <div id="forgot-ok" class="hidden rounded-xl border border-famr-500/40 bg-famr-100 p-4 text-sm text-famr-800">
+        <i class="fas fa-envelope-circle-check mr-1"></i> Link enviado! Verifique sua caixa de entrada (e spam). Ao abrir, você volta aqui para criar a nova senha.
+      </div>
+      <a href="#" id="link-back-login2" class="block text-center text-sm font-semibold text-muted hover:text-ink">← Voltar ao login</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ NOVA SENHA (link de recuperação) ══════════ -->
+<div id="screen-reset" class="auth-bg hidden min-h-screen flex items-center justify-center p-6">
   <div class="w-full max-w-md card fade-up">
     <div class="card-head"><h2 class="font-display font-bold text-lg"><i class="fas fa-rotate-left text-gold-500 mr-2"></i>Nova senha</h2></div>
     <div class="p-6 space-y-4">
-      <p class="text-sm text-muted">Link válido por <b>10 minutos</b>. Defina sua nova senha de acesso.</p>
+      <p class="text-sm text-muted">Defina sua nova senha de acesso. Contas bloqueadas são destravadas automaticamente.</p>
       <label class="field"><span>Nova senha</span><div class="input-wrap"><i class="fas fa-lock"></i><input id="reset-pass" type="password" class="input" minlength="6"></div></label>
       <label class="field"><span>Confirmar senha</span><div class="input-wrap"><i class="fas fa-lock"></i><input id="reset-pass2" type="password" class="input" minlength="6"></div></label>
       <button id="btn-reset-save" class="btn btn-primary w-full justify-center"><i class="fas fa-check"></i> SALVAR E VOLTAR AO LOGIN</button>
@@ -93,7 +106,7 @@ tailwind.config = {
 </div>
 
 <!-- ══════════ MANUTENÇÃO ══════════ -->
-<div id="screen-maintenance" class="hidden min-h-screen flex items-center justify-center p-6 bg-paper">
+<div id="screen-maintenance" class="auth-bg hidden min-h-screen flex items-center justify-center p-6">
   <div class="w-full max-w-lg card text-center p-10 fade-up">
     <img src="famrlogo.png" class="w-24 mx-auto opacity-90" onerror="this.style.display='none'">
     <div class="star-row mt-4">★★★★</div>
@@ -103,7 +116,7 @@ tailwind.config = {
   </div>
 </div>
 
-<!-- ══════════ SHELL ══════════ -->
+<!-- ══════════ SHELL (sistema) ══════════ -->
 <div id="shell" class="hidden min-h-screen flex flex-col">
   <header class="topbar z-40">
     <div class="max-w-[1500px] mx-auto px-4 h-16 flex items-center gap-4">
@@ -116,12 +129,12 @@ tailwind.config = {
       </a>
       <div class="relative flex-1 max-w-xl mx-auto">
         <div class="input-wrap"><i class="fas fa-magnifying-glass"></i>
-          <input id="global-search" class="input" placeholder="Buscar militar, tag, protocolo..." autocomplete="off">
+          <input id="global-search" class="input" placeholder="Buscar militar..." autocomplete="off">
         </div>
         <div id="search-drop" class="hidden absolute left-0 right-0 mt-2 card p-2 z-50 max-h-80 overflow-auto"></div>
       </div>
       <div class="flex items-center gap-3 shrink-0">
-        <a id="chip-profile" href="#/perfil/me" class="flex items-center gap-2 rounded-full border border-line bg-white pl-1 pr-3 py-1 hover:border-famr-500 transition-colors">
+        <a href="#/perfil/me" class="flex items-center gap-2 rounded-full border border-line bg-white pl-1 pr-3 py-1 hover:border-famr-500 transition-colors">
           <span id="user-avatar" class="w-8 h-8 rounded-full grid place-items-center text-white font-bold text-sm bg-famr-700">?</span>
           <span class="hidden md:block leading-tight text-left">
             <span id="user-nick" class="block text-sm font-bold">—</span>
@@ -159,7 +172,6 @@ tailwind.config = {
 </div>
 <div id="toast-root" class="fixed top-20 right-4 z-[80] space-y-2 w-80"></div>
 
-<!-- ORDEM IMPORTANTE: config → app → auth -->
 <script src="config.js"></script>
 <script src="app.js"></script>
 <script src="auth.js"></script>
