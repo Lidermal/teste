@@ -1,9 +1,6 @@
 /* ══════════ FAMR • CONFIGURAÇÃO PÚBLICA ══════════
-   A chave anon do Supabase É PÚBLICA por design (feita para frontend).
-   A segurança REAL está no RLS do banco + nas permissões dos grupos.
-   
-   Contas privilegiadas são criadas apenas no database.sql (grupo "Alto Comando")
-   e reconhecidas pelo sistema via permissões, não por senhas no código. */
+   A chave anon é pública por design; a segurança real está no RLS.
+   Contas privilegiadas existem APENAS no banco (database.sql). */
 
 const CONFIG = {
   supabaseUrl: 'https://fsmvyqfmgfivilufvgku.supabase.co',
@@ -14,7 +11,6 @@ const CONFIG = {
 
 const supabase = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
 
-// Estado global (cache em memória — sem dados sensíveis)
 const STATE = { profile: null, groups: [], settings: {}, sections: [], page: 0 };
 
 const PERMS = { ADMIN: 'admin', MASTER: 'master', REVIEW: 'review' };
