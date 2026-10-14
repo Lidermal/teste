@@ -1,52 +1,84 @@
-/* ══════════ FAMR • AUTENTICAÇÃO v5 — zero alertas nativos ══════════ */
+/* ══════════ FAMR • AUTENTICAÇÃO v7 (COMPLETA) ══════════
+   • Zero alertas nativos (tudo em telas, modais e toasts)
+   • Sessão expira por inatividade (1h) e na virada do dia
+   • Anti-spam: máx. 4 requisições de login / 5min por navegador → bloqueio de 5min
+   • 4 senhas erradas → conta bloqueada no banco + log no painel admin
+   • Sem credenciais no código: tudo via Supabase Auth + RLS */
 
 const SCREENS = ['screen-login','screen-register','screen-forgot','screen-reset','screen-maintenance'];
-const INACTIVITY_MS = 60*60*1000, BROWSER_WINDOW_MS = 5*60*1000, BROWSER_BLOCK_MS = 5*60*1000;
-const MAX_REQ_WINDOW = 4, MAX_WRONG_PASS = 4;
+const INACTIVITY_MS = 60 * 60 * 1000;      // 1 hora
+const BROWSER_WINDOW_MS = 5 * 60 * 1000;   // janela de 5 min
+const BROWSER_BLOCK_MS  = 5 * 60 * 1000;   // bloqueio de 5 min
+const MAX_REQ_WINDOW = 4;                  // requisições permitidas na janela
+const MAX_WRONG_PASS = 4;                  // tentativas de senha antes do bloqueio
+
 let watchTimer = null, lastTouch = 0, cdTimer = null;
 const dayStr = () => new Date().toISOString().slice(0,10);
 
+/* ── Telas ── */
 function showScreen(id){
-  SCREENS.forEach(s => document.getElementById(s).classList.add('hidden'));
-  document.getElementById('shell').classList.add('hidden');
-  if(id === 'shell') document.getElementById('shell').classList.remove('hidden');
+  SCREENS.forEach(s => document.getElementById(s)?.classList.add('hidden'));
+  document.getElementById('shell')?.classList.add('hidden');
+  if(id === 'shell') document.getElementById('shell')?.classList.remove('hidden');
   else document.getElementById(id)?.classList.remove('hidden');
 }
+
+/* ── Avisos no cartão de login ── */
 function loginAlert(msg, type='err'){
   const box = document.getElementById('login-alert'); if(!box) return;
-  const st = { err:'border-red-400 bg-red-50 text-red-700', warn:'border-gold-500 bg-gold-100 text-gold-600', ok:'border-famr-500 bg-famr-100 text-famr-700' };
-  box.className = 'mb-4 rounded-lg border px-4 py-3 text-sm font-semibold ' + st[type];
-  box.innerHTML = msg; box.classList.remove('hidden');
+  const st = {
+    err:  'border-red-400 bg-red-50 text-red-700',
+    warn: 'border-gold-500 bg-gold-100 text-gold-600',
+    ok:   'border-famr-500 bg-famr-100 text-famr-700'
+  };
+  box.className = 'mt-4 rounded-lg border px-4 py-3 text-sm font-semibold ' + st[type];
+  box.innerHTML = msg;
+  box.classList.remove('hidden');
 }
 const loginAlertHide = () => document.getElementById('login-alert')?.classList.add('hidden');
 const setLoginDisabled = d => { const b = document.querySelector('#form-login button[type=submit]'); if(b) b.disabled = d; };
 
+/* ── Verificação do cliente Supabase (config.js) ── */
+function sbOk(){
+  try{ return typeof supabase !== 'undefined' && !!supabase && typeof supabase.from === 'function'; }
+  catch(e){ return false; }
+}
+const CFG_MSG = '<i class="fas fa-triangle-exclamation mr-1"></i> O <b>config.js</b> não carregou ou está inválido (cliente Supabase não criado).<br>' +
+  '<span class="text-xs font-normal">1) Confira se existe um arquivo chamado exatamente <b>config.js</b> na raiz do repositório; ' +
+  '2) teste abrir <b>SEU_SITE/config.js</b> no navegador — se der 404, suba o arquivo; 3) pressione Ctrl+F5.</span>';
+
+/* ── Contador regressivo do bloqueio por spam ── */
 function startCountdown(until){
   clearInterval(cdTimer);
   const tick = () => {
     const ms = until - Date.now();
     if(ms <= 0){ clearInterval(cdTimer); loginAlertHide(); setLoginDisabled(false); return; }
     const m = Math.floor(ms/60000), s = Math.floor(ms%60000/1000);
-    loginAlert(`<i class="fas fa-hourglass-half mr-1"></i> Muitas requisições neste navegador. Aguarde <b>${m}m ${s}s</b>.`, 'warn');
+    loginAlert('<i class="fas fa-hourglass-half mr-1"></i> Muitas requisições de login neste navegador. Aguarde <b>' + m + 'm ' + s + 's</b>.', 'warn');
     setLoginDisabled(true);
   };
   tick(); cdTimer = setInterval(tick, 1000);
 }
 const showLockedMsg = () => loginAlert(
-  `<i class="fas fa-lock mr-1"></i> Conta <b>BLOQUEADA</b> após ${MAX_WRONG_PASS} senhas incorretas.<br>
-   Use <b>"Esqueci a senha"</b> para redefinir e destravar, ou procure um administrador.`, 'err');
+  '<i class="fas fa-lock mr-1"></i> Conta <b>BLOQUEADA</b> após ' + MAX_WRONG_PASS + ' senhas incorretas.<br>' +
+  'Use <b>"Esqueci a senha"</b> para redefinir e destravar, ou procure um administrador da FAMR.', 'err');
 
 /* ── Watchdog: inatividade 1h + virada de dia ── */
 function startWatchdog(){
   stopWatchdog();
   localStorage.setItem('famr_day', dayStr());
   localStorage.setItem('famr_last_act', String(Date.now()));
-  const touch = () => { const n = Date.now(); if(n - lastTouch > 5000){ lastTouch = n; localStorage.setItem('famr_last_act', String(n)); } };
+  const touch = () => {
+    const n = Date.now();
+    if(n - lastTouch > 5000){ lastTouch = n; localStorage.setItem('famr_last_act', String(n)); }
+  };
   ['click','keydown','mousemove','scroll','touchstart'].forEach(ev => window.addEventListener(ev, touch, { passive:true }));
   watchTimer = setInterval(async () => {
-    if(localStorage.getItem('famr_day') !== dayStr()) return endSession('Novo dia iniciado — sessão encerrada por segurança.');
+    if(localStorage.getItem('famr_day') !== dayStr())
+      return endSession('Novo dia iniciado — sessão encerrada por segurança.');
     const last = +localStorage.getItem('famr_last_act') || Date.now();
-    if(Date.now() - last > INACTIVITY_MS) return endSession('Sessão encerrada por inatividade (1 hora).');
+    if(Date.now() - last > INACTIVITY_MS)
+      return endSession('Sessão encerrada por inatividade (1 hora sem atividade).');
   }, 20000);
 }
 function stopWatchdog(){ if(watchTimer){ clearInterval(watchTimer); watchTimer = null; } }
@@ -55,10 +87,10 @@ async function endSession(msg){
   await supabase.auth.signOut().catch(()=>{});
   localStorage.removeItem('famr_day');
   showScreen('screen-login');
-  loginAlert(`<i class="fas fa-clock mr-1"></i> ${msg}`, 'warn');
+  loginAlert('<i class="fas fa-clock mr-1"></i> ' + msg, 'warn');
 }
 
-/* ── BOOT: listeners primeiro, banco depois ── */
+/* ── BOOT: listeners primeiro (nunca morre se o banco falhar) ── */
 document.addEventListener('DOMContentLoaded', () => {
   try{
     const on = (id, ev, fn) => document.getElementById(id)?.addEventListener(ev, fn);
@@ -72,61 +104,91 @@ document.addEventListener('DOMContentLoaded', () => {
     on('btn-reset-save','click', e => { e.preventDefault(); doResetSave(); });
     on('btn-maint-login','click', () => showScreen('screen-login'));
     on('btn-logout','click', doLogout);
+
     supabase.auth.onAuthStateChange((event) => {
       if(event === 'PASSWORD_RECOVERY') showScreen('screen-reset');
-      if(event === 'SIGNED_OUT'){ STATE.profile = null; stopWatchdog(); }
+      if(event === 'SIGNED_OUT'){
+        STATE.profile = null; STATE.groups = [];
+        stopWatchdog();
+        if(!document.getElementById('shell').classList.contains('hidden')){
+          showScreen('screen-login');
+          loginAlert('Sessão encerrada. Faça login novamente.', 'warn');
+        }
+      }
     });
   }catch(err){
     console.error('[FAMR] listeners:', err);
     showScreen('screen-login');
     loginAlert('Erro ao preparar a tela: <b>' + (err && err.message ? err.message : err) + '</b>', 'err');
   }
+
   initSession().catch(err => {
     console.error('[FAMR] boot:', err);
     showScreen('screen-login');
-    loginAlert('<i class="fas fa-triangle-exclamation mr-1"></i> Erro ao iniciar: <b>' + (err && err.message ? err.message : err) + '</b><br><span class="text-xs font-normal">Confira o config.js e se o database.sql foi executado no Supabase.</span>', 'err');
+    loginAlert('<i class="fas fa-triangle-exclamation mr-1"></i> Erro ao iniciar: <b>' + (err && err.message ? err.message : err) + '</b><br>' +
+      '<span class="text-xs font-normal">Confira o config.js e se o database.sql foi executado no Supabase.</span>', 'err');
   });
 });
 
-function sbOk(){ try{ return typeof supabase !== 'undefined' && !!supabase && typeof supabase.from === 'function'; }catch(e){ return false; } }
-const CFG_MSG = '<i class="fas fa-triangle-exclamation mr-1"></i> O <b>config.js</b> não carregou ou está inválido (cliente Supabase não criado).<br><span class="text-xs font-normal">1) Confira se existe um arquivo chamado exatamente <b>config.js</b> na raiz do repositório; 2) teste abrir <b>SEU_SITE/config.js</b> no navegador — se der 404, suba o arquivo; 3) pressione Ctrl+F5.</span>';
-
+/* ── Início: configurações + sessão existente ── */
 async function initSession(){
   if(!sbOk()){ showScreen('screen-login'); loginAlert(CFG_MSG, 'err'); return; }
+
   const { data: sets } = await supabase.from('settings').select('*').in('key', ['maintenance','announcement']);
   (sets||[]).forEach(s => STATE.settings[s.key] = s.value);
+
   const { data:{ session } } = await supabase.auth.getSession();
   if(session){
     const day = localStorage.getItem('famr_day');
     const last = +localStorage.getItem('famr_last_act') || 0;
-    if(day && day !== dayStr()){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Novo dia iniciado — faça login novamente.', 'warn'); return; }
-    if(last && Date.now() - last > INACTIVITY_MS){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Sessão expirada por inatividade (1h).', 'warn'); return; }
+    if(day && day !== dayStr()){
+      await supabase.auth.signOut();
+      showScreen('screen-login'); loginAlert('Novo dia iniciado — faça login novamente.', 'warn'); return;
+    }
+    if(last && Date.now() - last > INACTIVITY_MS){
+      await supabase.auth.signOut();
+      showScreen('screen-login'); loginAlert('Sessão expirada por inatividade (1h).', 'warn'); return;
+    }
     await enterSystem(session.user.id);
   } else {
     showScreen(STATE.settings.maintenance?.enabled ? 'screen-maintenance' : 'screen-login');
   }
 }
 
-/* ── LOGIN ── */
+/* ── LOGIN (anti-spam + bloqueio de conta) ── */
 async function doLogin(e){
   loginAlertHide();
-  if(!sbOk()){ loginAlert(CFG_MSG, 'err'); return; }  
+  if(!sbOk()){ loginAlert(CFG_MSG, 'err'); return; }
+
   const nick = document.getElementById('login-nick').value.trim();
   const pass = document.getElementById('login-pass').value;
   if(!nick || !pass) return;
 
-  const nk = nick.toLowerCase(), blkKey = 'famr_blk_'+nk, attKey = 'famr_att_'+nk;
+  const nk = nick.toLowerCase();
+  const blkKey = 'famr_blk_' + nk, attKey = 'famr_att_' + nk;
+
+  // Bloqueio de 5min ativo neste navegador?
   const until = +localStorage.getItem(blkKey) || 0;
   if(Date.now() < until){ startCountdown(until); return; }
+
+  // Anti double-click (3s entre cliques)
   const now = Date.now();
   if(now - (+localStorage.getItem('famr_last_submit') || 0) < 3000) return;
   localStorage.setItem('famr_last_submit', String(now));
+
+  // Máx. 4 requisições em 5min neste navegador → bloqueia por 5min
   const arr = (JSON.parse(localStorage.getItem(attKey) || '[]')).filter(t => now - t < BROWSER_WINDOW_MS);
   arr.push(now); localStorage.setItem(attKey, JSON.stringify(arr));
-  if(arr.length > MAX_REQ_WINDOW){ const u = now + BROWSER_BLOCK_MS; localStorage.setItem(blkKey, String(u)); startCountdown(u); return; }
+  if(arr.length > MAX_REQ_WINDOW){
+    const u = now + BROWSER_BLOCK_MS;
+    localStorage.setItem(blkKey, String(u));
+    startCountdown(u);
+    return;
+  }
 
   const btn = e.target.querySelector('button'); btn.disabled = true;
   try{
+    // 1) famr_login_info; 2) fallback resolve_login_email
     let info = null;
     const r1 = await supabase.rpc('famr_login_info', { nick });
     if(!r1.error && r1.data) info = r1.data;
@@ -134,7 +196,10 @@ async function doLogin(e){
       const r2 = await supabase.rpc('resolve_login_email', { nick });
       if(!r2.error && r2.data) info = { email: r2.data, locked: false };
     }
-    if(!info){ loginAlert('Nickname não encontrado ou conta banida.<br><span class="text-xs font-normal">Contas criadas por SQL: rode o database.sql novamente.</span>', 'err'); return; }
+    if(!info){
+      loginAlert('Nickname não encontrado ou conta banida.<br><span class="text-xs font-normal">Contas criadas por SQL: rode o database.sql novamente no Supabase.</span>', 'err');
+      return;
+    }
     if(info.locked){ showLockedMsg(); return; }
 
     const { data, error: le } = await supabase.auth.signInWithPassword({ email: info.email, password: pass });
@@ -142,23 +207,31 @@ async function doLogin(e){
       if(/invalid login credentials/i.test(le.message)){
         const r = await supabase.rpc('famr_login_failure', { nick });
         if(r.data?.locked) showLockedMsg();
-        else loginAlert(`Senha incorreta (<b>${r.data?.fails ?? '?'}/${MAX_WRONG_PASS}</b>). Na 4ª tentativa a conta é bloqueada.`, 'err');
-      } else loginAlert('Falha no login: <b>' + esc(le.message) + '</b>', 'err');
+        else loginAlert('Senha incorreta (<b>' + (r.data?.fails ?? '?') + '/' + MAX_WRONG_PASS + '</b>). Na 4ª tentativa a conta é bloqueada.', 'err');
+      } else {
+        loginAlert('Falha no login: <b>' + (le.message || 'erro desconhecido') + '</b>', 'err');
+      }
       return;
     }
+
+    // Sucesso: limpa rastros do navegador e zera contagem no banco
     localStorage.removeItem(attKey); localStorage.removeItem(blkKey);
     await supabase.rpc('famr_login_success', { nick }).catch(()=>{});
     await supabase.rpc('log_action', { action:'LOGIN', details:{ nick } }).catch(()=>{});
     await enterSystem(data.user.id);
   } catch(err){
     console.error('[FAMR] login:', err);
-    loginAlert('Erro inesperado no login: <b>' + esc(err?.message || err) + '</b>', 'err');
+    loginAlert('Erro inesperado no login: <b>' + (err && err.message ? err.message : err) + '</b>', 'err');
   } finally { btn.disabled = false; }
 }
 
+/* ── Sessão válida → shell do sistema ── */
 async function enterSystem(userId){
   const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-  if(error || !profile){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Perfil não encontrado. Rode o database.sql.', 'err'); return; }
+  if(error || !profile){
+    await supabase.auth.signOut(); showScreen('screen-login');
+    loginAlert('Perfil não encontrado no banco. Rode o database.sql.', 'err'); return;
+  }
   if(profile.status === 'banned'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta BANIDA do sistema.', 'err'); return; }
   if(profile.status === 'pending'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta ainda não ativada. Procure um administrador.', 'warn'); return; }
   if(profile.login_locked){ await supabase.auth.signOut(); showScreen('screen-login'); showLockedMsg(); return; }
@@ -180,25 +253,28 @@ async function enterSystem(userId){
 
   startWatchdog();
   showScreen('shell');
-  try{
-    await buildSidebar();
-  }catch(err){ console.error('[FAMR] sidebar:', err); }
+  try{ await buildSidebar(); }catch(err){ console.error('[FAMR] sidebar:', err); }
   if(!location.hash || location.hash === '#') location.hash = '#/home';
   try{ await route(); }catch(err){ console.error('[FAMR] route:', err); }
 }
 
 /* ── ALISTAMENTO ── */
 async function doRegister(e){
-  if(!sbOk()){ toast('config.js não carregou — verifique o arquivo na raiz do repositório.', 'err'); return; }  
+  if(!sbOk()){ toast('config.js não carregou — verifique o arquivo na raiz do repositório.', 'err'); return; }
   const nick = document.getElementById('reg-nick').value.trim();
   const email = document.getElementById('reg-email').value.trim();
   const pass = document.getElementById('reg-pass').value;
   const btn = e.target.querySelector('button'); btn.disabled = true;
   try{
-    const { data, error } = await supabase.auth.signUp({ email, password: pass, options: { data: { nickname: nick } } });
+    const { data, error } = await supabase.auth.signUp({
+      email, password: pass,
+      options: { data: { nickname: nick } }   // trigger SQL cria o profile 'pending'
+    });
     if(error){ toast('Erro no alistamento: ' + error.message, 'err'); return; }
-    if(data.user && (data.user.identities || []).length === 0){ toast('Este e-mail já está cadastrado. Use "Esqueci a senha".', 'warn'); return; }
-    if(data.session) await supabase.auth.signOut();
+    if(data.user && (data.user.identities || []).length === 0){
+      toast('Este e-mail já está cadastrado. Use "Esqueci a senha".', 'warn'); return;
+    }
+    if(data.session) await supabase.auth.signOut();   // não loga automaticamente
     document.getElementById('form-register').classList.add('hidden');
     document.getElementById('register-success').classList.remove('hidden');
     await supabase.rpc('log_action', { action:'REGISTRO', details:{ nick } }).catch(()=>{});
@@ -206,9 +282,9 @@ async function doRegister(e){
   finally { btn.disabled = false; }
 }
 
-/* ── ESQUECI A SENHA (tela própria) ── */
+/* ── ESQUECI A SENHA (tela própria, sem prompt) ── */
 async function doForgot(e){
-  if(!sbOk()){ toast('config.js não carregou — verifique o arquivo na raiz do repositório.', 'err'); return; }  
+  if(!sbOk()){ toast('config.js não carregou — verifique o arquivo na raiz do repositório.', 'err'); return; }
   const nick = document.getElementById('forgot-nick').value.trim();
   if(!nick) return;
   const btn = e.target.querySelector('button'); btn.disabled = true;
@@ -216,7 +292,9 @@ async function doForgot(e){
     const { data: email, error } = await supabase.rpc('resolve_login_email', { nick });
     if(error){ toast('Erro no servidor: ' + error.message, 'err'); return; }
     if(!email){ toast('Nickname não encontrado ou banido.', 'err'); return; }
-    const { error: rErr } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    const { error: rErr } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: location.origin + location.pathname
+    });
     if(rErr){ toast('Erro ao enviar: ' + rErr.message, 'err'); return; }
     document.getElementById('form-forgot').classList.add('hidden');
     document.getElementById('forgot-ok').classList.remove('hidden');
@@ -224,7 +302,7 @@ async function doForgot(e){
   finally { btn.disabled = false; }
 }
 
-/* ── NOVA SENHA ── */
+/* ── NOVA SENHA (link de recuperação; destrava conta via trigger) ── */
 async function doResetSave(){
   const p1 = document.getElementById('reset-pass').value;
   const p2 = document.getElementById('reset-pass2').value;
@@ -238,6 +316,7 @@ async function doResetSave(){
   loginAlert('<i class="fas fa-check-circle mr-1"></i> Senha redefinida e conta desbloqueada. Faça login novamente.', 'ok');
 }
 
+/* ── SAIR ── */
 async function doLogout(){
   await supabase.rpc('log_action', { action:'LOGOUT', details:{} }).catch(()=>{});
   stopWatchdog();
