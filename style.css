@@ -1,68 +1,76 @@
-/* Custom Styles for FAMR System */
+/* Custom Styles for FAMR Premium System */
+
 :root {
-    --famr-green: #22c55e;
-    --famr-dark: #111827;
+    --gold: #d4af37;
+    --gold-dim: #8a7018;
+    --dark-panel: #1e293b;
 }
 
 body {
-    background-color: var(--famr-dark);
+    background-color: #0f172a;
 }
 
-/* Scrollbar Styling */
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+/* Widget Box Style (Inspired by Forum Blocks) */
+.widget-box {
+    @apply rounded-lg overflow-hidden shadow-lg border border-gray-700/50 bg-slate-900/80 backdrop-blur-sm;
 }
-::-webkit-scrollbar-track {
-    background: #1f2937; 
+
+.widget-header {
+    @apply relative overflow-hidden;
 }
-::-webkit-scrollbar-thumb {
-    background: #374151; 
-    border-radius: 3px;
+
+.widget-header::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-yellow-500/50 to-transparent;
 }
-::-webkit-scrollbar-thumb:hover {
-    background: #22c55e; 
+
+.widget-content {
+    @apply relative;
+}
+
+/* Navigation Links */
+.nav-link {
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-link::before {
+    content: '';
+    @apply absolute left-0 top-0 h-full w-1 bg-famr-gold transform -translate-x-full transition-transform duration-300;
+}
+
+.nav-link:hover::before, .nav-link.active::before {
+    @apply translate-x-0;
 }
 
 /* Animations */
 .fade-in {
-    animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(15px); }
+    from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Card Hover Effects */
-.topic-card {
-    transition: all 0.2s ease;
-    border-left: 3px solid transparent;
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
 }
-.topic-card:hover {
-    transform: translateX(4px);
-    border-left-color: var(--famr-green);
-    background-color: #1f2937;
+::-webkit-scrollbar-track {
+    background: #0f172a; 
 }
-
-/* Badge Colors based on Group */
-.badge-group {
-    padding: 2px 8px;
+::-webkit-scrollbar-thumb {
+    background: #334155; 
     border-radius: 4px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    border: 2px solid #0f172a;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #d4af37; 
 }
 
-/* Inputs Focus Glow */
-input:focus, select:focus, textarea:focus {
-    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
-}
-
-/* Mobile Adjustments */
-@media (max-width: 768px) {
-    .sidebar-mobile-toggle {
-        display: block;
-    }
+/* Text Selection */
+::selection {
+    background: #d4af37;
+    color: #000;
 }
