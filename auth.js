@@ -60,28 +60,31 @@ async function endSession(msg){
 
 /* ── BOOT: listeners primeiro, banco depois ── */
 document.addEventListener('DOMContentLoaded', () => {
-  const on = (id, ev, fn) => document.getElementById(id)?.addEventListener(ev, fn);
-  on('form-login','submit', e => { e.preventDefault(); doLogin(e); });
-  on('form-register','submit', e => { e.preventDefault(); doRegister(e); });
-  on('form-forgot','submit', e => { e.preventDefault(); doForgot(e); });
-  on('link-forgot','click', e => { e.preventDefault(); loginAlertHide(); showScreen('screen-forgot'); });
-  on('link-register','click', e => { e.preventDefault(); showScreen('screen-register'); });
-  on('link-back-login','click', e => { e.preventDefault(); showScreen('screen-login'); });
-  on('link-back-login2','click', e => { e.preventDefault(); showScreen('screen-login'); });
-  on('btn-reset-save','click', e => { e.preventDefault(); doResetSave(); });
-  on('btn-maint-login','click', () => showScreen('screen-login'));
-  on('btn-logout','click', doLogout);
-
-  supabase.auth.onAuthStateChange((event) => {
-    if(event === 'PASSWORD_RECOVERY') showScreen('screen-reset');
-    if(event === 'SIGNED_OUT'){ STATE.profile = null; stopWatchdog(); }
-  });
-
+  try{
+    const on = (id, ev, fn) => document.getElementById(id)?.addEventListener(ev, fn);
+    on('form-login','submit', e => { e.preventDefault(); doLogin(e); });
+    on('form-register','submit', e => { e.preventDefault(); doRegister(e); });
+    on('form-forgot','submit', e => { e.preventDefault(); doForgot(e); });
+    on('link-forgot','click', e => { e.preventDefault(); loginAlertHide(); showScreen('screen-forgot'); });
+    on('link-register','click', e => { e.preventDefault(); showScreen('screen-register'); });
+    on('link-back-login','click', e => { e.preventDefault(); showScreen('screen-login'); });
+    on('link-back-login2','click', e => { e.preventDefault(); showScreen('screen-login'); });
+    on('btn-reset-save','click', e => { e.preventDefault(); doResetSave(); });
+    on('btn-maint-login','click', () => showScreen('screen-login'));
+    on('btn-logout','click', doLogout);
+    supabase.auth.onAuthStateChange((event) => {
+      if(event === 'PASSWORD_RECOVERY') showScreen('screen-reset');
+      if(event === 'SIGNED_OUT'){ STATE.profile = null; stopWatchdog(); }
+    });
+  }catch(err){
+    console.error('[FAMR] listeners:', err);
+    showScreen('screen-login');
+    loginAlert('Erro ao preparar a tela: <b>' + (err && err.message ? err.message : err) + '</b>', 'err');
+  }
   initSession().catch(err => {
     console.error('[FAMR] boot:', err);
     showScreen('screen-login');
-    loginAlert(`<i class="fas fa-triangle-exclamation mr-1"></i> Erro ao iniciar: <b>${esc(err?.message || err)}</b><br>
-      <span class="text-xs font-normal">Confira o config.js e se o database.sql foi executado no Supabase.</span>`, 'err');
+    loginAlert('<i class="fas fa-triangle-exclamation mr-1"></i> Erro ao iniciar: <b>' + (err && err.message ? err.message : err) + '</b><br><span class="text-xs font-normal">Confira o config.js e se o database.sql foi executado no Supabase.</span>', 'err');
   });
 });
 
