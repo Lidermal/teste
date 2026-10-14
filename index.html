@@ -3,177 +3,192 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FAMR - Sistema Oficial</title>
-    <!-- Tailwind CSS -->
+    <title>FAMR - Portal Oficial</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        famr: {
+                            dark: '#0f172a',
+                            panel: '#1e293b',
+                            gold: '#d4af37',
+                            goldLight: '#f3e5ab',
+                            green: '#14532d',
+                            accent: '#22c55e'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Rajdhani', 'sans-serif'],
+                        serif: ['Cinzel', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
 </head>
-<body class="bg-gray-900 text-white font-['Rajdhani'] antialiased selection:bg-green-500 selection:text-black">
-    
-    <div id="app">
-        <!-- TELA DE LOGIN -->
-        <div id="login-screen" class="hidden min-h-screen flex items-center justify-center bg-cover bg-center relative" style="background-image: url('https://raw.githubusercontent.com/SEU_USUARIO/famrlogo/main/background.png');">
-            <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
-            <div class="relative z-10 bg-gray-900/90 p-8 rounded-lg shadow-[0_0_30px_rgba(34,197,94,0.3)] w-full max-w-md border-t-4 border-green-600">
-                <div class="text-center mb-8">
-                    <img src="https://raw.githubusercontent.com/SEU_USUARIO/famrlogo/main/famrlogo.png" alt="FAMR Logo" class="h-24 mx-auto mb-4 drop-shadow-[0_0_15px_rgba(34,197,94,0.8)]">
-                    <h1 class="text-4xl font-bold text-green-500 tracking-widest uppercase">Polícia FAMR</h1>
-                    <p class="text-gray-400 text-sm mt-1 tracking-wide">Força Armada Militar Revolucionária</p>
+<body class="bg-famr-dark text-gray-200 font-sans antialiased bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]">
+
+    <!-- NAVBAR SUPERIOR -->
+    <nav class="fixed top-0 w-full z-50 bg-famr-panel/90 backdrop-blur-md border-b border-famr-gold/30 shadow-lg h-16">
+        <div class="container mx-auto px-4 h-full flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <img src="https://raw.githubusercontent.com/SEU_USUARIO/famrlogo/main/famrlogo.png" alt="FAMR" class="h-10 drop-shadow-[0_0_10px_rgba(212,175,55,0.5)]">
+                <div class="hidden md:block">
+                    <h1 class="font-serif font-bold text-xl text-famr-gold tracking-widest">FAMR</h1>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-[0.2em]">Força Armada Militar Revolucionária</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div class="relative group">
+                    <input type="text" placeholder="Protocolo ou Militar..." class="bg-black/40 border border-gray-600 rounded-full px-4 py-1.5 text-sm focus:border-famr-gold focus:outline-none transition-all w-48 focus:w-64 text-white placeholder-gray-500">
+                    <i class="fas fa-search absolute right-3 top-2 text-gray-500 text-xs"></i>
                 </div>
                 
-                <form id="login-form" class="space-y-5">
-                    <div class="group">
-                        <label class="block text-xs font-bold text-green-400 mb-1 uppercase tracking-wider">Nickname Habbo</label>
-                        <input type="text" id="login-nickname" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-3 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all text-white placeholder-gray-500" placeholder="Ex: Soldado_Joao">
+                <div id="user-area" class="flex items-center gap-3 border-l border-gray-700 pl-4">
+                    <div class="text-right hidden sm:block">
+                        <div class="text-sm font-bold text-white" id="user-name-display">Recruta</div>
+                        <div class="text-[10px] text-famr-gold uppercase" id="user-rank-display">Aguardando...</div>
                     </div>
-                    <div class="group">
-                        <label class="block text-xs font-bold text-green-400 mb-1 uppercase tracking-wider">Senha</label>
-                        <input type="password" id="login-password" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-3 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all text-white placeholder-gray-500" placeholder="••••••••">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-famr-green to-black border border-famr-gold flex items-center justify-center shadow-[0_0_10px_rgba(212,175,55,0.3)]">
+                        <i class="fas fa-user text-famr-gold text-xs"></i>
                     </div>
-                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded transition-all shadow-[0_0_15px_rgba(34,197,94,0.4)] hover:shadow-[0_0_25px_rgba(34,197,94,0.6)] uppercase tracking-widest text-sm">
-                        Acessar Sistema
+                    <button id="logout-btn" class="text-red-400 hover:text-red-300"><i class="fas fa-power-off"></i></button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- LAYOUT PRINCIPAL -->
+    <div class="pt-20 pb-10 container mx-auto px-4 flex gap-6">
+        
+        <!-- SIDEBAR ESQUERDA (Navegação Estilo Fórum) -->
+        <aside class="w-64 hidden lg:block space-y-4">
+            <!-- Widget Perfil -->
+            <div class="widget-box">
+                <div class="widget-header bg-gradient-to-r from-famr-green to-famr-dark border-b border-famr-gold/50 p-3 flex items-center justify-between">
+                    <span class="font-serif font-bold text-famr-gold text-sm"><i class="fas fa-id-card mr-2"></i> IDENTIDADE</span>
+                </div>
+                <div class="widget-content p-4 text-center bg-famr-panel/50">
+                    <div class="w-20 h-20 mx-auto bg-gray-800 rounded-full border-2 border-famr-gold mb-3 overflow-hidden relative">
+                        <img src="https://raw.githubusercontent.com/SEU_USUARIO/famrlogo/main/famrlogo.png" class="w-full h-full object-cover opacity-80">
+                    </div>
+                    <h3 class="font-bold text-white" id="sidebar-nickname">Visitante</h3>
+                    <span class="text-xs text-famr-gold bg-famr-gold/10 px-2 py-1 rounded mt-1 inline-block">OFFLINE</span>
+                </div>
+            </div>
+
+            <!-- Widget Menu -->
+            <div class="widget-box">
+                <div class="widget-header bg-gradient-to-r from-famr-green to-famr-dark border-b border-famr-gold/50 p-3">
+                    <span class="font-serif font-bold text-famr-gold text-sm"><i class="fas fa-bars mr-2"></i> NAVEGAÇÃO</span>
+                </div>
+                <div class="widget-content p-2 bg-famr-panel/50">
+                    <nav class="space-y-1">
+                        <a href="#" data-page="home" class="nav-link active flex items-center px-4 py-3 text-sm font-medium rounded transition-all bg-famr-gold/10 text-famr-gold border-l-2 border-famr-gold">
+                            <i class="fas fa-home w-6"></i> Início
+                        </a>
+                        <a href="#" data-page="listagem" class="nav-link flex items-center px-4 py-3 text-sm font-medium rounded transition-all text-gray-400 hover:bg-white/5 hover:text-white">
+                            <i class="fas fa-users w-6"></i> Efetivo & Listagem
+                        </a>
+                        <a href="#" data-page="requerimentos" class="nav-link flex items-center px-4 py-3 text-sm font-medium rounded transition-all text-gray-400 hover:bg-white/5 hover:text-white">
+                            <i class="fas fa-file-contract w-6"></i> Requerimentos
+                        </a>
+                        <a href="#" data-page="documentos" class="nav-link flex items-center px-4 py-3 text-sm font-medium rounded transition-all text-gray-400 hover:bg-white/5 hover:text-white">
+                            <i class="fas fa-book w-6"></i> Código Penal
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CONTEÚDO CENTRAL -->
+        <main class="flex-1 min-w-0">
+            <div id="content-area" class="space-y-6 fade-in">
+                <!-- Conteúdo injetado via JS -->
+            </div>
+        </main>
+
+        <!-- SIDEBAR DIREITA (Estatísticas Estilo Forumeiros) -->
+        <aside class="w-64 hidden xl:block space-y-4">
+            <div class="widget-box">
+                <div class="widget-header bg-gradient-to-r from-famr-green to-famr-dark border-b border-famr-gold/50 p-3">
+                    <span class="font-serif font-bold text-famr-gold text-sm"><i class="fas fa-chart-line mr-2"></i> ESTATÍSTICAS</span>
+                </div>
+                <div class="widget-content p-4 bg-famr-panel/50 text-xs space-y-3">
+                    <div class="flex justify-between items-center border-b border-gray-700 pb-2">
+                        <span class="text-gray-400">Total de Militares</span>
+                        <span class="font-bold text-white">1,240</span>
+                    </div>
+                    <div class="flex justify-between items-center border-b border-gray-700 pb-2">
+                        <span class="text-gray-400">Online Agora</span>
+                        <span class="font-bold text-green-400">45</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Recorde de Online</span>
+                        <span class="font-bold text-white">320</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="widget-box">
+                <div class="widget-header bg-gradient-to-r from-famr-green to-famr-dark border-b border-famr-gold/50 p-3">
+                    <span class="font-serif font-bold text-famr-gold text-sm"><i class="fas fa-star mr-2"></i> DESTAQUES</span>
+                </div>
+                <div class="widget-content p-4 bg-famr-panel/50">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-8 h-8 rounded bg-yellow-600/20 flex items-center justify-center text-yellow-500"><i class="fas fa-trophy"></i></div>
+                        <div>
+                            <div class="text-xs text-gray-400">Militar do Mês</div>
+                            <div class="text-sm font-bold text-white">Gen. Silva</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- TELA DE LOGIN (OVERLAY) -->
+    <div id="login-screen" class="fixed inset-0 z-[60] bg-famr-dark flex items-center justify-center bg-[url('https://raw.githubusercontent.com/SEU_USUARIO/famrlogo/main/background.png')] bg-cover bg-center">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+        <div class="relative z-10 w-full max-w-md p-1 bg-gradient-to-b from-famr-gold to-transparent rounded-lg shadow-[0_0_50px_rgba(212,175,55,0.2)]">
+            <div class="bg-famr-panel border border-gray-700 rounded p-8 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-famr-gold to-transparent"></div>
+                
+                <div class="text-center mb-8">
+                    <img src="https://raw.githubusercontent.com/SEU_USUARIO/famrlogo/main/famrlogo.png" class="h-20 mx-auto mb-4 drop-shadow-[0_0_15px_rgba(212,175,55,0.5)]">
+                    <h2 class="font-serif text-2xl text-white tracking-widest">ACESSO RESTRITO</h2>
+                    <p class="text-famr-gold text-xs uppercase tracking-[0.3em] mt-1">Sistema Interno FAMR</p>
+                </div>
+
+                <form id="login-form" class="space-y-4">
+                    <div class="relative">
+                        <i class="fas fa-user absolute left-3 top-3 text-gray-500"></i>
+                        <input type="text" id="login-nickname" class="w-full bg-black/30 border border-gray-600 rounded pl-10 pr-4 py-2.5 focus:border-famr-gold focus:outline-none text-white transition-colors" placeholder="Nickname">
+                    </div>
+                    <div class="relative">
+                        <i class="fas fa-lock absolute left-3 top-3 text-gray-500"></i>
+                        <input type="password" id="login-password" class="w-full bg-black/30 border border-gray-600 rounded pl-10 pr-4 py-2.5 focus:border-famr-gold focus:outline-none text-white transition-colors" placeholder="Senha">
+                    </div>
+                    <button type="submit" class="w-full bg-gradient-to-r from-famr-green to-emerald-700 hover:from-emerald-600 hover:to-emerald-800 text-white font-bold py-3 rounded shadow-lg transform hover:-translate-y-0.5 transition-all uppercase tracking-wider text-sm">
+                        Entrar no Sistema
                     </button>
                 </form>
 
-                <div class="mt-6 flex justify-between text-xs font-semibold">
-                    <a href="#" id="forgot-password-link" class="text-gray-400 hover:text-green-400 transition-colors"><i class="fas fa-key mr-1"></i> Esqueci a senha</a>
-                    <a href="#" id="register-link" class="text-green-500 hover:text-green-400 transition-colors"><i class="fas fa-user-plus mr-1"></i> Registrar-se</a>
+                <div class="mt-6 flex justify-between text-xs text-gray-500">
+                    <a href="#" class="hover:text-famr-gold transition-colors">Esqueci a senha</a>
+                    <a href="#" id="register-link" class="hover:text-famr-gold transition-colors">Alistamento</a>
                 </div>
-            </div>
-        </div>
-
-        <!-- TELA RECUPERAÇÃO DE SENHA -->
-        <div id="forgot-password-screen" class="hidden min-h-screen flex items-center justify-center bg-gray-900">
-            <div class="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-md border border-green-700">
-                <h2 class="text-2xl font-bold text-green-500 mb-2 text-center uppercase">Recuperar Acesso</h2>
-                <p class="text-gray-400 mb-6 text-center text-sm">Informe seu nickname. Um link será enviado para o e-mail cadastrado na polícia.</p>
-                <form id="forgot-password-form" class="space-y-4">
-                    <input type="text" id="recovery-nickname" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-green-500 text-white" placeholder="Seu Nickname">
-                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors">ENVIAR LINK</button>
-                </form>
-                <button id="back-to-login" class="mt-4 w-full text-gray-400 hover:text-white text-xs uppercase font-bold">Voltar ao Login</button>
-            </div>
-        </div>
-
-        <!-- TELA DE REGISTRO -->
-        <div id="register-screen" class="hidden min-h-screen flex items-center justify-center bg-gray-900">
-            <div class="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-md border border-green-700">
-                <h2 class="text-2xl font-bold text-green-500 mb-6 text-center uppercase">Alistamento</h2>
-                <form id="register-form" class="space-y-4">
-                    <div>
-                        <label class="text-xs text-gray-400 uppercase font-bold">Nickname</label>
-                        <input type="text" id="reg-nickname" required class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-green-500 text-white">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-400 uppercase font-bold">E-mail</label>
-                        <input type="email" id="reg-email" required class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-green-500 text-white">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-400 uppercase font-bold">Senha</label>
-                        <input type="password" id="reg-password" required class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-green-500 text-white">
-                    </div>
-                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors mt-2">CONFIRMAR ALISTAMENTO</button>
-                </form>
-                <div class="mt-4 p-3 bg-yellow-900/30 border border-yellow-700/50 rounded text-xs text-yellow-200 text-center">
-                    <i class="fas fa-exclamation-triangle mr-1"></i> Seu registro precisa ser ativado por um superior.
-                </div>
-                <button id="back-to-login-reg" class="mt-4 w-full text-gray-400 hover:text-white text-xs uppercase font-bold">Voltar ao Login</button>
-            </div>
-        </div>
-
-        <!-- DASHBOARD PRINCIPAL -->
-        <div id="dashboard" class="hidden min-h-screen flex flex-col bg-gray-900">
-            <!-- Header -->
-            <header class="bg-gray-800 border-b border-green-700/50 shadow-lg z-50 h-16">
-                <div class="container mx-auto px-4 h-full flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <img src="https://raw.githubusercontent.com/SEU_USUARIO/famrlogo/main/famrlogo.png" alt="Logo" class="h-10">
-                        <div class="hidden md:block">
-                            <span class="font-bold text-xl text-green-500 tracking-wider block leading-none">FAMR SYSTEM</span>
-                            <span class="text-[10px] text-gray-500 uppercase tracking-widest">v1.0.0 Stable</span>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-center space-x-4">
-                        <div class="relative hidden sm:block">
-                            <input type="text" id="global-search" placeholder="Buscar militar..." class="bg-gray-900 border border-gray-700 rounded-full px-4 py-1.5 text-sm focus:outline-none focus:border-green-500 w-48 md:w-64 transition-all text-gray-300">
-                            <i class="fas fa-search absolute right-3 top-2.5 text-gray-500 text-xs"></i>
-                        </div>
-                        
-                        <div class="flex items-center space-x-3 border-l border-gray-700 pl-4">
-                            <div class="text-right hidden md:block">
-                                <div class="text-sm font-bold text-white" id="user-name-display">Carregando...</div>
-                                <div class="text-[10px] text-green-500 uppercase" id="user-rank-display">Militar</div>
-                            </div>
-                            <div class="w-9 h-9 rounded bg-gradient-to-br from-green-600 to-green-800 flex items-center justify-center text-sm font-bold shadow-lg border border-green-500/30" id="user-avatar-initials">U</div>
-                            <button id="logout-btn" class="text-red-400 hover:text-red-300 text-sm ml-2" title="Sair"><i class="fas fa-power-off"></i></button>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            <div class="flex flex-1 overflow-hidden">
-                <!-- Sidebar -->
-                <aside class="w-64 bg-gray-800 border-r border-gray-700 hidden md:flex flex-col shadow-inner">
-                    <nav class="flex-1 py-6 space-y-1 px-3 overflow-y-auto">
-                        <a href="#" data-page="home" class="nav-item active flex items-center px-4 py-3 text-sm font-bold rounded-md bg-green-600 text-white shadow-md transition-all">
-                            <i class="fas fa-home w-6 text-center"></i> Início
-                        </a>
-                        <a href="#" data-page="listagem" class="nav-item flex items-center px-4 py-3 text-sm font-medium rounded-md text-gray-400 hover:bg-gray-700 hover:text-white transition-colors">
-                            <i class="fas fa-list-ul w-6 text-center"></i> Listagem Geral
-                        </a>
-                        <a href="#" data-page="requerimentos" class="nav-item flex items-center px-4 py-3 text-sm font-medium rounded-md text-gray-400 hover:bg-gray-700 hover:text-white transition-colors">
-                            <i class="fas fa-file-signature w-6 text-center"></i> Requerimentos
-                        </a>
-                        <a href="#" data-page="documentos" class="nav-item flex items-center px-4 py-3 text-sm font-medium rounded-md text-gray-400 hover:bg-gray-700 hover:text-white transition-colors">
-                            <i class="fas fa-book-open w-6 text-center"></i> Documentos
-                        </a>
-                        <a href="#" data-page="companhias" class="nav-item flex items-center px-4 py-3 text-sm font-medium rounded-md text-gray-400 hover:bg-gray-700 hover:text-white transition-colors">
-                            <i class="fas fa-shield-alt w-6 text-center"></i> Companhias
-                        </a>
-                        
-                        <!-- Área Administrativa (Oculta por padrão) -->
-                        <div id="admin-menu-items" class="hidden border-t border-gray-700 mt-6 pt-4">
-                            <p class="px-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Comando</p>
-                            <a href="#" data-page="admin" class="nav-item flex items-center px-4 py-3 text-sm font-bold rounded-md text-yellow-500 hover:bg-gray-700 hover:text-yellow-400 transition-colors">
-                                <i class="fas fa-cogs w-6 text-center"></i> Painel Admin
-                            </a>
-                        </div>
-                    </nav>
-                    <div class="p-4 border-t border-gray-700 bg-gray-800/50">
-                        <div class="flex items-center space-x-2 text-xs text-gray-500">
-                            <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                            <span>Sistema Online</span>
-                        </div>
-                    </div>
-                </aside>
-
-                <!-- Main Content -->
-                <main class="flex-1 overflow-y-auto bg-gray-900 p-4 md:p-8 relative scroll-smooth">
-                    <!-- Overlay de Manutenção -->
-                    <div id="maintenance-overlay" class="hidden absolute inset-0 bg-gray-900/95 z-50 flex items-center justify-center flex-col text-center p-4 backdrop-blur-md">
-                        <i class="fas fa-hard-hat text-6xl text-yellow-500 mb-6 animate-bounce"></i>
-                        <h2 class="text-3xl font-bold text-white mb-2 uppercase tracking-wider">Sistema em Manutenção</h2>
-                        <p class="text-gray-400 max-w-md">A FAMR está realizando atualizações de segurança. Apenas administradores podem acessar neste momento.</p>
-                    </div>
-
-                    <!-- Conteúdo Dinâmico -->
-                    <div id="content-area" class="max-w-7xl mx-auto fade-in">
-                        <!-- Injetado via JS -->
-                    </div>
-                </main>
             </div>
         </div>
     </div>
 
-    <!-- Scripts -->
     <script src="config.js"></script>
     <script src="auth.js"></script>
     <script src="app.js"></script>
