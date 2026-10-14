@@ -88,7 +88,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+function sbOk(){ try{ return typeof supabase !== 'undefined' && !!supabase && typeof supabase.from === 'function'; }catch(e){ return false; } }
+const CFG_MSG = '<i class="fas fa-triangle-exclamation mr-1"></i> O <b>config.js</b> não carregou ou está inválido (cliente Supabase não criado).<br><span class="text-xs font-normal">1) Confira se existe um arquivo chamado exatamente <b>config.js</b> na raiz do repositório; 2) teste abrir <b>SEU_SITE/config.js</b> no navegador — se der 404, suba o arquivo; 3) pressione Ctrl+F5.</span>';
+
 async function initSession(){
+  if(!sbOk()){ showScreen('screen-login'); loginAlert(CFG_MSG, 'err'); return; }
   const { data: sets } = await supabase.from('settings').select('*').in('key', ['maintenance','announcement']);
   (sets||[]).forEach(s => STATE.settings[s.key] = s.value);
   const { data:{ session } } = await supabase.auth.getSession();
@@ -106,6 +110,7 @@ async function initSession(){
 /* ── LOGIN ── */
 async function doLogin(e){
   loginAlertHide();
+  if(!sbOk()){ loginAlert(CFG_MSG, 'err'); return; }  
   const nick = document.getElementById('login-nick').value.trim();
   const pass = document.getElementById('login-pass').value;
   if(!nick || !pass) return;
@@ -184,6 +189,7 @@ async function enterSystem(userId){
 
 /* ── ALISTAMENTO ── */
 async function doRegister(e){
+  if(!sbOk()){ toast('config.js não carregou — verifique o arquivo na raiz do repositório.', 'err'); return; }  
   const nick = document.getElementById('reg-nick').value.trim();
   const email = document.getElementById('reg-email').value.trim();
   const pass = document.getElementById('reg-pass').value;
@@ -202,6 +208,7 @@ async function doRegister(e){
 
 /* ── ESQUECI A SENHA (tela própria) ── */
 async function doForgot(e){
+  if(!sbOk()){ toast('config.js não carregou — verifique o arquivo na raiz do repositório.', 'err'); return; }  
   const nick = document.getElementById('forgot-nick').value.trim();
   if(!nick) return;
   const btn = e.target.querySelector('button'); btn.disabled = true;
