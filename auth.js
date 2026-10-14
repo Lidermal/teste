@@ -1,4 +1,6 @@
-/* ══════════ FAMR • AUTENTICAÇÃO (login, registro, recuperação 10min) ══════════ */
+/* ══════════ FAMR • AUTENTICAÇÃO (login, registro, recuperação) ══════════
+   Sem credenciais hardcoded. Contas privilegiadas são reconhecidas pelo
+   grupo "Alto Comando" criado no database.sql. */
 
 const SCREENS = ['screen-login','screen-register','screen-reset','screen-maintenance'];
 function showScreen(id){
@@ -11,11 +13,9 @@ function showScreen(id){
 document.addEventListener('DOMContentLoaded', boot);
 
 async function boot(){
-  // Link de recuperação abre sessão especial
-  supabase.auth.onAuthStateChange((event, session) => {
+  supabase.auth.onAuthStateChange((event) => {
     if(event === 'PASSWORD_RECOVERY'){ showScreen('screen-reset'); }
     if(event === 'SIGNED_OUT'){ STATE.profile = null; showScreen('screen-login'); }
-    if(event === 'SIGNED_IN' && session){ /* fluxo normal abaixo */ }
   });
 
   document.getElementById('form-login').addEventListener('submit', doLogin);
@@ -27,7 +27,7 @@ async function boot(){
   document.getElementById('btn-maint-login').addEventListener('click', () => showScreen('screen-login'));
   document.getElementById('btn-logout').addEventListener('click', doLogout);
 
-  // Configurações públicas (manutenção) — leitura anon permitida por RLS
+  // Configurações públicas (manutenção/aviso) — RLS permite leitura anônima
   const { data: sets } = await supabase.from('settings').select('*').in('key', ['maintenance','announcement']);
   (sets||[]).forEach(s => STATE.settings[s.key] = s.value);
 
@@ -36,7 +36,7 @@ async function boot(){
   else showScreen(STATE.settings.maintenance?.enabled ? 'screen-maintenance' : 'screen-login');
 }
 
-/* ── LOGIN por nickname ── */
+/* ── LOGIN por nickname (resolve email via função SQL anon-safe) ── */
 async function doLogin(e){
   e.preventDefault();
   const nick = document.getElementById('login-nick').value.trim();
@@ -44,40 +44,58 @@ async function doLogin(e){
   const btn = e.target.querySelector('button'); btn.disabled = true;
 
   try{
-    // Resolve email pelo nickname (função SQL security-definer, funciona anon)
-    let email = null;
-    const master = CONFIG.masters.find(m => m.nickname.toLowerCase() === nick.toLowerCase());
-    if(master) email = master.email;
-    else {
-      const { data, error } = await supabase.rpc('resolve_login_email', { nick });
-      if(!error && data) email = data;
+    // A função resolve_login_email (security definer) roda mesmo sem login
+    const { data: email, error } = await supabase.rpc('resolve_login_email', { nick });
+    if(error || !email){
+      toast('Nickname não encontrado ou conta banida.', 'err');
+      return;
     }
-    if(!email){ toast('Nickname não encontrado ou conta banida.', 'err'); return; }
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
-    if(error){ toast('Senha incorreta ou conta pendente: ' + error.message, 'err'); return; }
+    const { data, error: loginErr } = await supabase.auth.signInWithPassword({ email, password: pass });
+    if(loginErr){
+      toast('Senha incorreta ou conta ainda não ativada.', 'err');
+      return;
+    }
 
-    await supabase.rpc('log_action', { action:'LOGIN', details:{} });
+    await supabase.rpc('log_action', { action:'LOGIN', details:{ nick } });
     await enterSystem(data.user.id);
   } finally { btn.disabled = false; }
 }
 
 /* ── Carrega perfil + grupos e entra no shell ── */
 async function enterSystem(userId){
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).single();
-  if(!profile){ await supabase.auth.signOut(); showScreen('screen-login'); return; }
-  if(profile.status === 'banned'){ await supabase.auth.signOut(); toast('Conta BANIDA do sistema.', 'err'); showScreen('screen-login'); return; }
-  if(profile.status === 'pending'){ await supabase.auth.signOut(); toast('Conta ainda não ativada. Procure um administrador.', 'warn'); showScreen('screen-login'); return; }
+  const { data: profile, error } = await supabase
+    .from('profiles').select('*').eq('id', userId).single();
+
+  if(error || !profile){
+    await supabase.auth.signOut();
+    toast('Perfil não encontrado.', 'err');
+    showScreen('screen-login');
+    return;
+  }
+  if(profile.status === 'banned'){
+    await supabase.auth.signOut();
+    toast('Conta BANIDA do sistema.', 'err');
+    showScreen('screen-login');
+    return;
+  }
+  if(profile.status === 'pending'){
+    await supabase.auth.signOut();
+    toast('Conta ainda não ativada. Procure um administrador.', 'warn');
+    showScreen('screen-login');
+    return;
+  }
 
   STATE.profile = profile;
   const { data: ug } = await supabase
     .from('user_groups').select('group_id, groups(*)').eq('user_id', userId);
-  STATE.groups = (ug||[]).map(r => r.groups).sort((a,b) => (b.power_level||0)-(a.power_level||0));
+  STATE.groups = (ug||[]).map(r => r.groups).filter(Boolean).sort((a,b) => (b.power_level||0)-(a.power_level||0));
 
   // Manutenção: só admin passa
   if(STATE.settings.maintenance?.enabled && !isAdmin()){
     document.getElementById('maintenance-msg').textContent = STATE.settings.maintenance.message || document.getElementById('maintenance-msg').textContent;
-    showScreen('screen-maintenance'); return;
+    showScreen('screen-maintenance');
+    return;
   }
 
   // Header
@@ -85,7 +103,9 @@ async function enterSystem(userId){
   document.getElementById('user-avatar').textContent = profile.nickname.charAt(0).toUpperCase();
   const g0 = STATE.groups[0];
   document.getElementById('user-group').textContent = g0 ? g0.name : 'Sem grupo';
-  if(g0){ document.getElementById('user-avatar').style.background = g0.color || '#14563f'; }
+  if(g0){
+    document.getElementById('user-avatar').style.background = g0.color || '#14563f';
+  }
 
   showScreen('shell');
   buildSidebar();
@@ -116,13 +136,14 @@ async function doRegister(e){
 async function doForgot(){
   const nick = prompt('Digite seu nickname Habbo:');
   if(!nick) return;
-  const { data: email } = await supabase.rpc('resolve_login_email', { nick });
-  if(!email){ toast('Nickname não encontrado.', 'err'); return; }
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: location.origin + location.pathname   // volta p/ mesma página (hash router)
+  const { data: email, error } = await supabase.rpc('resolve_login_email', { nick });
+  if(error || !email){ toast('Nickname não encontrado.', 'err'); return; }
+
+  const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: location.origin + location.pathname
   });
-  toast(error ? 'Erro ao enviar: '+error.message
-              : 'Link de redefinição enviado ao e-mail cadastrado. Expira em 10 minutos.');
+  toast(resetErr ? 'Erro ao enviar: ' + resetErr.message
+                 : 'Link de redefinição enviado. Expira em 10 minutos.');
 }
 
 async function doResetSave(){
@@ -130,7 +151,7 @@ async function doResetSave(){
   const p2 = document.getElementById('reset-pass2').value;
   if(p1 !== p2){ toast('As senhas não conferem.', 'err'); return; }
   const { error } = await supabase.auth.updateUser({ password: p1 });
-  if(error){ toast('Erro: '+error.message, 'err'); return; }
+  if(error){ toast('Erro: ' + error.message, 'err'); return; }
   await supabase.rpc('log_action', { action:'SENHA_REDEFINIDA', details:{} });
   await supabase.auth.signOut();
   toast('Senha alterada! Faça login novamente.');
