@@ -23,7 +23,7 @@ tailwind.config = { theme: { extend: {
 </head>
 <body class="bg-paper text-ink font-sans antialiased">
 
-<!-- ══════════ LOGIN (split-screen original) ══════════ -->
+<!-- ══════════ LOGIN (split-screen original — visível por padrão) ══════════ -->
 <div id="screen-login" class="min-h-screen flex flex-col lg:flex-row">
   <div class="login-brand relative lg:w-[46%] flex flex-col items-center justify-center p-10 text-center overflow-hidden">
     <div class="stars-pattern absolute inset-0"></div>
@@ -31,7 +31,7 @@ tailwind.config = { theme: { extend: {
     <h1 class="relative font-display text-3xl lg:text-4xl text-white tracking-wide mt-6" style="font-weight:800">POLÍCIA FAMR</h1>
     <p class="relative text-emerald-100/80 text-sm tracking-[0.35em] uppercase mt-2">Força Armada Militar Revolucionária</p>
     <div class="star-row relative mt-5">★★★★</div>
-    <p class="relative text-emerald-100/60 text-xs mt-6 max-w-xs">Honor • Disciplina • Revolução — Sistema interno oficial do Habbo BR</p>
+    <p class="relative text-emerald-100/60 text-xs mt-6 max-w-xs">Honra • Disciplina • Revolução — Sistema interno oficial do Habbo BR</p>
   </div>
   <div class="flex-1 flex items-center justify-center p-6 lg:p-12 bg-paper">
     <div class="w-full max-w-md fade-up">
@@ -41,7 +41,7 @@ tailwind.config = { theme: { extend: {
       <div id="login-alert" class="hidden mt-4 rounded-lg border px-4 py-3 text-sm font-semibold"></div>
       <form id="form-login" class="mt-6 space-y-4">
         <label class="field"><span>Nickname Habbo</span>
-          <div class="input-wrap"><i class="fas fa-user"></i><input id="login-nick" class="input" placeholder="Ex: Chefia de Polícia" autocomplete="username" required></div>
+          <div class="input-wrap"><i class="fas fa-user"></i><input id="login-nick" class="input" placeholder="Ex: joaozinho" autocomplete="username" required></div>
         </label>
         <label class="field"><span>Senha</span>
           <div class="input-wrap"><i class="fas fa-lock"></i><input id="login-pass" type="password" class="input" placeholder="••••••••" autocomplete="current-password" required></div>
@@ -116,7 +116,7 @@ tailwind.config = { theme: { extend: {
   </div>
 </div>
 
-<!-- ══════════ NOVA SENHA (mesma pegada) ══════════ -->
+<!-- ══════════ NOVA SENHA (link de recuperação) ══════════ -->
 <div id="screen-reset" class="hidden min-h-screen flex flex-col lg:flex-row">
   <div class="login-brand relative lg:w-[46%] flex flex-col items-center justify-center p-10 text-center overflow-hidden">
     <div class="stars-pattern absolute inset-0"></div>
@@ -195,6 +195,7 @@ tailwind.config = { theme: { extend: {
   </div>
 </div>
 
+<!-- ══════════ MODAL + TOASTS ══════════ -->
 <div id="modal-root" class="hidden fixed inset-0 z-[70] flex items-center justify-center p-4 bg-ink/40 backdrop-blur-sm">
   <div class="card w-full max-w-lg max-h-[85vh] flex flex-col fade-up">
     <div class="card-head justify-between">
@@ -207,12 +208,15 @@ tailwind.config = { theme: { extend: {
 </div>
 <div id="toast-root" class="fixed top-20 right-4 z-[80] space-y-2 w-80"></div>
 
+<!-- ══════════ REDE DE SEGURANÇA ANTI-TELA-BRANCA ══════════ -->
 <script>
-/* Rede de segurança anti-tela-branca */
 window.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
     const ids = ['screen-login','screen-register','screen-forgot','screen-reset','screen-maintenance','shell'];
-    const visivel = ids.some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
+    const visivel = ids.some(id => {
+      const el = document.getElementById(id);
+      return el && !el.classList.contains('hidden');
+    });
     if(!visivel){
       document.getElementById('screen-login').classList.remove('hidden');
       const box = document.getElementById('login-alert');
@@ -226,7 +230,38 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 window.addEventListener('error', e => console.error('[FAMR] erro de script:', e.message));
 </script>
+
+<!-- ══════════ SCRIPTS DO SISTEMA (ordem importa) ══════════ -->
 <script src="config.js"></script>
+<script>
+/* Fallback de emergência: se o config.js falhar (404/erro de sintaxe),
+   o sistema cria o cliente Supabase aqui e continua funcionando. */
+(function(){
+  if(window.FAMR_CONFIG_OK) return;
+  console.warn('[FAMR] config.js não executou — ativando fallback embutido.');
+
+  window.CONFIG = window.CONFIG || {
+    supabaseUrl: 'https://fsmvyqfmgfivilufvgku.supabase.co',
+    supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzbXZ5cWZtZ2ZpdmlsdWZ2Z2t1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0MDU5NjIsImV4cCI6MjEwNjk4MTk2Mn0.W6qPA5TEtRn3r4bzuck_NEH3FNa4AaJDqGFR7yevUAU',
+    logoUrl: 'famrlogo.png',
+    orgName: 'Polícia FAMR'
+  };
+  window.STATE = window.STATE || { profile: null, groups: [], settings: {}, sections: [], page: 0 };
+  if(typeof window.isAdmin !== 'function'){
+    window.hasPerm = function(p){ return STATE.groups.some(function(g){ return (g.permissions||[]).includes(p); }); };
+    window.isAdmin  = function(){ return hasPerm('admin'); };
+    window.isMaster = function(){ return hasPerm('master'); };
+  }
+  if(typeof window.supabase !== 'undefined' &&
+     typeof window.supabase.createClient === 'function' &&
+     typeof window.supabase.from !== 'function'){
+    try{
+      window.supabase = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
+      window.FAMR_CONFIG_OK = true;
+    }catch(e){ console.error('[FAMR] fallback:', e); }
+  }
+})();
+</script>
 <script src="app.js"></script>
 <script src="auth.js"></script>
 </body>
