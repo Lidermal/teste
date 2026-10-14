@@ -1,222 +1,145 @@
-// Authentication Logic
+/* ══════════ FAMR • AUTENTICAÇÃO (login, registro, recuperação 10min) ══════════ */
 
-document.addEventListener('DOMContentLoaded', () => {
-    checkSession();
-
-    // Event Listeners
-    document.getElementById('login-form').addEventListener('submit', handleLogin);
-    document.getElementById('register-form').addEventListener('submit', handleRegister);
-    document.getElementById('forgot-password-form').addEventListener('submit', handleForgotPassword);
-    
-    // Navigation Links
-    document.getElementById('register-link').addEventListener('click', (e) => { e.preventDefault(); showScreen('register-screen'); });
-    document.getElementById('forgot-password-link').addEventListener('click', (e) => { e.preventDefault(); showScreen('forgot-password-screen'); });
-    document.getElementById('back-to-login').addEventListener('click', () => showScreen('login-screen'));
-    document.getElementById('back-to-login-reg').addEventListener('click', () => showScreen('login-screen'));
-    document.getElementById('logout-btn').addEventListener('click', handleLogout);
-});
-
-function showScreen(screenId) {
-    ['login-screen', 'forgot-password-screen', 'register-screen', 'dashboard'].forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.classList.add('hidden');
-    });
-    const target = document.getElementById(screenId);
-    if(target) target.classList.remove('hidden');
+const SCREENS = ['screen-login','screen-register','screen-reset','screen-maintenance'];
+function showScreen(id){
+  SCREENS.forEach(s => document.getElementById(s).classList.add('hidden'));
+  document.getElementById('shell').classList.add('hidden');
+  if(id === 'shell') document.getElementById('shell').classList.remove('hidden');
+  else document.getElementById(id).classList.remove('hidden');
 }
 
-async function checkSession() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-        await loadUserData(session.user.id);
-    } else {
-        showScreen('login-screen');
-    }
+document.addEventListener('DOMContentLoaded', boot);
+
+async function boot(){
+  // Link de recuperação abre sessão especial
+  supabase.auth.onAuthStateChange((event, session) => {
+    if(event === 'PASSWORD_RECOVERY'){ showScreen('screen-reset'); }
+    if(event === 'SIGNED_OUT'){ STATE.profile = null; showScreen('screen-login'); }
+    if(event === 'SIGNED_IN' && session){ /* fluxo normal abaixo */ }
+  });
+
+  document.getElementById('form-login').addEventListener('submit', doLogin);
+  document.getElementById('form-register').addEventListener('submit', doRegister);
+  document.getElementById('link-forgot').addEventListener('click', e => { e.preventDefault(); doForgot(); });
+  document.getElementById('link-register').addEventListener('click', e => { e.preventDefault(); showScreen('screen-register'); });
+  document.getElementById('link-back-login').addEventListener('click', e => { e.preventDefault(); showScreen('screen-login'); });
+  document.getElementById('btn-reset-save').addEventListener('click', doResetSave);
+  document.getElementById('btn-maint-login').addEventListener('click', () => showScreen('screen-login'));
+  document.getElementById('btn-logout').addEventListener('click', doLogout);
+
+  // Configurações públicas (manutenção) — leitura anon permitida por RLS
+  const { data: sets } = await supabase.from('settings').select('*').in('key', ['maintenance','announcement']);
+  (sets||[]).forEach(s => STATE.settings[s.key] = s.value);
+
+  const { data:{ session } } = await supabase.auth.getSession();
+  if(session) await enterSystem(session.user.id);
+  else showScreen(STATE.settings.maintenance?.enabled ? 'screen-maintenance' : 'screen-login');
 }
 
-async function handleLogin(e) {
-    e.preventDefault();
-    const nickname = document.getElementById('login-nickname').value.trim();
-    const password = document.getElementById('login-password').value;
+/* ── LOGIN por nickname ── */
+async function doLogin(e){
+  e.preventDefault();
+  const nick = document.getElementById('login-nick').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const btn = e.target.querySelector('button'); btn.disabled = true;
 
-    // Verificação de Contas Mestres
-    const master = MASTER_ACCOUNTS.find(m => m.username.toLowerCase() === nickname.toLowerCase() && m.password === password);
-    
-    if (master) {
-        // Simulação de login para mestres (idealmente crie esses usuários no Supabase Auth manualmente)
-        console.log("Login Mestre Detectado:", master.username);
-        // Para fins de demonstração, vamos criar um objeto de usuário falso para o mestre
-        const mockUser = {
-            id: 'master-id-' + Date.now(),
-            email: 'master@famr.local',
-            user_metadata: { nickname: master.username }
-        };
-        // Forçamos o carregamento como se fosse logado
-        currentUser = { ...mockUser, status: 'active', groups: [{ name: 'Chefia', color: '#ef4444', permissions: ['admin', 'all'] }] };
-        userGroups = currentUser.groups;
-        updateUIForUser(currentUser);
-        showScreen('dashboard');
-        loadDashboardContent();
-        return;
+  try{
+    // Resolve email pelo nickname (função SQL security-definer, funciona anon)
+    let email = null;
+    const master = CONFIG.masters.find(m => m.nickname.toLowerCase() === nick.toLowerCase());
+    if(master) email = master.email;
+    else {
+      const { data, error } = await supabase.rpc('resolve_login_email', { nick });
+      if(!error && data) email = data;
     }
+    if(!email){ toast('Nickname não encontrado ou conta banida.', 'err'); return; }
 
-    // Login Padrão Supabase
-    // Nota: O Supabase usa email. Aqui assumimos que o usuário digita o nickname, 
-    // mas no banco o email pode ser algo como nickname@famr.local ou ter uma tabela de ligação.
-    // Para simplificar este exemplo, usaremos o email direto se o usuário souber, 
-    // ou faremos uma busca pelo nickname para pegar o email associado.
-    
-    // Busca email pelo nickname na tabela profiles
-    const { data: profileData } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('nickname', nickname)
-        .single();
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    if(error){ toast('Senha incorreta ou conta pendente: ' + error.message, 'err'); return; }
 
-    if (!profileData || !profileData.email) {
-        alert('Usuário não encontrado ou não ativado.');
-        return;
-    }
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-        email: profileData.email,
-        password: password
-    });
-
-    if (error) {
-        alert('Senha incorreta ou erro de conexão.');
-        console.error(error);
-        return;
-    }
-
-    await loadUserData(data.user.id);
+    await supabase.rpc('log_action', { action:'LOGIN', details:{} });
+    await enterSystem(data.user.id);
+  } finally { btn.disabled = false; }
 }
 
-async function loadUserData(userId) {
-    // Fetch user profile and groups
-    // Nota: A query abaixo assume que você tem uma tabela 'profiles' e uma relação com 'groups'
-    // Ou que os grupos estão armazenados como JSON no profile. Vamos assumir uma estrutura simples.
-    
-    const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+/* ── Carrega perfil + grupos e entra no shell ── */
+async function enterSystem(userId){
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).single();
+  if(!profile){ await supabase.auth.signOut(); showScreen('screen-login'); return; }
+  if(profile.status === 'banned'){ await supabase.auth.signOut(); toast('Conta BANIDA do sistema.', 'err'); showScreen('screen-login'); return; }
+  if(profile.status === 'pending'){ await supabase.auth.signOut(); toast('Conta ainda não ativada. Procure um administrador.', 'warn'); showScreen('screen-login'); return; }
 
-    if (error || !profile) {
-        console.error("Erro ao carregar perfil", error);
-        alert("Erro ao carregar dados do usuário.");
-        return;
-    }
+  STATE.profile = profile;
+  const { data: ug } = await supabase
+    .from('user_groups').select('group_id, groups(*)').eq('user_id', userId);
+  STATE.groups = (ug||[]).map(r => r.groups).sort((a,b) => (b.power_level||0)-(a.power_level||0));
 
-    // Se o status não for ativo, bloqueia
-    if (profile.status !== 'active' && !MASTER_ACCOUNTS.some(m => m.username === profile.nickname)) {
-        alert('Sua conta ainda não foi ativada por um administrador.');
-        supabase.auth.signOut();
-        showScreen('login-screen');
-        return;
-    }
+  // Manutenção: só admin passa
+  if(STATE.settings.maintenance?.enabled && !isAdmin()){
+    document.getElementById('maintenance-msg').textContent = STATE.settings.maintenance.message || document.getElementById('maintenance-msg').textContent;
+    showScreen('screen-maintenance'); return;
+  }
 
-    // Buscar grupos do usuário (assumindo uma tabela de junção 'user_groups' ou campo JSON)
-    // Para este exemplo, vamos assumir que o profile tem um campo 'groups' JSON ou faremos uma query separada
-    // Vou simplificar assumindo que o profile já vem com os dados necessários ou faremos uma query de grupos
-    
-    /* Exemplo de query de grupos se houver tabela de junção:
-    const { data: userGroupsData } = await supabase
-        .from('user_groups')
-        .select('groups(name, color, permissions)')
-        .eq('user_id', userId);
-    */
-   
-    // Mock de grupos para o exemplo funcionar sem o schema exato do DB
-    let groups = profile.groups || [{ name: 'Recruta', color: '#9ca3af', permissions: [] }];
-    
-    currentUser = { ...profile, groups: groups };
-    userGroups = groups;
-    
-    updateUIForUser(currentUser);
-    showScreen('dashboard');
-    loadDashboardContent();
+  // Header
+  document.getElementById('user-nick').textContent = profile.nickname;
+  document.getElementById('user-avatar').textContent = profile.nickname.charAt(0).toUpperCase();
+  const g0 = STATE.groups[0];
+  document.getElementById('user-group').textContent = g0 ? g0.name : 'Sem grupo';
+  if(g0){ document.getElementById('user-avatar').style.background = g0.color || '#14563f'; }
+
+  showScreen('shell');
+  buildSidebar();
+  location.hash = location.hash || '#/home';
+  route();
 }
 
-function updateUIForUser(user) {
-    document.getElementById('user-name-display').textContent = user.nickname;
-    document.getElementById('user-avatar-initials').textContent = user.nickname.charAt(0).toUpperCase();
-    
-    // Define a cor do avatar baseada no grupo principal
-    const mainGroup = user.groups[0];
-    if(mainGroup && mainGroup.color) {
-        document.getElementById('user-avatar-initials').style.backgroundColor = mainGroup.color;
-    }
+/* ── REGISTRO (pendente de ativação) ── */
+async function doRegister(e){
+  e.preventDefault();
+  const nick = document.getElementById('reg-nick').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pass = document.getElementById('reg-pass').value;
 
-    // Verifica Permissões de Admin
-    const isAdmin = user.groups.some(g => g.permissions && g.permissions.includes('admin'));
-    if (isAdmin) {
-        document.getElementById('admin-menu-items').classList.remove('hidden');
-    } else {
-        document.getElementById('admin-menu-items').classList.add('hidden');
-    }
+  const { data, error } = await supabase.auth.signUp({
+    email, password: pass,
+    options: { data: { nickname: nick } }   // trigger SQL cria o profile 'pending'
+  });
+  if(error){ toast('Erro no alistamento: ' + error.message, 'err'); return; }
+  if(data.session) await supabase.auth.signOut(); // não loga automaticamente
+
+  document.getElementById('form-register').classList.add('hidden');
+  document.getElementById('register-success').classList.remove('hidden');
+  await supabase.rpc('log_action', { action:'REGISTRO', details:{ nick } }).catch(()=>{});
 }
 
-async function handleRegister(e) {
-    e.preventDefault();
-    const nickname = document.getElementById('reg-nickname').value;
-    const email = document.getElementById('reg-email').value;
-    const password = document.getElementById('reg-password').value;
-
-    // Cria usuário no Auth
-    const { data, error } = await supabase.auth.signUp({
-        email: email,
-        password: password,
-        options: {
-            data: {
-                nickname: nickname,
-                status: 'pending' // Pendente de aprovação
-            }
-        }
-    });
-
-    if (error) {
-        alert('Erro no registro: ' + error.message);
-        return;
-    }
-
-    // Cria entrada na tabela profiles (se não usar trigger no DB)
-    if (data.user) {
-        await supabase.from('profiles').insert([
-            { id: data.user.id, nickname: nickname, email: email, status: 'pending' }
-        ]);
-    }
-
-    alert('Registro realizado! Aguarde a ativação de um superior da FAMR.');
-    showScreen('login-screen');
+/* ── ESQUECI A SENHA (email da polícia via SMTP configurado; link 10min) ── */
+async function doForgot(){
+  const nick = prompt('Digite seu nickname Habbo:');
+  if(!nick) return;
+  const { data: email } = await supabase.rpc('resolve_login_email', { nick });
+  if(!email){ toast('Nickname não encontrado.', 'err'); return; }
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: location.origin + location.pathname   // volta p/ mesma página (hash router)
+  });
+  toast(error ? 'Erro ao enviar: '+error.message
+              : 'Link de redefinição enviado ao e-mail cadastrado. Expira em 10 minutos.');
 }
 
-async function handleForgotPassword(e) {
-    e.preventDefault();
-    const nickname = document.getElementById('recovery-nickname').value;
-    
-    // Busca email pelo nickname
-    const { data: profile } = await supabase.from('profiles').select('email').eq('nickname', nickname).single();
-    
-    if (profile && profile.email) {
-        const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
-            redirectTo: 'https://seusite.github.io/reset-password.html' // Link para página de redefinição
-        });
-        
-        if (!error) {
-            alert(`Link de recuperação enviado para o e-mail cadastrado. Válido por 10 minutos.`);
-        } else {
-            alert('Erro ao enviar link.');
-        }
-    } else {
-        alert('Nickname não encontrado.');
-    }
-    
-    showScreen('login-screen');
+async function doResetSave(){
+  const p1 = document.getElementById('reset-pass').value;
+  const p2 = document.getElementById('reset-pass2').value;
+  if(p1 !== p2){ toast('As senhas não conferem.', 'err'); return; }
+  const { error } = await supabase.auth.updateUser({ password: p1 });
+  if(error){ toast('Erro: '+error.message, 'err'); return; }
+  await supabase.rpc('log_action', { action:'SENHA_REDEFINIDA', details:{} });
+  await supabase.auth.signOut();
+  toast('Senha alterada! Faça login novamente.');
+  showScreen('screen-login');
 }
 
-function handleLogout() {
-    supabase.auth.signOut();
-    location.reload();
+async function doLogout(){
+  await supabase.rpc('log_action', { action:'LOGOUT', details:{} }).catch(()=>{});
+  await supabase.auth.signOut();
+  location.hash = '';
+  location.reload();
 }
