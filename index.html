@@ -23,84 +23,119 @@ tailwind.config = { theme: { extend: {
 </head>
 <body class="bg-paper text-ink font-sans antialiased">
 
-<!-- ══════════ LOGIN ══════════ -->
-<div id="screen-login" class="auth-bg min-h-screen flex items-center justify-center p-6">
-  <div class="w-full max-w-md fade-up">
-    <div class="text-center mb-6">
-      <img src="famrlogo.png" class="w-24 mx-auto drop-shadow-xl" onerror="this.style.display='none'">
-      <h1 class="font-display text-2xl font-extrabold text-famr-900 mt-3 tracking-wide">POLÍCIA FAMR</h1>
-      <p class="text-[11px] tracking-[0.35em] uppercase text-muted mt-1">Força Armada Militar Revolucionária</p>
-      <div class="star-row mt-2 text-sm">★★★★</div>
-    </div>
-    <div class="card">
-      <div class="card-head"><h2 class="font-display font-bold"><i class="fas fa-right-to-bracket text-gold-500 mr-2"></i>Acesso ao quartel</h2></div>
-      <div class="p-6">
-        <div id="login-alert" class="hidden mb-4 rounded-lg border px-4 py-3 text-sm font-semibold"></div>
-        <form id="form-login" class="space-y-4">
-          <label class="field"><span>Nickname Habbo</span>
-            <div class="input-wrap"><i class="fas fa-user"></i><input id="login-nick" class="input" placeholder="Ex: Chefia de Polícia" autocomplete="username" required></div>
-          </label>
-          <label class="field"><span>Senha</span>
-            <div class="input-wrap"><i class="fas fa-lock"></i><input id="login-pass" type="password" class="input" placeholder="••••••••" autocomplete="current-password" required></div>
-          </label>
-          <button class="btn btn-primary w-full justify-center" type="submit"><i class="fas fa-right-to-bracket"></i> ACESSAR O QUARTEL</button>
-        </form>
-        <div class="flex items-center justify-between mt-5 text-sm font-semibold">
-          <a href="#" id="link-forgot" class="text-muted hover:text-famr-700"><i class="fas fa-key mr-1 text-gold-500"></i>Esqueci a senha</a>
-          <a href="#" id="link-register" class="text-famr-700 hover:text-famr-900"><i class="fas fa-user-plus mr-1 text-gold-500"></i>Alistamento</a>
-        </div>
+<!-- ══════════ LOGIN (split-screen original) ══════════ -->
+<div id="screen-login" class="min-h-screen flex flex-col lg:flex-row">
+  <div class="login-brand relative lg:w-[46%] flex flex-col items-center justify-center p-10 text-center overflow-hidden">
+    <div class="stars-pattern absolute inset-0"></div>
+    <img src="famrlogo.png" alt="Emblema FAMR" class="brand-logo relative w-40 lg:w-52 drop-shadow-2xl" onerror="this.style.display='none'">
+    <h1 class="relative font-display text-3xl lg:text-4xl text-white tracking-wide mt-6" style="font-weight:800">POLÍCIA FAMR</h1>
+    <p class="relative text-emerald-100/80 text-sm tracking-[0.35em] uppercase mt-2">Força Armada Militar Revolucionária</p>
+    <div class="star-row relative mt-5">★★★★</div>
+    <p class="relative text-emerald-100/60 text-xs mt-6 max-w-xs">Honor • Disciplina • Revolução — Sistema interno oficial do Habbo BR</p>
+  </div>
+  <div class="flex-1 flex items-center justify-center p-6 lg:p-12 bg-paper">
+    <div class="w-full max-w-md fade-up">
+      <p class="text-xs font-bold tracking-[0.3em] uppercase text-gold-600">Acesso restrito</p>
+      <h2 class="font-display text-3xl font-extrabold mt-2">Entrar no sistema</h2>
+      <p class="text-sm text-muted mt-2">Identifique-se com seu nickname Habbo para acessar o quartel.</p>
+      <div id="login-alert" class="hidden mt-4 rounded-lg border px-4 py-3 text-sm font-semibold"></div>
+      <form id="form-login" class="mt-6 space-y-4">
+        <label class="field"><span>Nickname Habbo</span>
+          <div class="input-wrap"><i class="fas fa-user"></i><input id="login-nick" class="input" placeholder="Ex: Chefia de Polícia" autocomplete="username" required></div>
+        </label>
+        <label class="field"><span>Senha</span>
+          <div class="input-wrap"><i class="fas fa-lock"></i><input id="login-pass" type="password" class="input" placeholder="••••••••" autocomplete="current-password" required></div>
+        </label>
+        <button class="btn btn-primary w-full justify-center" type="submit"><i class="fas fa-right-to-bracket"></i> ACESSAR O QUARTEL</button>
+      </form>
+      <div class="flex items-center justify-between mt-6 text-sm font-semibold">
+        <a href="#" id="link-forgot" class="text-muted hover:text-famr-700 transition-colors"><i class="fas fa-key mr-1 text-gold-500"></i>Esqueci a senha</a>
+        <a href="#" id="link-register" class="text-famr-700 hover:text-famr-900 transition-colors"><i class="fas fa-user-plus mr-1 text-gold-500"></i>Alistamento</a>
       </div>
+      <div class="star-divider mt-10">★ ★ ★ ★</div>
     </div>
   </div>
 </div>
 
-<!-- ══════════ ALISTAMENTO (padrão do anexo) ══════════ -->
-<div id="screen-register" class="auth-bg hidden min-h-screen flex items-center justify-center p-6">
-  <div class="w-full max-w-md card fade-up">
-    <div class="card-head"><h2 class="font-display font-bold text-lg"><i class="fas fa-user-plus text-gold-500 mr-2"></i>Alistamento FAMR</h2></div>
-    <div class="p-6 space-y-4">
-      <form id="form-register" class="space-y-4">
+<!-- ══════════ ALISTAMENTO (mesma pegada do login) ══════════ -->
+<div id="screen-register" class="hidden min-h-screen flex flex-col lg:flex-row">
+  <div class="login-brand relative lg:w-[46%] flex flex-col items-center justify-center p-10 text-center overflow-hidden">
+    <div class="stars-pattern absolute inset-0"></div>
+    <img src="famrlogo.png" alt="Emblema FAMR" class="brand-logo relative w-40 lg:w-52 drop-shadow-2xl" onerror="this.style.display='none'">
+    <h1 class="relative font-display text-3xl lg:text-4xl text-white tracking-wide mt-6" style="font-weight:800">ALISTAMENTO</h1>
+    <p class="relative text-emerald-100/80 text-sm tracking-[0.35em] uppercase mt-2">Junte-se à Revolução</p>
+    <div class="star-row relative mt-5">★★★★</div>
+    <p class="relative text-emerald-100/60 text-xs mt-6 max-w-xs">Após o registro, sua ativação é feita exclusivamente pelo Alto Comando.</p>
+  </div>
+  <div class="flex-1 flex items-center justify-center p-6 lg:p-12 bg-paper">
+    <div class="w-full max-w-md fade-up">
+      <p class="text-xs font-bold tracking-[0.3em] uppercase text-gold-600">Novo recruta</p>
+      <h2 class="font-display text-3xl font-extrabold mt-2">Alistamento FAMR</h2>
+      <p class="text-sm text-muted mt-2">Preencha seus dados. O registro precisa ser <b>ativado por um administrador</b>.</p>
+      <form id="form-register" class="mt-6 space-y-4">
         <label class="field"><span>Nickname Habbo</span><div class="input-wrap"><i class="fas fa-user"></i><input id="reg-nick" class="input" required minlength="3"></div></label>
         <label class="field"><span>E-mail</span><div class="input-wrap"><i class="fas fa-envelope"></i><input id="reg-email" type="email" class="input" required></div></label>
         <label class="field"><span>Senha</span><div class="input-wrap"><i class="fas fa-lock"></i><input id="reg-pass" type="password" class="input" required minlength="6"></div></label>
         <button class="btn btn-gold w-full justify-center" type="submit"><i class="fas fa-file-signature"></i> CONFIRMAR ALISTAMENTO</button>
       </form>
-      <div id="register-success" class="hidden rounded-xl border border-famr-500/40 bg-famr-100 p-4 text-sm text-famr-800">
+      <div id="register-success" class="hidden mt-4 rounded-xl border border-famr-500/40 bg-famr-100 p-4 text-sm text-famr-800">
         <i class="fas fa-circle-check mr-1"></i> <b>Registro realizado com sucesso!</b><br>
         Sua conta precisa ser <b>ativada por um administrador</b>. Procure um superior da FAMR para liberar seu acesso.
       </div>
-      <a href="#" id="link-back-login" class="block text-center text-sm font-semibold text-muted hover:text-ink">← Voltar ao login</a>
+      <a href="#" id="link-back-login" class="block text-center mt-6 text-sm font-semibold text-muted hover:text-ink">← Voltar ao login</a>
+      <div class="star-divider mt-10">★ ★ ★ ★</div>
     </div>
   </div>
 </div>
 
-<!-- ══════════ ESQUECI A SENHA (tela própria, sem prompt nativo) ══════════ -->
-<div id="screen-forgot" class="auth-bg hidden min-h-screen flex items-center justify-center p-6">
-  <div class="w-full max-w-md card fade-up">
-    <div class="card-head"><h2 class="font-display font-bold text-lg"><i class="fas fa-key text-gold-500 mr-2"></i>Recuperar acesso</h2></div>
-    <div class="p-6 space-y-4">
-      <p class="text-sm text-muted">Informe seu nickname. Enviaremos um link de redefinição para o e-mail cadastrado. <b>O link expira em 10 minutos.</b></p>
-      <form id="form-forgot" class="space-y-4">
+<!-- ══════════ ESQUECI A SENHA (mesma pegada do login) ══════════ -->
+<div id="screen-forgot" class="hidden min-h-screen flex flex-col lg:flex-row">
+  <div class="login-brand relative lg:w-[46%] flex flex-col items-center justify-center p-10 text-center overflow-hidden">
+    <div class="stars-pattern absolute inset-0"></div>
+    <img src="famrlogo.png" alt="Emblema FAMR" class="brand-logo relative w-40 lg:w-52 drop-shadow-2xl" onerror="this.style.display='none'">
+    <h1 class="relative font-display text-3xl lg:text-4xl text-white tracking-wide mt-6" style="font-weight:800">RECUPERAÇÃO</h1>
+    <p class="relative text-emerald-100/80 text-sm tracking-[0.35em] uppercase mt-2">De volta às fileiras</p>
+    <div class="star-row relative mt-5">★★★★</div>
+    <p class="relative text-emerald-100/60 text-xs mt-6 max-w-xs">O link de redefinição expira em 10 minutos e destrava contas bloqueadas.</p>
+  </div>
+  <div class="flex-1 flex items-center justify-center p-6 lg:p-12 bg-paper">
+    <div class="w-full max-w-md fade-up">
+      <p class="text-xs font-bold tracking-[0.3em] uppercase text-gold-600">Recuperar acesso</p>
+      <h2 class="font-display text-3xl font-extrabold mt-2">Esqueci a senha</h2>
+      <p class="text-sm text-muted mt-2">Informe seu nickname. Enviaremos o link de redefinição ao e-mail cadastrado.</p>
+      <form id="form-forgot" class="mt-6 space-y-4">
         <label class="field"><span>Nickname Habbo</span><div class="input-wrap"><i class="fas fa-user"></i><input id="forgot-nick" class="input" required></div></label>
         <button class="btn btn-primary w-full justify-center" type="submit"><i class="fas fa-paper-plane"></i> ENVIAR LINK DE REDEFINIÇÃO</button>
       </form>
-      <div id="forgot-ok" class="hidden rounded-xl border border-famr-500/40 bg-famr-100 p-4 text-sm text-famr-800">
-        <i class="fas fa-envelope-circle-check mr-1"></i> Link enviado! Verifique sua caixa de entrada (e spam). Ao abrir, você volta aqui para criar a nova senha.
+      <div id="forgot-ok" class="hidden mt-4 rounded-xl border border-famr-500/40 bg-famr-100 p-4 text-sm text-famr-800">
+        <i class="fas fa-envelope-circle-check mr-1"></i> Link enviado! Verifique sua caixa de entrada (e o spam). Ao abrir, você volta aqui para criar a nova senha.
       </div>
-      <a href="#" id="link-back-login2" class="block text-center text-sm font-semibold text-muted hover:text-ink">← Voltar ao login</a>
+      <a href="#" id="link-back-login2" class="block text-center mt-6 text-sm font-semibold text-muted hover:text-ink">← Voltar ao login</a>
+      <div class="star-divider mt-10">★ ★ ★ ★</div>
     </div>
   </div>
 </div>
 
-<!-- ══════════ NOVA SENHA (link de recuperação) ══════════ -->
-<div id="screen-reset" class="auth-bg hidden min-h-screen flex items-center justify-center p-6">
-  <div class="w-full max-w-md card fade-up">
-    <div class="card-head"><h2 class="font-display font-bold text-lg"><i class="fas fa-rotate-left text-gold-500 mr-2"></i>Nova senha</h2></div>
-    <div class="p-6 space-y-4">
-      <p class="text-sm text-muted">Defina sua nova senha de acesso. Contas bloqueadas são destravadas automaticamente.</p>
-      <label class="field"><span>Nova senha</span><div class="input-wrap"><i class="fas fa-lock"></i><input id="reset-pass" type="password" class="input" minlength="6"></div></label>
-      <label class="field"><span>Confirmar senha</span><div class="input-wrap"><i class="fas fa-lock"></i><input id="reset-pass2" type="password" class="input" minlength="6"></div></label>
-      <button id="btn-reset-save" class="btn btn-primary w-full justify-center"><i class="fas fa-check"></i> SALVAR E VOLTAR AO LOGIN</button>
+<!-- ══════════ NOVA SENHA (mesma pegada) ══════════ -->
+<div id="screen-reset" class="hidden min-h-screen flex flex-col lg:flex-row">
+  <div class="login-brand relative lg:w-[46%] flex flex-col items-center justify-center p-10 text-center overflow-hidden">
+    <div class="stars-pattern absolute inset-0"></div>
+    <img src="famrlogo.png" alt="Emblema FAMR" class="brand-logo relative w-40 lg:w-52 drop-shadow-2xl" onerror="this.style.display='none'">
+    <h1 class="relative font-display text-3xl lg:text-4xl text-white tracking-wide mt-6" style="font-weight:800">NOVA SENHA</h1>
+    <p class="relative text-emerald-100/80 text-sm tracking-[0.35em] uppercase mt-2">Redefinição segura</p>
+    <div class="star-row relative mt-5">★★★★</div>
+  </div>
+  <div class="flex-1 flex items-center justify-center p-6 lg:p-12 bg-paper">
+    <div class="w-full max-w-md fade-up">
+      <p class="text-xs font-bold tracking-[0.3em] uppercase text-gold-600">Redefinição</p>
+      <h2 class="font-display text-3xl font-extrabold mt-2">Criar nova senha</h2>
+      <p class="text-sm text-muted mt-2">Defina sua nova senha. Contas bloqueadas são destravadas automaticamente.</p>
+      <div class="mt-6 space-y-4">
+        <label class="field"><span>Nova senha</span><div class="input-wrap"><i class="fas fa-lock"></i><input id="reset-pass" type="password" class="input" minlength="6"></div></label>
+        <label class="field"><span>Confirmar senha</span><div class="input-wrap"><i class="fas fa-lock"></i><input id="reset-pass2" type="password" class="input" minlength="6"></div></label>
+        <button id="btn-reset-save" class="btn btn-primary w-full justify-center"><i class="fas fa-check"></i> SALVAR E VOLTAR AO LOGIN</button>
+      </div>
+      <div class="star-divider mt-10">★ ★ ★ ★</div>
     </div>
   </div>
 </div>
@@ -173,28 +208,24 @@ tailwind.config = { theme: { extend: {
 <div id="toast-root" class="fixed top-20 right-4 z-[80] space-y-2 w-80"></div>
 
 <script>
-/* Rede de segurança: se algum script falhar, demorar ou vier cache antigo,
-   o login é exibido mesmo assim e o usuário vê o motivo. */
+/* Rede de segurança anti-tela-branca */
 window.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
     const ids = ['screen-login','screen-register','screen-forgot','screen-reset','screen-maintenance','shell'];
-    const algumaVisivel = ids.some(id => {
-      const el = document.getElementById(id);
-      return el && !el.classList.contains('hidden');
-    });
-    if(!algumaVisivel){
+    const visivel = ids.some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
+    if(!visivel){
       document.getElementById('screen-login').classList.remove('hidden');
       const box = document.getElementById('login-alert');
       if(box){
-        box.className = 'mb-4 rounded-lg border px-4 py-3 text-sm font-semibold border-red-400 bg-red-50 text-red-700';
-        box.innerHTML = 'O sistema não iniciou (erro de script ou cache antigo). Pressione <b>Ctrl+F5</b>. Se persistir, abra o console (F12) e envie a mensagem de erro.';
+        box.className = 'mt-4 rounded-lg border px-4 py-3 text-sm font-semibold border-red-400 bg-red-50 text-red-700';
+        box.innerHTML = 'O sistema não iniciou (cache antigo ou erro de script). Pressione <b>Ctrl+F5</b>.';
         box.classList.remove('hidden');
       }
     }
   }, 2500);
 });
 window.addEventListener('error', e => console.error('[FAMR] erro de script:', e.message));
-</script>  
+</script>
 <script src="config.js"></script>
 <script src="app.js"></script>
 <script src="auth.js"></script>
