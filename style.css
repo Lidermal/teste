@@ -1,4 +1,4 @@
-/* ══════════ FAMR • TEMA CERIMONIAL v5 ══════════ */
+/* ══════════ FAMR • TEMA CERIMONIAL v6 ══════════ */
 :root{
   --green-900:#0b3d2c; --green-800:#0e4433; --green-700:#14563f; --green-600:#1a6b4f;
   --gold-500:#c9a227; --gold-300:#e6c65c; --gold-100:#faf3dc;
@@ -10,14 +10,23 @@
 ::-webkit-scrollbar-thumb:hover{background:var(--green-600)}
 ::selection{background:var(--gold-300);color:var(--green-900)}
 
-/* fundo das telas de autenticação */
+/* ── Painel de marca (split-screen do login/alistamento/recuperação) ── */
+.login-brand{background:
+  radial-gradient(900px 420px at 15% -10%, rgba(201,162,39,.28), transparent 60%),
+  radial-gradient(700px 500px at 110% 110%, rgba(255,255,255,.08), transparent 55%),
+  linear-gradient(160deg, var(--green-800), var(--green-900) 70%);}
+.stars-pattern{background-image:radial-gradient(rgba(255,255,255,.10) 1px, transparent 1.4px);background-size:26px 26px;opacity:.5}
+.brand-logo{filter:drop-shadow(0 12px 30px rgba(0,0,0,.45));animation:float 6s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.star-row{color:var(--gold-500);letter-spacing:.6em;text-shadow:0 0 14px rgba(201,162,39,.4)}
+.login-brand .star-row{color:var(--gold-300);text-shadow:0 0 18px rgba(201,162,39,.55)}
+.star-divider{color:#cfd8d2;letter-spacing:1.2em;text-align:center;font-size:.7rem}
 .auth-bg{background:
   radial-gradient(800px 400px at 15% -10%, rgba(201,162,39,.16), transparent 60%),
   radial-gradient(700px 500px at 100% 110%, rgba(20,86,63,.14), transparent 55%),
   var(--paper);}
-.star-row{color:var(--gold-500);letter-spacing:.6em;text-shadow:0 0 14px rgba(201,162,39,.4)}
-.star-divider{color:#cfd8d2;letter-spacing:1.2em;text-align:center;font-size:.7rem}
 
+/* ── Campos ── */
 .field{display:block}
 .field>span{display:block;font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem}
 .input-wrap{position:relative;display:flex;align-items:center}
@@ -26,6 +35,7 @@
 .input:focus{outline:none;border-color:var(--green-600);box-shadow:0 0 0 4px rgba(26,107,79,.12)}
 select.input,textarea.input{padding-left:.9rem}
 
+/* ── Botões ── */
 .btn{position:relative;display:inline-flex;align-items:center;gap:.5rem;font-weight:800;font-size:.8rem;letter-spacing:.06em;border-radius:12px;padding:.65rem 1.1rem;transition:transform .15s, box-shadow .2s;overflow:hidden;cursor:pointer}
 .btn:active{transform:scale(.98)}
 .btn-primary{background:linear-gradient(135deg,var(--green-600),var(--green-800));color:#fff;box-shadow:0 8px 20px -8px rgba(11,61,44,.55)}
@@ -40,13 +50,25 @@ select.input,textarea.input{padding-left:.9rem}
 .btn-danger:hover{background:#fdf1f1}
 .btn-sm{padding:.4rem .7rem;font-size:.7rem;border-radius:9px}
 
+/* ── Cards / fórum ── */
 .card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px rgba(16,24,20,.05),0 10px 28px -18px rgba(16,24,20,.25);overflow:hidden}
 .card-hover{transition:transform .2s, box-shadow .25s, border-color .2s}
 .card-hover:hover{transform:translateY(-3px);border-color:rgba(201,162,39,.55)}
 .card-head{position:relative;display:flex;align-items:center;gap:.5rem;padding:.9rem 1.2rem;border-bottom:1px solid var(--line);background:linear-gradient(90deg,var(--gold-100),#fff 45%)}
 .card-head::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,var(--gold-500),var(--green-700))}
 .card-body{padding:1.2rem}
+.cat-head{display:flex;align-items:center;gap:.6rem;padding:.7rem 1.1rem;background:linear-gradient(90deg,var(--green-800),var(--green-700));color:#eaf4ee;font-weight:800;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase}
+.cat-head i{color:var(--gold-300)}
+.forum-row{display:flex;align-items:center;gap:1rem;padding:.85rem 1.1rem;transition:background .15s}
+.forum-row:hover{background:var(--gold-100)}
+.forum-ico{width:2.6rem;height:2.6rem;border-radius:10px;display:grid;place-items:center;background:#e6f2ec;color:var(--green-700);font-size:1rem;flex-shrink:0}
+.forum-ico.lock{background:#f1f3f2;color:#9aa8a1}
+.forum-ico.new{background:var(--gold-100);color:var(--gold-600)}
+.topic-row{display:flex;align-items:center;gap:.8rem;padding:.7rem 1.1rem;transition:background .15s;cursor:pointer}
+.topic-row:hover{background:var(--gold-100)}
+.stat-tile{background:#fff;border:1px solid var(--line);border-radius:14px;padding:.8rem 1rem;display:flex;align-items:center;gap:.8rem}
 
+/* ── Shell ─ */
 .topbar{position:sticky;top:0;background:rgba(255,255,255,.86);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
 .topbar::after{content:'';display:block;height:2px;background:linear-gradient(90deg,transparent,var(--gold-500) 20%,var(--green-700) 50%,var(--gold-500) 80%,transparent)}
 .sidebar{background:linear-gradient(180deg,var(--green-800),var(--green-900));border-radius:0 0 18px 18px;margin:0 0 1rem .75rem;box-shadow:0 18px 34px -22px rgba(11,61,44,.7)}
@@ -56,18 +78,7 @@ select.input,textarea.input{padding-left:.9rem}
 .nav-item.active{background:rgba(255,255,255,.14);color:#fff;box-shadow:inset 3px 0 0 var(--gold-500)}
 .nav-sep{margin:.9rem .6rem .4rem;font-size:.62rem;letter-spacing:.28em;text-transform:uppercase;color:rgba(207,228,218,.45);font-weight:800}
 
-/* ── ESTRUTURA FÓRUM (Forumeiros) ── */
-.cat-head{display:flex;align-items:center;gap:.6rem;padding:.7rem 1.1rem;background:linear-gradient(90deg,var(--green-800),var(--green-700));color:#eaf4ee;font-weight:800;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase}
-.cat-head i{color:var(--gold-300)}
-.forum-row{display:flex;align-items:center;gap:1rem;padding:.85rem 1.1rem;transition:background .15s}
-.forum-row:hover{background:var(--gold-100)}
-.forum-ico{width:2.6rem;height:2.6rem;border-radius:10px;display:grid;place-items-center;background:#e6f2ec;color:var(--green-700);font-size:1rem;flex-shrink:0}
-.forum-ico.lock{background:#f1f3f2;color:#9aa8a1}
-.forum-ico.new{background:var(--gold-100);color:var(--gold-600)}
-.topic-row{display:flex;align-items:center;gap:.8rem;padding:.7rem 1.1rem;transition:background .15s;cursor:pointer}
-.topic-row:hover{background:var(--gold-100)}
-.stat-tile{background:#fff;border:1px solid var(--line);border-radius:14px;padding:.8rem 1rem;display:flex;align-items:center;gap:.8rem}
-
+/* ── Tabelas / chips / diversos ── */
 .table-famr{width:100%;border-collapse:collapse;font-size:.88rem}
 .table-famr th{background:var(--green-800);color:#e8f2ec;font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;padding:.65rem .9rem;text-align:left}
 .table-famr td{padding:.65rem .9rem;border-bottom:1px solid var(--line);vertical-align:middle}
@@ -79,12 +90,10 @@ select.input,textarea.input{padding-left:.9rem}
 .chip-neutral{background:#eef2f0;color:#4c5a53;border:1px solid var(--line)}
 .lock-badge{color:#9aa8a1}
 .group-dot{width:.65rem;height:.65rem;border-radius:999px;display:inline-block}
-
 .hero{position:relative;border-radius:20px;overflow:hidden;color:#fff;background:
   radial-gradient(700px 260px at 8% -30%, rgba(201,162,39,.35), transparent 60%),
   linear-gradient(135deg,var(--green-700),var(--green-900))}
 .hero::after{content:'★ ★ ★ ★';position:absolute;right:1.4rem;bottom:.9rem;letter-spacing:.5em;color:rgba(230,198,92,.5);font-size:.8rem}
-
 .fade-up{animation:fadeUp .45s cubic-bezier(.16,1,.3,1) both}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 .skeleton{background:linear-gradient(90deg,#ecefed 25%,#f7f9f8 50%,#ecefed 75%);background-size:200% 100%;animation:sh 1.2s infinite;border-radius:10px}
