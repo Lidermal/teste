@@ -1,5 +1,5 @@
-/* ══════════ FAMR • CONFIGURAÇÃO PÚBLICA (com auto-verificação) ══════════
-   A chave anon é pública por design; a segurança real está no RLS do banco.
+/* ══════════ FAMR • CONFIGURAÇÃO PÚBLICA (completa) ══════════
+   Chave anon é pública por design; a segurança real está no RLS do banco.
    Contas privilegiadas existem APENAS no database.sql. */
 
 const CONFIG = {
@@ -9,25 +9,26 @@ const CONFIG = {
   orgName: 'Polícia FAMR'
 };
 
+/* ── Cliente Supabase com auto-verificação ── */
 let supabase = null;
 try{
   if(typeof window.supabase === 'undefined' || typeof window.supabase.createClient !== 'function'){
-    throw new Error('a biblioteca supabase-js não carregou (CDN/bloqueador de scripts?).');
+    throw new Error('a biblioteca supabase-js não carregou (CDN/bloqueador?).');
   }
   supabase = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
   if(!supabase || typeof supabase.from !== 'function'){
-    throw new Error('o cliente Supabase foi criado inválido (confira URL e chave).');
+    throw new Error('cliente Supabase inválido (confira URL/chave).');
   }
   window.FAMR_CONFIG_OK = true;
 }catch(err){
   window.FAMR_CONFIG_OK = false;
   console.error('[FAMR] falha no config.js:', err);
-  document.addEventListener('DOMContentLoaded', () => {
-    const box = document.getElementById('login-alert');
-    if(box){
-      box.className = 'mt-4 rounded-lg border px-4 py-3 text-sm font-semibold border-red-400 bg-red-50 text-red-700';
-      box.innerHTML = 'Falha no config.js: ' + (err && err.message ? err.message : err);
-      box.classList.remove('hidden');
-    }
-  });
 }
+
+/* ── Estado global + permissões (usados por app.js e auth.js) ── */
+const STATE = { profile: null, groups: [], settings: {}, sections: [], page: 0 };
+
+const PERMS = { ADMIN: 'admin', MASTER: 'master', REVIEW: 'review' };
+const hasPerm = p => STATE.groups.some(g => (g.permissions || []).includes(p));
+const isAdmin  = () => hasPerm(PERMS.ADMIN);
+const isMaster = () => hasPerm(PERMS.MASTER);
