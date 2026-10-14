@@ -1,22 +1,27 @@
-// Supabase Configuration
-// SUBSTITUA PELAS SUAS CREDENCIAIS DO SUPABASE
-const SUPABASE_URL = 'https://SEU_PROJETO.supabase.co';
-const SUPABASE_KEY = 'SUA_CHAVE_ANON_PUBLICA';
+/* ══════════ FAMR • CONFIGURAÇÃO ══════════
+   1) Crie um projeto em https://supabase.com
+   2) Cole abaixo a URL e a chave ANON (Settings > API)
+   3) Deixe o arquivo famrlogo.png NA RAIZ do repositório (GitHub Pages / Vercel) */
 
-// Initialize Supabase Client
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const CONFIG = {
+  supabaseUrl: 'https://SEU_PROJETO.supabase.co',
+  supabaseAnonKey: 'COLE_SUA_CHAVE_ANON_AQUI',
+  logoUrl: 'famrlogo.png',
+  orgName: 'Polícia FAMR',
+  // Contas mestres — crie estes usuários EXATAMENTE com estas senhas no
+  // Supabase (Authentication > Add user) e rode o database.sql:
+  masters: [
+    { nickname: 'Chefia de Polícia', email: 'chefia@famr.system',  password: '@pVQu8a8' },
+    { nickname: 'admin master',      email: 'adminmaster@famr.system', password: '29112004' }
+  ]
+};
 
-// Global State
-let currentUser = null;
-let userGroups = [];
-let isMaintenanceMode = false;
+const supabase = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
 
-// Contas Mestres (Hardcoded conforme solicitado para acesso imediato)
-// Em produção, idealmente essas contas também estariam no banco com flags especiais
-const MASTER_ACCOUNTS = [
-    { username: 'Chefia de Polícia', password: '@pVQu8a8' },
-    { username: 'admin master', password: '29112004' }
-];
+// Estado global leve (cache em memória p/ fluidez com grande volume de dados)
+const STATE = { profile: null, groups: [], settings: {}, sections: [], page: 0 };
 
-// Configurações
-const RECOVERY_EMAIL_SENDER = 'pmfamr@gmail.com';
+const PERMS = { ADMIN:'admin', MASTER:'master', REVIEW:'review' };
+const hasPerm = p => STATE.groups.some(g => (g.permissions||[]).includes(p));
+const isAdmin = () => hasPerm(PERMS.ADMIN);
+const isMaster = () => hasPerm(PERMS.MASTER);
