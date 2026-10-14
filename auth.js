@@ -1,17 +1,8 @@
-/* ══════════ FAMR • AUTENTICAÇÃO v4 (à prova de falhas) ══════════
-   • Listeners anexados ANTES de qualquer chamada ao banco (nada "morre" se o SQL falhar)
-   • Sessão: inatividade 1h + virada de dia
-   • Anti-spam: 4 requisições/5min por navegador → bloqueio 5min com contador
-   • 4 senhas erradas → conta bloqueada no banco + log no admin
-   • Sem credenciais no código */
+/* ══════════ FAMR • AUTENTICAÇÃO v5 — zero alertas nativos ══════════ */
 
-const SCREENS = ['screen-login','screen-register','screen-reset','screen-maintenance'];
-const INACTIVITY_MS = 60 * 60 * 1000;
-const BROWSER_WINDOW_MS = 5 * 60 * 1000;
-const BROWSER_BLOCK_MS  = 5 * 60 * 1000;
-const MAX_REQ_WINDOW = 4;
-const MAX_WRONG_PASS = 4;
-
+const SCREENS = ['screen-login','screen-register','screen-forgot','screen-reset','screen-maintenance'];
+const INACTIVITY_MS = 60*60*1000, BROWSER_WINDOW_MS = 5*60*1000, BROWSER_BLOCK_MS = 5*60*1000;
+const MAX_REQ_WINDOW = 4, MAX_WRONG_PASS = 4;
 let watchTimer = null, lastTouch = 0, cdTimer = null;
 const dayStr = () => new Date().toISOString().slice(0,10);
 
@@ -19,16 +10,13 @@ function showScreen(id){
   SCREENS.forEach(s => document.getElementById(s).classList.add('hidden'));
   document.getElementById('shell').classList.add('hidden');
   if(id === 'shell') document.getElementById('shell').classList.remove('hidden');
-  else document.getElementById(id).classList.remove('hidden');
+  else document.getElementById(id)?.classList.remove('hidden');
 }
-
 function loginAlert(msg, type='err'){
-  const box = document.getElementById('login-alert');
-  if(!box) return;
-  const styles = { err:'border-red-400 bg-red-50 text-red-700', warn:'border-gold-500 bg-gold-100 text-gold-600', ok:'border-famr-500 bg-famr-100 text-famr-700' };
-  box.className = 'mt-4 rounded-lg border px-4 py-3 text-sm font-semibold ' + styles[type];
-  box.innerHTML = msg;
-  box.classList.remove('hidden');
+  const box = document.getElementById('login-alert'); if(!box) return;
+  const st = { err:'border-red-400 bg-red-50 text-red-700', warn:'border-gold-500 bg-gold-100 text-gold-600', ok:'border-famr-500 bg-famr-100 text-famr-700' };
+  box.className = 'mb-4 rounded-lg border px-4 py-3 text-sm font-semibold ' + st[type];
+  box.innerHTML = msg; box.classList.remove('hidden');
 }
 const loginAlertHide = () => document.getElementById('login-alert')?.classList.add('hidden');
 const setLoginDisabled = d => { const b = document.querySelector('#form-login button[type=submit]'); if(b) b.disabled = d; };
@@ -39,16 +27,16 @@ function startCountdown(until){
     const ms = until - Date.now();
     if(ms <= 0){ clearInterval(cdTimer); loginAlertHide(); setLoginDisabled(false); return; }
     const m = Math.floor(ms/60000), s = Math.floor(ms%60000/1000);
-    loginAlert(`<i class="fas fa-hourglass-half mr-1"></i> Muitas requisições de login neste navegador. Aguarde <b>${m}m ${s}s</b>.`, 'warn');
+    loginAlert(`<i class="fas fa-hourglass-half mr-1"></i> Muitas requisições neste navegador. Aguarde <b>${m}m ${s}s</b>.`, 'warn');
     setLoginDisabled(true);
   };
   tick(); cdTimer = setInterval(tick, 1000);
 }
 const showLockedMsg = () => loginAlert(
   `<i class="fas fa-lock mr-1"></i> Conta <b>BLOQUEADA</b> após ${MAX_WRONG_PASS} senhas incorretas.<br>
-   Redefina sua senha em <b>"Esqueci a senha"</b> ou procure um administrador da FAMR.`, 'err');
+   Use <b>"Esqueci a senha"</b> para redefinir e destravar, ou procure um administrador.`, 'err');
 
-/* ── Watchdog: inatividade + virada de dia ── */
+/* ── Watchdog: inatividade 1h + virada de dia ── */
 function startWatchdog(){
   stopWatchdog();
   localStorage.setItem('famr_day', dayStr());
@@ -56,11 +44,9 @@ function startWatchdog(){
   const touch = () => { const n = Date.now(); if(n - lastTouch > 5000){ lastTouch = n; localStorage.setItem('famr_last_act', String(n)); } };
   ['click','keydown','mousemove','scroll','touchstart'].forEach(ev => window.addEventListener(ev, touch, { passive:true }));
   watchTimer = setInterval(async () => {
-    if(localStorage.getItem('famr_day') !== dayStr())
-      return endSession('Novo dia iniciado — sessão encerrada por segurança.');
+    if(localStorage.getItem('famr_day') !== dayStr()) return endSession('Novo dia iniciado — sessão encerrada por segurança.');
     const last = +localStorage.getItem('famr_last_act') || Date.now();
-    if(Date.now() - last > INACTIVITY_MS)
-      return endSession('Sessão encerrada por inatividade (1 hora).');
+    if(Date.now() - last > INACTIVITY_MS) return endSession('Sessão encerrada por inatividade (1 hora).');
   }, 20000);
 }
 function stopWatchdog(){ if(watchTimer){ clearInterval(watchTimer); watchTimer = null; } }
@@ -72,14 +58,16 @@ async function endSession(msg){
   loginAlert(`<i class="fas fa-clock mr-1"></i> ${msg}`, 'warn');
 }
 
-/* ── BOOT: listeners PRIMEIRO, banco depois ── */
+/* ── BOOT: listeners primeiro, banco depois ── */
 document.addEventListener('DOMContentLoaded', () => {
   const on = (id, ev, fn) => document.getElementById(id)?.addEventListener(ev, fn);
   on('form-login','submit', e => { e.preventDefault(); doLogin(e); });
   on('form-register','submit', e => { e.preventDefault(); doRegister(e); });
-  on('link-forgot','click', e => { e.preventDefault(); doForgot(); });
+  on('form-forgot','submit', e => { e.preventDefault(); doForgot(e); });
+  on('link-forgot','click', e => { e.preventDefault(); loginAlertHide(); showScreen('screen-forgot'); });
   on('link-register','click', e => { e.preventDefault(); showScreen('screen-register'); });
   on('link-back-login','click', e => { e.preventDefault(); showScreen('screen-login'); });
+  on('link-back-login2','click', e => { e.preventDefault(); showScreen('screen-login'); });
   on('btn-reset-save','click', e => { e.preventDefault(); doResetSave(); });
   on('btn-maint-login','click', () => showScreen('screen-login'));
   on('btn-logout','click', doLogout);
@@ -90,17 +78,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   initSession().catch(err => {
-    console.error('[FAMR] erro no boot:', err);
+    console.error('[FAMR] boot:', err);
     showScreen('screen-login');
-    loginAlert(`<i class="fas fa-triangle-exclamation mr-1"></i> Erro ao iniciar: <b>${esc(err?.message || err)}</b>.<br>
-      Verifique: 1) config.js com suas chaves; 2) database.sql executado no Supabase.`, 'err');
+    loginAlert(`<i class="fas fa-triangle-exclamation mr-1"></i> Erro ao iniciar: <b>${esc(err?.message || err)}</b><br>
+      <span class="text-xs font-normal">Confira o config.js e se o database.sql foi executado no Supabase.</span>`, 'err');
   });
 });
 
 async function initSession(){
   const { data: sets } = await supabase.from('settings').select('*').in('key', ['maintenance','announcement']);
   (sets||[]).forEach(s => STATE.settings[s.key] = s.value);
-
   const { data:{ session } } = await supabase.auth.getSession();
   if(session){
     const day = localStorage.getItem('famr_day');
@@ -120,28 +107,18 @@ async function doLogin(e){
   const pass = document.getElementById('login-pass').value;
   if(!nick || !pass) return;
 
-  const nk = nick.toLowerCase();
-  const blkKey = 'famr_blk_' + nk, attKey = 'famr_att_' + nk;
-
+  const nk = nick.toLowerCase(), blkKey = 'famr_blk_'+nk, attKey = 'famr_att_'+nk;
   const until = +localStorage.getItem(blkKey) || 0;
   if(Date.now() < until){ startCountdown(until); return; }
-
   const now = Date.now();
   if(now - (+localStorage.getItem('famr_last_submit') || 0) < 3000) return;
   localStorage.setItem('famr_last_submit', String(now));
-
   const arr = (JSON.parse(localStorage.getItem(attKey) || '[]')).filter(t => now - t < BROWSER_WINDOW_MS);
   arr.push(now); localStorage.setItem(attKey, JSON.stringify(arr));
-  if(arr.length > MAX_REQ_WINDOW){
-    const u = now + BROWSER_BLOCK_MS;
-    localStorage.setItem(blkKey, String(u));
-    startCountdown(u);
-    return;
-  }
+  if(arr.length > MAX_REQ_WINDOW){ const u = now + BROWSER_BLOCK_MS; localStorage.setItem(blkKey, String(u)); startCountdown(u); return; }
 
   const btn = e.target.querySelector('button'); btn.disabled = true;
   try{
-    // 1) tenta famr_login_info; 2) fallback resolve_login_email (compatibilidade)
     let info = null;
     const r1 = await supabase.rpc('famr_login_info', { nick });
     if(!r1.error && r1.data) info = r1.data;
@@ -149,36 +126,31 @@ async function doLogin(e){
       const r2 = await supabase.rpc('resolve_login_email', { nick });
       if(!r2.error && r2.data) info = { email: r2.data, locked: false };
     }
-    if(!info){
-      loginAlert('Nickname não encontrado ou conta banida.<br><span class="text-xs font-normal">Se é uma conta criada pelo SQL, rode o database.sql novamente no Supabase.</span>', 'err');
-      return;
-    }
+    if(!info){ loginAlert('Nickname não encontrado ou conta banida.<br><span class="text-xs font-normal">Contas criadas por SQL: rode o database.sql novamente.</span>', 'err'); return; }
     if(info.locked){ showLockedMsg(); return; }
 
     const { data, error: le } = await supabase.auth.signInWithPassword({ email: info.email, password: pass });
     if(le){
       if(/invalid login credentials/i.test(le.message)){
         const r = await supabase.rpc('famr_login_failure', { nick });
-        const fails = r.data?.fails;
         if(r.data?.locked) showLockedMsg();
-        else loginAlert(`Senha incorreta (<b>${fails ?? '?'}/${MAX_WRONG_PASS}</b>). Na 4ª tentativa a conta é bloqueada.`, 'err');
-      } else {
-        loginAlert('Falha no login: <b>' + esc(le.message) + '</b>', 'err');
-      }
+        else loginAlert(`Senha incorreta (<b>${r.data?.fails ?? '?'}/${MAX_WRONG_PASS}</b>). Na 4ª tentativa a conta é bloqueada.`, 'err');
+      } else loginAlert('Falha no login: <b>' + esc(le.message) + '</b>', 'err');
       return;
     }
-
     localStorage.removeItem(attKey); localStorage.removeItem(blkKey);
     await supabase.rpc('famr_login_success', { nick }).catch(()=>{});
     await supabase.rpc('log_action', { action:'LOGIN', details:{ nick } }).catch(()=>{});
     await enterSystem(data.user.id);
+  } catch(err){
+    console.error('[FAMR] login:', err);
+    loginAlert('Erro inesperado no login: <b>' + esc(err?.message || err) + '</b>', 'err');
   } finally { btn.disabled = false; }
 }
 
-/* ── Sessão → shell ── */
 async function enterSystem(userId){
   const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-  if(error || !profile){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Perfil não encontrado no banco. Rode o database.sql.', 'err'); return; }
+  if(error || !profile){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Perfil não encontrado. Rode o database.sql.', 'err'); return; }
   if(profile.status === 'banned'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta BANIDA do sistema.', 'err'); return; }
   if(profile.status === 'pending'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta ainda não ativada. Procure um administrador.', 'warn'); return; }
   if(profile.login_locked){ await supabase.auth.signOut(); showScreen('screen-login'); showLockedMsg(); return; }
@@ -200,9 +172,11 @@ async function enterSystem(userId){
 
   startWatchdog();
   showScreen('shell');
-  buildSidebar();
-  location.hash = location.hash || '#/home';
-  route();
+  try{
+    await buildSidebar();
+  }catch(err){ console.error('[FAMR] sidebar:', err); }
+  if(!location.hash || location.hash === '#') location.hash = '#/home';
+  try{ await route(); }catch(err){ console.error('[FAMR] route:', err); }
 }
 
 /* ── ALISTAMENTO ── */
@@ -223,22 +197,24 @@ async function doRegister(e){
   finally { btn.disabled = false; }
 }
 
-/* ── ESQUECI A SENHA ── */
-async function doForgot(){
-  const nick = prompt('Digite seu nickname Habbo para recuperação:');
-  if(!nick || !nick.trim()) return;
+/* ── ESQUECI A SENHA (tela própria) ── */
+async function doForgot(e){
+  const nick = document.getElementById('forgot-nick').value.trim();
+  if(!nick) return;
+  const btn = e.target.querySelector('button'); btn.disabled = true;
   try{
-    let email = null;
-    const r1 = await supabase.rpc('resolve_login_email', { nick: nick.trim() });
-    if(!r1.error && r1.data) email = r1.data;
+    const { data: email, error } = await supabase.rpc('resolve_login_email', { nick });
+    if(error){ toast('Erro no servidor: ' + error.message, 'err'); return; }
     if(!email){ toast('Nickname não encontrado ou banido.', 'err'); return; }
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
-    if(error){ toast('Erro ao enviar: ' + error.message, 'err'); return; }
-    toast('Link de redefinição enviado ao e-mail cadastrado (expira em 10 min). Ao abrir, você volta aqui para criar a nova senha.');
+    const { error: rErr } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    if(rErr){ toast('Erro ao enviar: ' + rErr.message, 'err'); return; }
+    document.getElementById('form-forgot').classList.add('hidden');
+    document.getElementById('forgot-ok').classList.remove('hidden');
   } catch(err){ toast('Erro: ' + err.message, 'err'); }
+  finally { btn.disabled = false; }
 }
 
-/* ── NOVA SENHA (recuperação) ── */
+/* ── NOVA SENHA ── */
 async function doResetSave(){
   const p1 = document.getElementById('reset-pass').value;
   const p2 = document.getElementById('reset-pass2').value;
