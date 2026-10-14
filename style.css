@@ -1,0 +1,68 @@
+/* Custom Styles for FAMR System */
+:root {
+    --famr-green: #22c55e;
+    --famr-dark: #111827;
+}
+
+body {
+    background-color: var(--famr-dark);
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #1f2937; 
+}
+::-webkit-scrollbar-thumb {
+    background: #374151; 
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #22c55e; 
+}
+
+/* Animations */
+.fade-in {
+    animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Card Hover Effects */
+.topic-card {
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+.topic-card:hover {
+    transform: translateX(4px);
+    border-left-color: var(--famr-green);
+    background-color: #1f2937;
+}
+
+/* Badge Colors based on Group */
+.badge-group {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Inputs Focus Glow */
+input:focus, select:focus, textarea:focus {
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+    .sidebar-mobile-toggle {
+        display: block;
+    }
+}
