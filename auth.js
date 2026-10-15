@@ -52,7 +52,7 @@ function startWatchdog(){
 function stopWatchdog(){ if(watchTimer){ clearInterval(watchTimer); watchTimer = null; } }
 async function endSession(msg){
   stopWatchdog();
-  await supabase.auth.signOut().catch(()=>{});
+  try{ await supabase.auth.signOut(); }catch(e){}
   localStorage.removeItem('famr_day');
   showScreen('screen-login');
   loginAlert('<i class="fas fa-clock mr-1"></i> ' + msg, 'warn');
@@ -143,7 +143,8 @@ async function doLogin(e){
       return;
     }
     localStorage.removeItem(attKey); localStorage.removeItem(blkKey);
-    await supabase.rpc('log_action', { action:'LOGIN', details:{ nick } }).catch(()=>{});
+    // CORREÇÃO: .catch() não funciona em rpc() do SDK v2 — usa try/catch
+    try{ await supabase.rpc('log_action', { action:'LOGIN', details:{ nick } }); }catch(e){}
     await enterSystem(data.user.id);
   } catch(err){
     console.error('[FAMR] login:', err);
@@ -192,12 +193,12 @@ async function doRegister(e){
     if(error){ toast('Erro no alistamento: ' + error.message, 'err'); return; }
     if(data.user && (data.user.identities || []).length === 0){ toast('Este e-mail já está cadastrado. Use "Esqueci a senha".', 'warn'); return; }
     if(data.session){
-      await supabase.rpc('famr_set_credentials', { new_pass: pass });
+      try{ await supabase.rpc('famr_set_credentials', { new_pass: pass }); }catch(e){}
       await supabase.auth.signOut();
     }
     document.getElementById('form-register').classList.add('hidden');
     document.getElementById('register-success').classList.remove('hidden');
-    await supabase.rpc('log_action', { action:'REGISTRO', details:{ nick } }).catch(()=>{});
+    try{ await supabase.rpc('log_action', { action:'REGISTRO', details:{ nick } }); }catch(e){}
   } catch(err){ console.error('[FAMR] registro:', err); toast('Erro inesperado no alistamento. Tente novamente.', 'err'); }
   finally { btn.disabled = false; }
 }
@@ -228,15 +229,15 @@ async function doResetSave(){
   if(p1 !== p2){ toast('As senhas não conferem.', 'err'); return; }
   const { error } = await supabase.auth.updateUser({ password: p1 });
   if(error){ console.error('[FAMR] reset update:', error); toast('Erro ao salvar a senha. Tente novamente.', 'err'); return; }
-  await supabase.rpc('famr_set_credentials', { new_pass: p1 });
-  await supabase.rpc('log_action', { action:'SENHA_REDEFINIDA', details:{} }).catch(()=>{});
+  try{ await supabase.rpc('famr_set_credentials', { new_pass: p1 }); }catch(e){}
+  try{ await supabase.rpc('log_action', { action:'SENHA_REDEFINIDA', details:{} }); }catch(e){}
   await supabase.auth.signOut();
   showScreen('screen-login');
   loginAlert('<i class="fas fa-check-circle mr-1"></i> Senha redefinida e conta desbloqueada. Faça login novamente.', 'ok');
 }
 
 async function doLogout(){
-  await supabase.rpc('log_action', { action:'LOGOUT', details:{} }).catch(()=>{});
+  try{ await supabase.rpc('log_action', { action:'LOGOUT', details:{} }); }catch(e){}
   stopWatchdog();
   await supabase.auth.signOut();
   location.hash = '';
