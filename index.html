@@ -156,13 +156,15 @@ tailwind.config = { theme: { extend: {
 <div id="shell" class="hidden h-screen flex flex-col overflow-hidden">
   <header class="topbar shrink-0 z-40">
     <div class="max-w-[1600px] mx-auto px-4 h-16 flex items-center gap-4">
-      <a href="#/home" class="flex items-center gap-3 shrink-0 group">
+      <!-- MARCA (agora com classes próprias → nunca some) -->
+      <a href="#/home" class="flex items-center gap-3 shrink-0 group no-underline">
         <img src="famrlogo.png" class="w-10 h-10 object-contain transition-transform group-hover:scale-110" onerror="this.style.display='none'">
         <div class="leading-tight hidden sm:block">
-          <span class="font-display font-extrabold text-famr-900 tracking-wide block text-lg">FAMR SYSTEM</span>
-          <span class="block text-[10px] tracking-[0.2em] uppercase text-gold-600 font-bold">HABBO BR • OFICIAL</span>
+          <span class="brand-name block">FAMR SYSTEM</span>
+          <span class="brand-sub block">HABBO BR • OFICIAL</span>
         </div>
       </a>
+      <!-- BUSCA CENTRAL -->
       <div class="relative flex-1 max-w-xl mx-auto hidden md:block">
         <div class="input-wrap search-pill">
           <i class="fas fa-magnifying-glass"></i>
@@ -170,6 +172,7 @@ tailwind.config = { theme: { extend: {
         </div>
         <div id="search-drop" class="hidden absolute left-0 right-0 mt-2 card p-2 z-50 max-h-80 overflow-auto shadow-xl"></div>
       </div>
+      <!-- USUÁRIO + TEMA + SAIR -->
       <div class="flex items-center gap-2 shrink-0 ml-auto">
         <a href="#/perfil/me" id="chip-profile" title="Meu Perfil">
           <span id="user-avatar">?</span>
