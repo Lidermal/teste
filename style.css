@@ -1,4 +1,4 @@
-/* ══════════ FAMR • LAYOUT DASHBOARD v9 ══════════ */
+/* ══════════ FAMR • LAYOUT IMAGEM v12 ══════════ */
 :root{
   --green-900:#0b3d2c; --green-800:#0e4433; --green-700:#14563f; --green-600:#1a6b4f;
   --gold-600:#a8861d; --gold-500:#c9a227; --gold-300:#e6c65c; --gold-100:#faf3dc;
@@ -28,12 +28,8 @@ body{font-family:'Manrope',sans-serif;background:var(--paper);color:var(--ink)}
   position:relative;
   z-index:40;
 }
-.topbar::after{
-  content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;
-  background:linear-gradient(90deg, transparent, var(--gold-500) 20%, var(--green-700) 50%, var(--gold-500) 80%, transparent);
-}
 
-/* ── Sidebar Esquerda ── */
+/* ── Sidebar Esquerda (Gradiente Verde) ── */
 .sidebar{
   background:linear-gradient(180deg, var(--green-800), var(--green-900));
   color:#fff;
@@ -54,7 +50,7 @@ body{font-family:'Manrope',sans-serif;background:var(--paper);color:var(--ink)}
 .nav-item.active{
   background:rgba(255,255,255,.12);
   color:#fff;
-  box-shadow:inset 3px 0 0 var(--gold-500);
+  box-shadow:inset 3px 0 0 var(--gold-500); /* Linha dourada lateral como na imagem */
 }
 .nav-sep{
   margin:1rem .5rem .5rem;
@@ -110,3 +106,20 @@ body{font-family:'Manrope',sans-serif;background:var(--paper);color:var(--ink)}
 .gap-2{gap:.5rem}.gap-4{gap:1rem}.mt-2{margin-top:.5rem}.mb-4{margin-bottom:1rem}
 .text-sm{font-size:.875rem}.text-xs{font-size:.75rem}.font-bold{font-weight:700}
 .w-full{width:100%}.mx-auto{margin-left:auto;margin-right:auto}
+
+/* ═══════════════════════════════════════════════════════════════════
+   NOVO RODAPÉ INTERATIVO (ABAS USUÁRIOS/ANIVERSÁRIOS/GRUPOS)
+   ═══════════════════════════════════════════════════════════════════ */
+.stats-tabs{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:1.5rem}
+.st-head{display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.8rem 1rem;background:var(--paper);border-bottom:1px solid var(--line)}
+.st-tab{font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);cursor:pointer;padding:.3rem .8rem;border-radius:6px;transition:all .15s;display:inline-flex;align-items:center;gap:.4rem;border:none;background:transparent}
+.st-tab:hover{color:var(--ink);background:rgba(20,86,63,.06)}
+.st-tab.active{color:var(--green-700);background:rgba(20,86,63,.1)}
+.st-tab i{font-size:.9rem}
+.st-body{padding:1rem 1.2rem;min-height:60px;font-size:.85rem;line-height:1.6;color:var(--ink)}
+.st-body strong{color:var(--green-800)}
+.st-body .st-empty{text-align:center;color:var(--muted);font-style:italic;padding:1rem 0}
+.st-groups-list{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.5rem}
+.sg-link{display:inline-flex;align-items:center;gap:.35rem;font-size:.78rem;font-weight:700;color:var(--muted);text-decoration:none;padding:.25rem .5rem;border-radius:6px;transition:all .15s}
+.sg-link:hover{background:var(--gold-100);color:var(--ink)}
+.sg-link i{font-size:.95rem}
