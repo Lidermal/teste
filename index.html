@@ -41,7 +41,7 @@ tailwind.config = { theme: { extend: {
       <div id="login-alert" class="hidden mt-4 rounded-lg border px-4 py-3 text-sm font-semibold"></div>
       <form id="form-login" class="mt-6 space-y-4">
         <label class="field"><span>Nickname Habbo</span>
-          <div class="input-wrap"><i class="fas fa-user"></i><input id="login-nick" class="input" placeholder="Ex: joaozinho" autocomplete="username" required></div>
+          <div class="input-wrap"><i class="fas fa-user"></i><input id="login-nick" class="input" placeholder="Ex: Chefia de Polícia" autocomplete="username" required></div>
         </label>
         <label class="field"><span>Senha</span>
           <div class="input-wrap"><i class="fas fa-lock"></i><input id="login-pass" type="password" class="input" placeholder="••••••••" autocomplete="current-password" required></div>
@@ -210,16 +210,16 @@ tailwind.config = { theme: { extend: {
 
 <!-- ══════════ REDE DE SEGURANÇA ANTI-TELA-BRANCA ══════════ -->
 <script>
-window.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => {
-    const ids = ['screen-login','screen-register','screen-forgot','screen-reset','screen-maintenance','shell'];
-    const visivel = ids.some(id => {
-      const el = document.getElementById(id);
+window.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    var ids = ['screen-login','screen-register','screen-forgot','screen-reset','screen-maintenance','shell'];
+    var visivel = ids.some(function(id){
+      var el = document.getElementById(id);
       return el && !el.classList.contains('hidden');
     });
     if(!visivel){
       document.getElementById('screen-login').classList.remove('hidden');
-      const box = document.getElementById('login-alert');
+      var box = document.getElementById('login-alert');
       if(box){
         box.className = 'mt-4 rounded-lg border px-4 py-3 text-sm font-semibold border-red-400 bg-red-50 text-red-700';
         box.innerHTML = 'O sistema não iniciou (cache antigo ou erro de script). Pressione <b>Ctrl+F5</b>.';
@@ -228,25 +228,25 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }, 2500);
 });
-window.addEventListener('error', e => console.error('[FAMR] erro de script:', e.message));
+window.addEventListener('error', function(e){ console.error('[FAMR] erro de script:', e.message); });
 </script>
 
 <!-- ══════════ SCRIPTS DO SISTEMA (ordem importa) ══════════ -->
 <script src="config.js"></script>
+
 <script>
-/* Fallback de emergência: se o config.js falhar (404/erro de sintaxe),
-   o sistema cria o cliente Supabase aqui e continua funcionando. */
+/* Fallback de emergência: se o config.js falhar (404/erro), cria o cliente aqui.
+   SOMENTE window.* — nenhuma declaração const/let/var de 'supabase'. */
 (function(){
   if(window.FAMR_CONFIG_OK) return;
   console.warn('[FAMR] config.js não executou — ativando fallback embutido.');
-
   window.CONFIG = window.CONFIG || {
     supabaseUrl: 'https://fsmvyqfmgfivilufvgku.supabase.co',
     supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzbXZ5cWZtZ2ZpdmlsdWZ2Z2t1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0MDU5NjIsImV4cCI6MjEwNjk4MTk2Mn0.W6qPA5TEtRn3r4bzuck_NEH3FNa4AaJDqGFR7yevUAU',
     logoUrl: 'famrlogo.png',
     orgName: 'Polícia FAMR'
   };
-  window.STATE = window.STATE || { profile: null, groups: [], settings: {}, sections: [], page: 0 };
+  window.STATE = window.STATE || { profile:null, groups:[], settings:{}, sections:[], page:0 };
   if(typeof window.isAdmin !== 'function'){
     window.hasPerm = function(p){ return STATE.groups.some(function(g){ return (g.permissions||[]).includes(p); }); };
     window.isAdmin  = function(){ return hasPerm('admin'); };
@@ -262,6 +262,7 @@ window.addEventListener('error', e => console.error('[FAMR] erro de script:', e.
   }
 })();
 </script>
+
 <script src="app.js"></script>
 <script src="auth.js"></script>
 </body>
