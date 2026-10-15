@@ -129,3 +129,10 @@ select.input,textarea.input{padding-left:.9rem}
 .page-header .ph-sub{font-size:.85rem;opacity:.8;margin-top:.3rem}
 .page-header .ph-back{display:inline-flex;align-items:center;gap:.4rem;font-size:.8rem;font-weight:700;color:var(--gold-300);margin-bottom:.8rem;text-decoration:none}
 .page-header .ph-back:hover{color:#fff}
+
+/* ── Barra de ambiente dos grupos (estilo fórum clássico) ── */
+.group-bar{display:flex;flex-wrap:wrap;gap:.5rem;padding:.8rem 1rem;background:#fff;border:1px solid var(--line);border-radius:12px}
+.gb-item{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:700;color:var(--muted);padding:.35rem .6rem;border-radius:8px;transition:background .15s,color .15s;text-decoration:none}
+.gb-item:hover{background:var(--gold-100);color:var(--ink)}
+.gb-item i{font-size:.9rem}
+.gb-sep{width:1px;background:var(--line);margin:.2rem .3rem;align-self:stretch}
