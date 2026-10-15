@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v15 (plantão + dark mode) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v16 (plantão verde + relógio + dark) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -56,6 +56,20 @@ function updateUserChip(){
   if(av){ av.textContent = nick.charAt(0).toUpperCase(); av.style.background = (g && g.color) ? g.color : '#14563f'; }
 }
 
+/* ── RELÓGIO AO VIVO DA FAIXA DE PLANTÃO ── */
+function startQsClock(){
+  if(window._qsTimer){ clearInterval(window._qsTimer); window._qsTimer = null; }
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  const dateEl = document.getElementById('qs-date');
+  if(dateEl) dateEl.textContent = cap(new Date().toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long' }));
+  const tick = () => {
+    const c = document.querySelector('.qs-clock');
+    if(c) c.textContent = new Date().toLocaleTimeString('pt-BR');
+  };
+  tick();
+  window._qsTimer = setInterval(tick, 1000);
+}
+
 /* ── ROUTER ── */
 window.addEventListener('hashchange', route);
 async function route(){
@@ -70,6 +84,7 @@ async function route(){
   updateUserChip();
   applyThemeIcon();
   updateSidebarActive(key);
+  if(window._qsTimer){ clearInterval(window._qsTimer); window._qsTimer = null; } // para o relógio ao sair da home
 
   const c = document.getElementById('content');
   if(!c) return;
@@ -137,7 +152,7 @@ function getGroupIcon(name){
   return 'fa-shield-halved';
 }
 
-/* ══════════ HOME (faixa de plantão + hero + stats + setores + abas) ══════════ */
+/* ══════════ HOME (Faixa de Plantão verde + hero + stats + setores + abas) ══════════ */
 async function renderHome(c){
   const [{ data: sections }, { data: subs }, { data: posts }, { count: nMembers },
          { data: newest }, { data: groups }] = await Promise.all([
@@ -163,23 +178,24 @@ async function renderHome(c){
   ];
 
   c.innerHTML = `
-  <!-- FAIXA DE PLANTÃO (preenche a área branca do anexo 1) -->
+  <!-- FAIXA DE PLANTÃO DO QUARTEL (cabeçalho cerimonial, preenche a área do anexo 1) -->
   <section class="quartel-strip fade-up">
+    <div class="qs-glow" aria-hidden="true"></div>
     <div class="qs-left">
       <span class="qs-badge"><i class="fas fa-shield-halved"></i></span>
       <div class="qs-txt">
         <b class="qs-title">Plantão do Quartel</b>
-        <span class="qs-sub">${fmtDate(new Date())} • ${esc(STATE.profile.nickname)}</span>
+        <span class="qs-sub"><i class="far fa-clock"></i><span class="qs-clock">--:--:--</span>•<span id="qs-date"></span></span>
       </div>
     </div>
-    <div class="qs-stats">
-      <span class="qs-stat"><i class="fas fa-circle qs-on"></i> ${totalOnline} online</span>
-      <span class="qs-stat"><i class="fas fa-users"></i> ${registeredCount} efetivo</span>
-      <span class="qs-stat"><i class="fas fa-comments"></i> ${pubs} publicações</span>
+    <div class="qs-mid">
+      <span class="qs-pill"><i class="fas fa-circle qs-on"></i> ${totalOnline} online</span>
+      <span class="qs-pill"><i class="fas fa-users"></i> ${registeredCount} efetivo</span>
+      <span class="qs-pill"><i class="fas fa-comments"></i> ${pubs} publicações</span>
+      <span class="qs-pill"><i class="fas fa-id-badge"></i> ${esc(STATE.profile.nickname)}</span>
     </div>
-    ${ann ? `<div class="qs-notice" title="${esc(ann)}"><i class="fas fa-bullhorn"></i><span>${esc(ann)}</span></div>`
-          : `<div class="qs-notice qs-quiet"><i class="fas fa-flag"></i><span>Sem avisos do comando no momento.</span></div>`}
-    <img src="${CONFIG.logoUrl}" class="qs-logo" alt="" onerror="this.style.display='none'">
+    ${ann ? `<div class="qs-notice" title="${esc(ann)}"><i class="fas fa-bullhorn"></i><span>${esc(ann)}</span></div>` : ``}
+    <div class="qs-emblem"><img src="${CONFIG.logoUrl}" alt="Emblema FAMR" onerror="this.parentElement.classList.add('qs-emblem-empty')"></div>
   </section>
 
   <!-- HERO COM ARTE MILITAR -->
@@ -244,6 +260,7 @@ async function renderHome(c){
     </div>
   </section>`;
 
+  startQsClock();
   document.querySelectorAll('.st-tab').forEach(btn => btn.addEventListener('click', () => {
     document.querySelectorAll('.st-tab').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.stab-panel').forEach(p => p.classList.add('hidden'));
