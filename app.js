@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v9 ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v10 (router fix + stats bar) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -27,22 +27,35 @@ function confirmDlg(msg){ return new Promise(res => {
   window._cf = res;
 });}
 
-/* ── ROUTER (100% interno) ── */
+/* ── ROUTER ROBUSTO (cliques sempre funcionam) ── */
 window.addEventListener('hashchange', route);
 async function route(){
-  if(!STATE.profile) return;
-  const [, page, param] = location.hash.replace('#/','').split('/');
+  if(!STATE.profile){ console.warn('[FAMR] profile não carregou — ignorando rota'); return; }
+  const rawHash = location.hash || '#/home';
+  const clean = rawHash.startsWith('#/') ? rawHash.slice(2) : rawHash.replace(/^#/, '');
+  const parts = clean.split('/');
+  const page = parts[0] || 'home';
+  const param = parts[1] || null;
+  
   const c = document.getElementById('content');
+  if(!c){ console.error('[FAMR] #content não encontrado!'); return; }
+  
   c.innerHTML = '<div class="skeleton h-40"></div><div class="skeleton h-64 mt-4"></div>';
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.route === (page||'home')));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.route === page));
+  
   try{
-    if(page === 'admin')   return await renderAdmin(c);
-    if(page === 'perfil')  return await renderProfile(c, param);
-    if(page === 'grupo')   return await renderGroupPage(c, param);
-    if(page === 'section') return await renderSection(c, param);
-    if(page === 'sub')     return await renderSubtopic(c, param);
-    return await renderHome(c);
-  }catch(err){ console.error(err); c.innerHTML = `<div class="card card-body text-red-600 text-sm"><i class="fas fa-plug-circle-xmark mr-2"></i>Falha de conexão. Tente novamente.</div>`; }
+    switch(page){
+      case 'admin':   await renderAdmin(c); break;
+      case 'perfil':  await renderProfile(c, param); break;
+      case 'grupo':   await renderGroupPage(c, param); break;
+      case 'section': await renderSection(c, param); break;
+      case 'sub':     await renderSubtopic(c, param); break;
+      default:        await renderHome(c);
+    }
+  }catch(err){ 
+    console.error('[FAMR] ERRO na rota "'+page+'":', err); 
+    c.innerHTML = `<div class="card card-body text-red-600 text-sm"><i class="fas fa-plug-circle-xmark mr-2"></i>Erro ao carregar esta tela.<br><small>${esc(err.message)}</small></div>`; 
+  }
 }
 
 /* ── SIDEBAR ── */
@@ -69,6 +82,24 @@ function canAccessGroup(gid){
   return STATE.groups.some(g => g.id === gid);
 }
 
+/* Helper: escolhe ícone baseado no nome do grupo */
+function getGroupIcon(name){
+  const n = (name||'').toLowerCase();
+  if(n.includes('chefia') || n.includes('polícia') || n.includes('policia')) return 'fa-crown';
+  if(n.includes('logística') || n.includes('infraestrutura') || n.includes('infra')) return 'fa-boxes-stacked';
+  if(n.includes('corregedoria')) return 'fa-scale-balanced';
+  if(n.includes('ações especiais') || n.includes('acoes especiais')) return 'fa-bolt';
+  if(n.includes('conselho') || n.includes('deliberativo')) return 'fa-gavel';
+  if(n.includes('feminino')) return 'fa-person-dress';
+  if(n.includes('ensino') || n.includes('capacitação') || n.includes('academia') || n.includes('superior')) return 'fa-graduation-cap';
+  if(n.includes('marketing')) return 'fa-megaphone';
+  if(n.includes('financeiro')) return 'fa-chart-pie';
+  if(n.includes('diretoria') || n.includes('executiva')) return 'fa-building';
+  if(n.includes('recruta') || n.includes('especializado')) return 'fa-user-plus';
+  if(n.includes('comissariado')) return 'fa-store';
+  return 'fa-shield-halved';
+}
+
 /* ══════════ HOME ══════════ */
 async function renderHome(c){
   const [{ data: sections }, { data: subs }, { data: posts }, { count: nMembers }, 
@@ -77,7 +108,7 @@ async function renderHome(c){
     supabase.from('subtopics').select('id,name,description,section_id,required_group_id,is_request_form,allow_posts').order('order_index'),
     supabase.from('posts').select('id,subtopic_id,title,created_at,profiles_view(nickname)').order('created_at',{ascending:false}).limit(300),
     supabase.from('profiles_view').select('*', { count:'planned', head:true }).eq('status','active').neq('nickname','admin master'),
-    supabase.from('profiles_view').select('nickname,created_at').eq('status','active').eq('is_invisible', false).neq('nickname','admin master').order('created_at',{ascending:false}).limit(5),
+    supabase.from('profiles_view').select('nickname,created_at').eq('status','active').eq('is_invisible', false).neq('nickname','admin master').order('created_at',{ascending:false}).limit(10),
     supabase.from('groups').select('id,name,color,power_level,visible,parent_id').eq('visible',true).order('power_level',{ascending:false})
   ]);
   
@@ -87,6 +118,17 @@ async function renderHome(c){
   const counts = {}, lastMap = {};
   (posts||[]).forEach(p => { counts[p.subtopic_id] = (counts[p.subtopic_id]||0)+1; if(!lastMap[p.subtopic_id]) lastMap[p.subtopic_id] = p; });
   const visibleSubs = (subs||[]).filter(s => canAccessGroup(s.required_group_id));
+
+  // Estatísticas para a barra de abas
+  const totalOnline = 1;
+  const registeredCount = nMembers ?? 0;
+  const recordDate = 'Sáb 26 Set 2026 - 22:42';
+  const legendItems = [
+    { icon:'fa-comments', color:'#14563f', label:'Tópico aberto para publicação' },
+    { icon:'fa-lock', color:'#c9a227', label:'Conteúdo reservado a companhia específica' },
+    { icon:'fa-file-signature', color:'#a8861d', label:'Formulário de requerimento CRH/RH' },
+    { icon:'fa-shield-halved', color:'#0e4433', label:'Sessão segura • expira após 1h de inatividade' }
+  ];
 
   c.innerHTML = `
   <!-- HERO -->
@@ -101,9 +143,9 @@ async function renderHome(c){
     </div>
   </section>
 
-  <!-- STATS -->
+  <!-- STATS CARDS -->
   <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 fade-up">
-    <div class="stat-tile"><span class="forum-ico"><i class="fas fa-users"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Efetivo ativo</p><p class="font-display text-xl font-extrabold text-famr-800">${nMembers ?? 0}</p></div></div>
+    <div class="stat-tile"><span class="forum-ico"><i class="fas fa-users"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Efetivo ativo</p><p class="font-display text-xl font-extrabold text-famr-800">${registeredCount}</p></div></div>
     <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-comments"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Publicações</p><p class="font-display text-xl font-extrabold text-famr-800">${(posts||[]).length}+</p></div></div>
     <div class="stat-tile"><span class="forum-ico"><i class="fas fa-folder-open"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Subtópicos</p><p class="font-display text-xl font-extrabold text-famr-800">${visibleSubs.length}</p></div></div>
     <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-user-plus"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Mais recente</p><p class="font-display text-sm font-extrabold text-famr-800 truncate">${esc(newest?.[0]?.nickname || '—')}</p></div></div>
@@ -123,34 +165,60 @@ async function renderHome(c){
     </section>`;
   }).join('')}
 
-  <!-- GRUPOS (barra horizontal, perto do rodapé) -->
-  ${(groups||[]).length > 0 ? `
-  <section class="fade-up">
-    <h2 class="font-display font-bold text-sm mb-2"><i class="fas fa-layer-group text-gold-500 mr-2"></i>Grupos</h2>
-    <div class="group-bar">
-      ${(groups||[]).map((g,i,arr) => `
-        <a href="#/grupo/${g.id}" class="gb-item">
-          <i class="fas fa-shield-halved" style="color:${g.color}"></i>
-          <span>${esc(g.name)}</span>
-          <span class="text-[10px] text-muted">(${memberCount[g.id]||0})</span>
-        </a>${i < arr.length-1 ? '<span class="gb-sep"></span>' : ''}`).join('')}
+  <!-- BARRA INTERATIVA DE ESTATÍSTICAS (abas: Usuários / Aniversários / Grupos) -->
+  <section class="stats-tabs fade-up">
+    <div class="st-head">
+      <button class="st-tab active" data-stab="usuarios"><i class="fas fa-users"></i> Usuários</button>
+      <button class="st-tab" data-stab="aniversarios"><i class="fas fa-cake-candles"></i> Aniversários</button>
+      <button class="st-tab" data-stab="grupos"><i class="fas fa-layer-group"></i> Grupos</button>
     </div>
-  </section>` : ''}
-
-  <!-- RODAPÉ: ÚLTIMOS ALISTAMENTOS + LEGENDA LIMPA -->
-  <div class="grid md:grid-cols-2 gap-4 fade-up">
-    <div class="card"><div class="card-head"><h2 class="font-display font-bold text-sm"><i class="fas fa-user-clock text-gold-500 mr-2"></i>Últimos alistamentos</h2></div>
-      <div class="p-4 flex flex-wrap gap-2">${(newest||[]).map(u => `<span class="chip chip-ok"><i class="fas fa-user"></i> ${esc(u.nickname)}</span>`).join('') || '<span class="text-xs text-muted">—</span>'}</div>
-      <div class="px-4 pb-4 text-xs text-muted">Total de militares ativos: <b>${nMembers ?? 0}</b></div></div>
     
-    <div class="card"><div class="card-head"><h2 class="font-display font-bold text-sm"><i class="fas fa-circle-info text-gold-500 mr-2"></i>Legenda do índice</h2></div>
-      <div class="p-4 space-y-2 text-xs text-muted">
-        <p><span class="forum-ico inline-grid !w-6 !h-6 text-[10px] mr-2"><i class="fas fa-comments"></i></span> Subtópico aberto para publicação</p>
-        <p><span class="forum-ico lock inline-grid !w-6 !h-6 text-[10px] mr-2"><i class="fas fa-lock"></i></span> Conteúdo reservado a companhia específica</p>
-        <p><span class="forum-ico new inline-grid !w-6 !h-6 text-[10px] mr-2"><i class="fas fa-file-signature"></i></span> Formulário de requerimento ao CRH/RH</p>
-        <p class="pt-2 border-t border-line"><i class="fas fa-shield-halved text-famr-600 mr-1"></i> Sessão segura • expira após 1h de inatividade</p>
-      </div></div>
-  </div>`;
+    <!-- PAINEL: USUÁRIOS -->
+    <div class="st-body stab-panel" id="stab-usuarios">
+      Há <strong>${totalOnline}</strong> usuário online :: ${registeredCount} registrado${registeredCount!==1?'s':''}, 0 invisíveis e 0 visitantes<br>
+      O recorde de utilizadores online foi de <strong>27</strong> em ${recordDate}<br>
+      Utilizadores registados: ${(newest||[]).slice(0,8).map(u=>`<span class="sg-link"><i class="fas fa-code"></i> ${esc(u.nickname)}</span>`).join(', ') || '<em>nenhum</em>'}
+    </div>
+    
+    <!-- PAINEL: ANIVERSÁRIOS -->
+    <div class="st-body stab-panel hidden" id="stab-aniversarios">
+      <p class="st-empty">Nenhum membro festeja o aniversário hoje</p>
+      <p class="st-empty mt-2">Nenhum membro festeja o aniversário nos próximos 7 dias</p>
+    </div>
+    
+    <!-- PAINEL: GRUPOS -->
+    <div class="st-body stab-panel hidden" id="stab-grupos">
+      <div class="st-groups-list">
+        ${(groups||[]).map(g => `
+          <a href="#/grupo/${g.id}" class="sg-link">
+            <i class="fas ${getGroupIcon(g.name)}" style="color:${g.color}"></i>
+            <span>${esc(g.name)}</span>
+          </a>`).join('') || '<em class="text-muted text-xs">Nenhum grupo cadastrado.</em>'}
+      </div>
+    </div>
+    
+    <!-- LEGENDA FIXA NO RODAPÉ DA BARRA -->
+    <div class="st-body border-t border-line bg-paper/50 text-xs">
+      <strong class="text-famr-800">Legenda:</strong>
+      <div class="flex flex-wrap gap-3 mt-1">
+        ${legendItems.map(item => `
+          <span class="inline-flex items-center gap-1.5">
+            <i class="fas ${item.icon}" style="color:${item.color}"></i>
+            <span class="text-muted">${esc(item.label)}</span>
+          </span>`).join('')}
+      </div>
+    </div>
+  </section>`;
+
+  // Ativa as abas da barra de estatísticas
+  document.querySelectorAll('.st-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.st-tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.stab-panel').forEach(p => p.classList.add('hidden'));
+      btn.classList.add('active');
+      document.getElementById('stab-'+btn.dataset.stab)?.classList.remove('hidden');
+    });
+  });
 }
 
 function forumRow(s, counts, lastMap){
@@ -171,7 +239,7 @@ function forumRow(s, counts, lastMap){
   </a>`;
 }
 
-/* ── PÁGINA DE GRUPO (#/grupo/{id}) — lista membros do grupo ── */
+/* ── PÁGINA DE GRUPO (#/grupo/{id}) ── */
 async function renderGroupPage(c, groupId){
   const [{ data: grp }, { data: members }] = await Promise.all([
     supabase.from('groups').select('*, groups(name)').eq('id', groupId).single(),
@@ -186,7 +254,7 @@ async function renderGroupPage(c, groupId){
     <p class="text-xs text-muted mb-2"><a href="#/home" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>Início</a> / <b>${esc(grp.name)}</b></p>
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h1 class="font-display text-xl md:text-2xl font-extrabold text-famr-900">
-        <i class="fas fa-shield-halved mr-2" style="color:${grp.color}"></i>${esc(grp.name)}
+        <i class="fas ${getGroupIcon(grp.name)} mr-2" style="color:${grp.color}"></i>${esc(grp.name)}
       </h1>
       <span class="text-gold-500 text-sm">${powerStars(grp.power_level)}</span>
     </div>
