@@ -1,10 +1,26 @@
-/* ══════════ FAMR • APP.JS COMPLETO v14 ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v15 (plantão + dark mode) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
 const groupChip = g => g ? `<span class="chip" style="background:${g.color}18;color:${g.color};border:1px solid ${g.color}55">${esc(g.name)}</span>` : '<span class="chip chip-neutral">Geral</span>';
 const statusChip = s => s==='approved' ? '<span class="chip chip-ok">APROVADO</span>' : s==='rejected' ? '<span class="chip chip-no">REPROVADO</span>' : '<span class="chip chip-wait">EM ANÁLISE</span>';
 const powerStars = p => '★'.repeat(Math.max(1, Math.min(5, Math.ceil((p||0)/20)))) + '☆'.repeat(Math.max(0, 5-Math.min(5, Math.ceil((p||0)/20))));
+
+/* ── TEMA ESCURO (toggle único + persistência + ícone) ── */
+function applyThemeIcon(){
+  const b = document.getElementById('btn-theme'); if(!b) return;
+  const dark = document.documentElement.getAttribute('data-theme')==='dark';
+  b.innerHTML = `<i class="fas ${dark?'fa-sun':'fa-moon'}"></i>`;
+  b.title = dark ? 'Modo claro' : 'Modo escuro';
+  b.setAttribute('aria-label', b.title);
+}
+window.toggleTheme = function(){
+  const dark = document.documentElement.getAttribute('data-theme')==='dark';
+  if(dark) document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme','dark');
+  try{ localStorage.setItem('famr-theme', dark?'light':'dark'); }catch(e){}
+  applyThemeIcon();
+};
 
 function toast(msg, type='ok'){
   const el = document.createElement('div');
@@ -27,7 +43,7 @@ function confirmDlg(msg){ return new Promise(res => {
   window._cf = res;
 });}
 
-/* ── CHIP DO USUÁRIO (anexo 2: garante nome + grupo + avatar colorido) ── */
+/* ── CHIP DO USUÁRIO ── */
 function updateUserChip(){
   if(!STATE.profile) return;
   const nick = STATE.profile.nickname || '—';
@@ -51,8 +67,9 @@ async function route(){
   const param = parts[1] || null;
   const key = (page==='home') ? 'home' : (param ? page+'/'+param : page);
 
-  updateUserChip();                       // ← nome sempre visível
-  updateSidebarActive(key);               // ← destaque por chave COMPLETA (corrige anexo 3)
+  updateUserChip();
+  applyThemeIcon();
+  updateSidebarActive(key);
 
   const c = document.getElementById('content');
   if(!c) return;
@@ -75,7 +92,7 @@ function updateSidebarActive(key){
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.key === key));
 }
 
-/* ── SIDEBAR (data-key único por item) ── */
+/* ── SIDEBAR ── */
 async function buildSidebar(){
   const nav = document.getElementById('sidebar-nav');
   if(!nav) return;
@@ -94,6 +111,7 @@ async function buildSidebar(){
            <a class="nav-item" data-key="admin" href="#/admin"><i class="fas fa-sliders"></i> Painel Admin</a>`;
   nav.innerHTML = html;
   updateUserChip();
+  applyThemeIcon();
   if(STATE.settings.maintenance?.enabled && isAdmin()) document.getElementById('maintenance-banner').classList.remove('hidden');
 }
 function canAccessGroup(gid){
@@ -102,7 +120,6 @@ function canAccessGroup(gid){
   return (STATE.groups||[]).some(g => g.id === gid);
 }
 
-/* Ícone temático por grupo (militar/Habbo) */
 function getGroupIcon(name){
   const n = (name||'').toLowerCase();
   if(n.includes('chefia')||n.includes('polícia')||n.includes('policia')) return 'fa-crown';
@@ -120,7 +137,7 @@ function getGroupIcon(name){
   return 'fa-shield-halved';
 }
 
-/* ══════════ HOME (hero com arte militar + barra de abas no rodapé) ══════════ */
+/* ══════════ HOME (faixa de plantão + hero + stats + setores + abas) ══════════ */
 async function renderHome(c){
   const [{ data: sections }, { data: subs }, { data: posts }, { count: nMembers },
          { data: newest }, { data: groups }] = await Promise.all([
@@ -136,7 +153,8 @@ async function renderHome(c){
   const counts = {}, lastMap = {};
   (posts||[]).forEach(p => { counts[p.subtopic_id]=(counts[p.subtopic_id]||0)+1; if(!lastMap[p.subtopic_id]) lastMap[p.subtopic_id]=p; });
   const visibleSubs = (subs||[]).filter(s => canAccessGroup(s.required_group_id));
-  const totalOnline = 1, registeredCount = nMembers ?? 0;
+  const totalOnline = 1, registeredCount = nMembers ?? 0, pubs = (posts||[]).length;
+  const ann = (STATE.settings.announcement && STATE.settings.announcement.text) ? STATE.settings.announcement.text.trim() : '';
   const legend = [
     { icon:'fa-comments', color:'#14563f', label:'Tópico aberto para publicação' },
     { icon:'fa-lock', color:'#c9a227', label:'Conteúdo reservado a companhia' },
@@ -145,6 +163,25 @@ async function renderHome(c){
   ];
 
   c.innerHTML = `
+  <!-- FAIXA DE PLANTÃO (preenche a área branca do anexo 1) -->
+  <section class="quartel-strip fade-up">
+    <div class="qs-left">
+      <span class="qs-badge"><i class="fas fa-shield-halved"></i></span>
+      <div class="qs-txt">
+        <b class="qs-title">Plantão do Quartel</b>
+        <span class="qs-sub">${fmtDate(new Date())} • ${esc(STATE.profile.nickname)}</span>
+      </div>
+    </div>
+    <div class="qs-stats">
+      <span class="qs-stat"><i class="fas fa-circle qs-on"></i> ${totalOnline} online</span>
+      <span class="qs-stat"><i class="fas fa-users"></i> ${registeredCount} efetivo</span>
+      <span class="qs-stat"><i class="fas fa-comments"></i> ${pubs} publicações</span>
+    </div>
+    ${ann ? `<div class="qs-notice" title="${esc(ann)}"><i class="fas fa-bullhorn"></i><span>${esc(ann)}</span></div>`
+          : `<div class="qs-notice qs-quiet"><i class="fas fa-flag"></i><span>Sem avisos do comando no momento.</span></div>`}
+    <img src="${CONFIG.logoUrl}" class="qs-logo" alt="" onerror="this.style.display='none'">
+  </section>
+
   <!-- HERO COM ARTE MILITAR -->
   <section class="hero fade-up">
     <div class="hero-art" aria-hidden="true"><img src="${CONFIG.logoUrl}" onerror="this.parentElement.style.display='none'"></div>
@@ -160,7 +197,7 @@ async function renderHome(c){
   <!-- STATS -->
   <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 fade-up">
     <div class="stat-tile"><span class="forum-ico"><i class="fas fa-users"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Efetivo ativo</p><p class="font-display text-xl font-extrabold text-famr-800">${registeredCount}</p></div></div>
-    <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-comments"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Publicações</p><p class="font-display text-xl font-extrabold text-famr-800">${(posts||[]).length}+</p></div></div>
+    <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-comments"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Publicações</p><p class="font-display text-xl font-extrabold text-famr-800">${pubs}+</p></div></div>
     <div class="stat-tile"><span class="forum-ico"><i class="fas fa-folder-open"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Subtópicos</p><p class="font-display text-xl font-extrabold text-famr-800">${visibleSubs.length}</p></div></div>
     <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-user-plus"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Mais recente</p><p class="font-display text-sm font-extrabold text-famr-800 truncate">${esc(newest?.[0]?.nickname || '—')}</p></div></div>
   </section>
@@ -352,7 +389,7 @@ async function renderListagem(c, sec){
   </div>`;
 }
 
-/* ── REQUERIMENTOS (visual colorido restaurado) ── */
+/* ── REQUERIMENTOS ── */
 async function renderRequerimentos(c, sec){
   const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id).order('order_index');
   const { data: mine } = await supabase.from('requests').select('*,subtopics(name)').eq('author_id', STATE.profile.id).order('created_at',{ascending:false}).limit(30);
@@ -395,7 +432,7 @@ window.submitRequest = async function(subtopicId){
   closeModal(); toast('Protocolo enviado! Aguarde a análise do CRH/RH.'); route();
 };
 
-/* ── DOCUMENTOS (placeholder com card-body restaurado) ── */
+/* ── DOCUMENTOS ── */
 async function renderDocumentos(c, sec){
   const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id);
   const ids = (subs||[]).map(s => s.id);
@@ -432,8 +469,12 @@ async function renderProfile(c, param){
     </div></div>`;
 }
 
-/* ── BUSCA GLOBAL ── */
+/* ── BUSCA GLOBAL + LIGAÇÃO DO BOTÃO DE TEMA ── */
 document.addEventListener('DOMContentLoaded', () => {
+  applyThemeIcon();
+  const bt = document.getElementById('btn-theme');
+  if(bt) bt.addEventListener('click', toggleTheme);
+
   const inp = document.getElementById('global-search'), drop = document.getElementById('search-drop');
   if(!inp || !drop) return;
   let t;
@@ -452,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', e => { if(!e.target.closest('#global-search')) drop.classList.add('hidden'); });
 });
 
-/* ══════════════════ PAINEL ADMIN (tabs seguem o clique) ══════════════════ */
+/* ══════════════════ PAINEL ADMIN ══════════════════ */
 const A = { tab:'usuarios', page:0, q:'' };
 const ADMIN_TABS = [['usuarios','fa-users','Usuários'],['grupos','fa-layer-group','Grupos'],['topicos','fa-sitemap','Tópicos'],['protocolos','fa-inbox','Protocolos'],['logs','fa-scroll','Logs'],['config','fa-sliders','Config']];
 async function renderAdmin(c){
