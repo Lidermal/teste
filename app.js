@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP v5 — índice estilo fórum + admin ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v7 (todas as alterações) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -36,24 +36,28 @@ async function route(){
   c.innerHTML = '<div class="skeleton h-40"></div><div class="skeleton h-64 mt-4"></div>';
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.route === (page||'home')));
   try{
-    if(page === 'admin')   return await renderAdmin(c);
-    if(page === 'perfil')  return await renderProfile(c, param);
     if(page === 'section') return await renderSection(c, param);
     if(page === 'sub')     return await renderSubtopic(c, param);
     return await renderHome(c);
-  }catch(err){ console.error(err); c.innerHTML = `<div class="card card-body text-red-600 text-sm"><i class="fas fa-plug-circle-xmark mr-2"></i>Falha de conexão com o Supabase.</div>`; }
+  }catch(err){ console.error(err); c.innerHTML = `<div class="card card-body text-red-600 text-sm"><i class="fas fa-plug-circle-xmark mr-2"></i>Falha de conexão. Tente novamente.</div>`; }
 }
 
+/* ── SIDEBAR (links para páginas externas: perfil.html, companhias.html, admin.html) ── */
 async function buildSidebar(){
   const { data: sections } = await supabase.from('sections').select('*').order('order_index');
   STATE.sections = sections || [];
-  let html = `<a class="nav-item" data-route="home" href="#/home"><i class="fas fa-house"></i> Início</a><div class="nav-sep">Tópicos oficiais</div>`;
+  let html = `<a class="nav-item active" data-route="home" href="#/home"><i class="fas fa-house"></i> Início</a>
+              <div class="nav-sep">Tópicos oficiais</div>`;
   for(const s of STATE.sections){
     const locked = s.required_group_id && !canAccessGroup(s.required_group_id) && !isAdmin();
-    html += `<a class="nav-item" data-route="section" href="#/section/${s.slug}"><i class="fas ${esc(s.icon)}"></i> ${esc(s.name)} ${locked?'<i class="fas fa-lock lock-badge ml-auto text-xs"></i>':''}</a>`;
+    html += `<a class="nav-item" data-route="section" href="#/section/${s.slug}">
+      <i class="fas ${esc(s.icon)}"></i> ${esc(s.name)} ${locked?'<i class="fas fa-lock lock-badge ml-auto text-xs"></i>':''}</a>`;
   }
-  html += `<div class="nav-sep">Minha conta</div><a class="nav-item" href="#/perfil/me"><i class="fas fa-id-badge"></i> Meu perfil</a>`;
-  if(isAdmin()) html += `<div class="nav-sep">Comando</div><a class="nav-item" data-route="admin" href="#/admin"><i class="fas fa-shield-halved"></i> Painel Admin</a>`;
+  html += `<div class="nav-sep">Minha conta</div>
+           <a class="nav-item" href="perfil.html"><i class="fas fa-id-badge"></i> Meu perfil</a>
+           <a class="nav-item" href="companhias.html"><i class="fas fa-shield-halved"></i> Companhias</a>`;
+  if(isAdmin()) html += `<div class="nav-sep">Comando</div>
+           <a class="nav-item" href="admin.html"><i class="fas fa-sliders"></i> Painel Admin</a>`;
   document.getElementById('sidebar-nav').innerHTML = html;
   if(STATE.settings.maintenance?.enabled && isAdmin()) document.getElementById('maintenance-banner').classList.remove('hidden');
 }
@@ -63,31 +67,40 @@ function canAccessGroup(gid){
   return STATE.groups.some(g => g.id === gid);
 }
 
-/* ══════════ ÍNDICE ESTILO FÓRUM (HOME) ══════════ */
+/* ══════════ HOME (índice estilo fórum — SEM termos técnicos, COM ambiente dos grupos) ══════════ */
 async function renderHome(c){
-  const [{ data: sections }, { data: subs }, { data: posts }, { count: nMembers }, { data: newest }] = await Promise.all([
+  const [{ data: sections }, { data: subs }, { data: posts }, { count: nMembers }, 
+         { data: newest }, { data: groups }] = await Promise.all([
     supabase.from('sections').select('*').order('order_index'),
     supabase.from('subtopics').select('id,name,description,section_id,required_group_id,is_request_form,allow_posts').order('order_index'),
-    supabase.from('posts').select('id,subtopic_id,title,created_at,profiles(nickname)').order('created_at',{ascending:false}).limit(300),
-    supabase.from('profiles').select('*', { count:'planned', head:true }).eq('status','active'),
-    supabase.from('profiles').select('nickname,created_at').eq('status','active').eq('is_invisible',false).order('created_at',{ascending:false}).limit(5)
+    supabase.from('posts').select('id,subtopic_id,title,created_at,profiles_view(nickname)').order('created_at',{ascending:false}).limit(300),
+    supabase.from('profiles_view').select('*', { count:'planned', head:true }).eq('status','active'),
+    supabase.from('profiles_view').select('nickname,created_at').eq('status','active').eq('is_invisible',false).order('created_at',{ascending:false}).limit(5),
+    supabase.from('groups').select('id,name,color,power_level,visible,parent_id').eq('visible',true).order('power_level',{ascending:false})
   ]);
+  
+  // contagem de membros por grupo
+  const { data: allUG } = await supabase.from('user_groups').select('group_id').limit(5000);
+  const memberCount = {}; (allUG||[]).forEach(m => memberCount[m.group_id] = (memberCount[m.group_id]||0)+1);
+
   const counts = {}, lastMap = {};
   (posts||[]).forEach(p => { counts[p.subtopic_id] = (counts[p.subtopic_id]||0)+1; if(!lastMap[p.subtopic_id]) lastMap[p.subtopic_id] = p; });
   const visibleSubs = (subs||[]).filter(s => canAccessGroup(s.required_group_id));
 
   c.innerHTML = `
+  <!-- HERO -->
   <section class="hero p-6 md:p-8 fade-up">
     <div class="relative flex flex-wrap items-center gap-6 justify-between">
       <div>
         <p class="text-gold-300 text-xs font-bold tracking-[0.3em] uppercase">Índice do quartel • Habbo BR</p>
         <h1 class="font-display text-2xl md:text-3xl font-extrabold mt-1">Bem-vindo, ${esc(STATE.profile.nickname)}</h1>
-        <div class="flex flex-wrap gap-2 mt-3">${STATE.groups.map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}</div>
+        <div class="flex flex-wrap gap-2 mt-3">${STATE.groups.map(groupChip).join('') || '<span class="chip">Sem grupo</span>'}</div>
       </div>
       <img src="${CONFIG.logoUrl}" class="w-20 md:w-28 drop-shadow-xl hidden sm:block" onerror="this.style.display='none'">
     </div>
   </section>
 
+  <!-- STATS -->
   <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 fade-up">
     <div class="stat-tile"><span class="forum-ico"><i class="fas fa-users"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Efetivo ativo</p><p class="font-display text-xl font-extrabold text-famr-800">${nMembers ?? 0}</p></div></div>
     <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-comments"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Publicações</p><p class="font-display text-xl font-extrabold text-famr-800">${(posts||[]).length}+</p></div></div>
@@ -95,6 +108,22 @@ async function renderHome(c){
     <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-user-plus"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Mais recente</p><p class="font-display text-sm font-extrabold text-famr-800 truncate">${esc(newest?.[0]?.nickname || '—')}</p></div></div>
   </section>
 
+  <!-- AMBIENTE DOS GRUPOS (novidade!) -->
+  ${(groups||[]).length > 0 ? `
+  <section class="fade-up">
+    <h2 class="font-display font-bold text-sm mb-3"><i class="fas fa-building-columns text-gold-500 mr-2"></i>Ambiente das Companhias</h2>
+    <div class="group-env">
+      ${(groups||[]).map(g => `
+        <a href="companhias.html#${g.id}" class="group-card">
+          <div class="gc-bar" style="background:linear-gradient(90deg,${g.color},${g.color}88)"></div>
+          <span class="gc-name" style="color:${g.color}">${esc(g.name)}</span>
+          <span class="gc-count"><i class="fas fa-users mr-1"></i>${memberCount[g.id]||0} membro(s)</span>
+          <span class="gc-stars">${powerStars(g.power_level)}</span>
+        </a>`).join('')}
+    </div>
+  </section>` : ''}
+
+  <!-- ÍNDICE POR SETORES (fórum) -->
   ${(sections||[]).map(sec => {
     const rows = visibleSubs.filter(s => s.section_id === sec.id);
     const secLocked = sec.required_group_id && !canAccessGroup(sec.required_group_id);
@@ -108,16 +137,18 @@ async function renderHome(c){
     </section>`;
   }).join('')}
 
+  <!-- RODAPÉ: ÚLTIMOS ALISTAMENTOS + LEGENDA LIMPA -->
   <div class="grid md:grid-cols-2 gap-4 fade-up">
     <div class="card"><div class="card-head"><h2 class="font-display font-bold text-sm"><i class="fas fa-user-clock text-gold-500 mr-2"></i>Últimos alistamentos</h2></div>
       <div class="p-4 flex flex-wrap gap-2">${(newest||[]).map(u => `<span class="chip chip-ok"><i class="fas fa-user"></i> ${esc(u.nickname)}</span>`).join('') || '<span class="text-xs text-muted">—</span>'}</div>
-      <div class="px-4 pb-4 text-xs text-muted">Novo recruta: <b class="text-famr-700">${esc(newest?.[0]?.nickname || '—')}</b> • Total de militares: <b>${nMembers ?? 0}</b></div></div>
+      <div class="px-4 pb-4 text-xs text-muted">Total de militares ativos: <b>${nMembers ?? 0}</b></div></div>
+    
     <div class="card"><div class="card-head"><h2 class="font-display font-bold text-sm"><i class="fas fa-circle-info text-gold-500 mr-2"></i>Legenda do índice</h2></div>
       <div class="p-4 space-y-2 text-xs text-muted">
-        <p><span class="forum-ico inline-grid !w-6 !h-6 text-[10px] mr-2"><i class="fas fa-comments"></i></span> Subtópico liberado para você</p>
-        <p><span class="forum-ico lock inline-grid !w-6 !h-6 text-[10px] mr-2"><i class="fas fa-lock"></i></span> Restrito a grupo/companhia específica</p>
-        <p><span class="forum-ico new inline-grid !w-6 !h-6 text-[10px] mr-2"><i class="fas fa-file-signature"></i></span> Formulário de requerimento (CRH/RH)</p>
-        <p class="pt-2 border-t border-line"><i class="fas fa-shield-halved text-famr-600 mr-1"></i> Banco Supabase com RLS ativo • sessão expira em 1h de inatividade</p>
+        <p><span class="forum-ico inline-grid !w-6 !h-6 text-[10px] mr-2"><i class="fas fa-comments"></i></span> Subtópico aberto para publicação</p>
+        <p><span class="forum-ico lock inline-grid !w-6 !h-6 text-[10px] mr-2"><i class="fas fa-lock"></i></span> Conteúdo reservado a companhia específica</p>
+        <p><span class="forum-ico new inline-grid !w-6 !h-6 text-[10px] mr-2"><i class="fas fa-file-signature"></i></span> Formulário de requerimento ao CRH/RH</p>
+        <p class="pt-2 border-t border-line"><i class="fas fa-shield-halved text-famr-600 mr-1"></i> Sessão segura • expira após 1h de inatividade</p>
       </div></div>
   </div>`;
 }
@@ -125,16 +156,17 @@ async function renderHome(c){
 function forumRow(s, counts, lastMap){
   const locked = s.required_group_id && !canAccessGroup(s.required_group_id);
   const last = lastMap[s.id];
-  const ico = locked ? 'lock fa-lock' : s.is_request_form ? 'new fa-file-signature' : 'fa-comments';
+  const icoClass = locked ? 'lock fa-lock' : s.is_request_form ? 'new fa-file-signature' : 'fa-comments';
+  const icoParts = icoClass.split(' ');
   return `<a href="${locked ? '#' : '#/sub/'+s.id}" class="forum-row ${locked?'opacity-70 cursor-not-allowed':''}" ${locked?'onclick="return false"':''}>
-    <span class="forum-ico ${locked?'lock':s.is_request_form?'new':''}"><i class="fas ${ico.split(' ').length>1?ico.split(' ')[1]:ico}"></i></span>
+    <span class="forum-ico ${locked?'lock':s.is_request_form?'new':''}"><i class="fas ${icoParts[icoParts.length-1]}"></i></span>
     <div class="flex-1 min-w-0">
       <b class="text-sm text-famr-800">${esc(s.name)}</b>
       <p class="text-xs text-muted truncate">${esc(s.description||'')}</p>
     </div>
     <div class="w-20 text-center hidden sm:block"><b class="text-sm">${locked?'—':(counts[s.id]||0)}</b><span class="block text-[10px] text-muted uppercase">tópicos</span></div>
     <div class="w-44 hidden md:block text-[11px] text-muted truncate">
-      ${locked ? '<i class="fas fa-lock lock-badge"></i> acesso restrito' : last ? `<i class="fas fa-clock text-gold-500 mr-1"></i>${fmtDate(last.created_at)}<br><span class="ml-4">por <b class="text-famr-700">${esc(last.profiles?.nickname||'—')}</b></span>` : 'sem publicações'}
+      ${locked ? '<i class="fas fa-lock lock-badge"></i> acesso reservado' : last ? `<i class="fas fa-clock text-gold-500 mr-1"></i>${fmtDate(last.created_at)}<br><span class="ml-4">por <b class="text-famr-700">${esc(last.profiles_view?.nickname||'—')}</b></span>` : 'sem publicações'}
     </div>
   </a>`;
 }
@@ -145,7 +177,6 @@ async function renderSection(c, slug){
   if(!sec){ c.innerHTML = '<div class="card card-body text-sm text-muted">Seção não encontrada.</div>'; return; }
   if(slug === 'listagem')      return await renderListagem(c, sec);
   if(slug === 'requerimentos') return await renderRequerimentos(c, sec);
-  if(slug === 'companhias')    return await renderCompanhias(c, sec);
   if(slug === 'documentos')    return await renderDocumentos(c, sec);
   if(sec.required_group_id && !canAccessGroup(sec.required_group_id)){
     c.innerHTML = `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i>
@@ -153,7 +184,7 @@ async function renderSection(c, slug){
   }
   const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id).order('order_index');
   const ids = (subs||[]).map(s => s.id);
-  const { data: posts } = ids.length ? await supabase.from('posts').select('id,subtopic_id,title,created_at,profiles(nickname)').in('subtopic_id', ids).order('created_at',{ascending:false}).limit(300) : { data: [] };
+  const { data: posts } = ids.length ? await supabase.from('posts').select('id,subtopic_id,title,created_at,profiles_view(nickname)').in('subtopic_id', ids).order('created_at',{ascending:false}).limit(300) : { data: [] };
   const counts = {}, lastMap = {};
   (posts||[]).forEach(p => { counts[p.subtopic_id] = (counts[p.subtopic_id]||0)+1; if(!lastMap[p.subtopic_id]) lastMap[p.subtopic_id] = p; });
   c.innerHTML = `
@@ -175,7 +206,7 @@ async function renderSubtopic(c, id){
     c.innerHTML = `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i>
       <h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2><p class="text-sm text-muted mt-1">Conteúdo exclusivo de grupo específico.</p></div>`; return;
   }
-  const { data: posts } = await supabase.from('posts').select('*,profiles(nickname)').eq('subtopic_id', id).order('created_at',{ascending:false}).limit(50);
+  const { data: posts } = await supabase.from('posts').select('*,profiles_view(nickname)').eq('subtopic_id', id).order('created_at',{ascending:false}).limit(50);
   window._postsCache = Object.fromEntries((posts||[]).map(p => [p.id, p]));
   c.innerHTML = `
   <div class="fade-up">
@@ -197,7 +228,7 @@ async function renderSubtopic(c, id){
       ${(posts||[]).map(p => `<div class="topic-row" onclick="openTopic('${p.id}')">
         <span class="forum-ico ${p.pinned?'new':''}"><i class="fas ${p.pinned?'fa-thumbtack':'fa-comment'}"></i></span>
         <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(p.title)}</b>
-          <p class="text-[11px] text-muted">por <b class="text-famr-700">${esc(p.profiles?.nickname||'—')}</b> • ${fmtDate(p.created_at)}</p></div>
+          <p class="text-[11px] text-muted">por <b class="text-famr-700">${esc(p.profiles_view?.nickname||'—')}</b> • ${fmtDate(p.created_at)}</p></div>
         <i class="fas fa-chevron-right text-xs text-muted"></i>
       </div>`).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhum tópico publicado ainda.</p>'}
     </div>
@@ -207,7 +238,7 @@ window.openTopic = id => {
   const p = window._postsCache?.[id]; if(!p) return;
   const mine = p.author_id === STATE.profile.id;
   openModal(`<i class="fas fa-comment text-gold-500 mr-2"></i>${esc(p.title)}`,
-    `<div class="text-[11px] text-muted mb-3"><i class="fas fa-user-pen text-gold-500 mr-1"></i>${esc(p.profiles?.nickname||'—')} • ${fmtDate(p.created_at)}</div>
+    `<div class="text-[11px] text-muted mb-3"><i class="fas fa-user-pen text-gold-500 mr-1"></i>${esc(p.profiles_view?.nickname||'—')} • ${fmtDate(p.created_at)}</div>
      <p class="text-sm whitespace-pre-wrap text-ink">${esc(p.content)}</p>
      ${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm mt-4"><i class="fab fa-google-drive"></i> Abrir anexo</a>` : ''}`,
     `${mine||isAdmin() ? `<button class="btn btn-danger btn-sm mr-auto" onclick="delPost('${p.id}')"><i class="fas fa-trash"></i> Excluir</button>` : ''}
@@ -218,17 +249,17 @@ window.newPost = async function(e, subtopicId){
   const f = e.target;
   const { error } = await supabase.from('posts').insert([{ subtopic_id: subtopicId, title: f.title.value, content: f.content.value, link: f.link.value||null, author_id: STATE.profile.id }]);
   if(error){ toast('Erro: '+error.message,'err'); return false; }
-  await supabase.rpc('log_action', { action:'POST_CRIADO', details:{ subtopicId } });
+  try{ await supabase.rpc('log_action', { action:'POST_CRIADO', details:{ subtopicId } }); }catch(e){}
   toast('Tópico publicado!'); route(); return false;
 };
 window.delPost = async function(id){
   if(!await confirmDlg('Excluir esta publicação?')) return;
   await supabase.from('posts').delete().eq('id', id);
-  await supabase.rpc('log_action', { action:'POST_EXCLUIDO', details:{ id } });
+  try{ await supabase.rpc('log_action', { action:'POST_EXCLUIDO', details:{ id } }); }catch(e){}
   closeModal(); toast('Publicação excluída.'); route();
 };
 
-/* ── LISTAGEM / REQUERIMENTOS / DOCUMENTOS / COMPANHIAS ── */
+/* ── LISTAGEM ── */
 async function renderListagem(c, sec){
   const head = secHead(sec);
   const { data: entries } = await supabase.from('listagem_entries').select('*').order('created_at',{ascending:false}).limit(100);
@@ -252,6 +283,7 @@ const secHead = sec => `<div class="flex flex-wrap items-center justify-between 
   <h1 class="font-display text-2xl md:text-3xl font-extrabold text-famr-900"><i class="fas ${esc(sec.icon)} text-gold-500 mr-2"></i>${esc(sec.name)}</h1>
   <p class="text-sm text-muted mt-1">${esc(sec.description||'')}</p></div><div class="star-row text-sm">★★★★</div></div>`;
 
+/* ── REQUERIMENTOS ── */
 async function renderRequerimentos(c, sec){
   const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id).order('order_index');
   const { data: mine } = await supabase.from('requests').select('*,subtopics(name)').eq('author_id', STATE.profile.id).order('created_at',{ascending:false}).limit(30);
@@ -296,6 +328,7 @@ window.submitRequest = async function(subtopicId){
   closeModal(); toast('Protocolo enviado! Aguarde a análise do CRH/RH.'); route();
 };
 
+/* ── DOCUMENTOS ── */
 async function renderDocumentos(c, sec){
   const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id);
   const ids = (subs||[]).map(s => s.id);
@@ -312,46 +345,6 @@ async function renderDocumentos(c, sec){
   </div>`;
 }
 
-async function renderCompanhias(c, sec){
-  const { data: groups } = await supabase.from('groups').select('*, groups(name)').eq('visible', true).order('power_level',{ascending:false});
-  const { data: members } = await supabase.from('user_groups').select('group_id').limit(5000);
-  const count = {}; (members||[]).forEach(m => count[m.group_id] = (count[m.group_id]||0)+1);
-  c.innerHTML = secHead(sec) + `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up">
-    ${(groups||[]).map(g => `<div class="card card-hover overflow-hidden">
-      <div class="h-2" style="background:linear-gradient(90deg,${g.color},${g.color}88)"></div>
-      <div class="p-5">
-        <div class="flex items-center justify-between"><h3 class="font-display font-bold" style="color:${g.color}">${esc(g.name)}</h3>
-        <span class="text-gold-500 text-xs">${powerStars(g.power_level)}</span></div>
-        <p class="text-xs text-muted mt-1">${g.groups ? 'Subgrupo de <b>'+esc(g.groups.name)+'</b>' : 'Companhia principal'}</p>
-        <div class="flex items-center justify-between mt-4 text-xs text-muted">
-          <span><i class="fas fa-users mr-1 text-famr-600"></i>${count[g.id]||0} membro(s)</span><span class="chip chip-ok">VISÍVEL</span></div>
-      </div></div>`).join('') || '<div class="card card-body text-sm text-muted">Nenhuma companhia visível.</div>'}
-  </div>`;
-}
-
-/* ── PERFIL ── */
-async function renderProfile(c, param){
-  const me = (!param || param === 'me');
-  const id = me ? STATE.profile.id : param;
-  const { data: p } = await supabase.from('profiles').select('*').eq('id', id).single();
-  if(!p){ c.innerHTML = '<div class="card card-body text-sm text-muted">Perfil não encontrado.</div>'; return; }
-  const { data: ug } = await supabase.from('user_groups').select('groups(*)').eq('user_id', id);
-  const gs = (ug||[]).map(r => r.groups).filter(g => g && (g.visible || me || isAdmin()));
-  c.innerHTML = `
-  <div class="card fade-up overflow-hidden">
-    <div class="h-24" style="background:linear-gradient(120deg,#0e4433,#14563f 60%,#c9a227)"></div>
-    <div class="p-6 -mt-12">
-      <div class="flex flex-wrap items-end gap-4">
-        <span class="w-20 h-20 rounded-2xl grid place-items-center text-3xl font-extrabold text-white border-4 border-white shadow-lg" style="background:${gs[0]?.color||'#14563f'}">${esc(p.nickname.charAt(0).toUpperCase())}</span>
-        <div class="flex-1"><h1 class="font-display text-2xl font-extrabold">${esc(p.nickname)}</h1>
-        <p class="text-xs text-muted">No sistema desde ${fmtDate(p.created_at)} ${me?`• ${esc(p.email)}`:''}</p></div>
-        <span class="chip ${p.status==='active'?'chip-ok':p.status==='pending'?'chip-wait':'chip-no'}">${p.status.toUpperCase()}</span>
-        ${p.login_locked ? '<span class="chip chip-no"><i class="fas fa-lock mr-1"></i>BLOQUEADA</span>' : ''}
-      </div>
-      <div class="flex flex-wrap gap-2 mt-4">${gs.map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}</div>
-    </div></div>`;
-}
-
 /* ── BUSCA GLOBAL ── */
 document.addEventListener('DOMContentLoaded', () => {
   const inp = document.getElementById('global-search'), drop = document.getElementById('search-drop');
@@ -362,8 +355,8 @@ document.addEventListener('DOMContentLoaded', () => {
     t = setTimeout(async () => {
       const q = inp.value.trim();
       if(q.length < 2){ drop.classList.add('hidden'); return; }
-      const { data } = await supabase.from('profiles').select('id,nickname').eq('status','active').eq('is_invisible', false).ilike('nickname', `%${q}%`).limit(6);
-      drop.innerHTML = (data||[]).map(u => `<a href="#/perfil/${u.id}" onclick="document.getElementById('search-drop').classList.add('hidden')" class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-famr-100 transition-colors">
+      const { data } = await supabase.from('profiles_view').select('id,nickname').eq('status','active').eq('is_invisible', false).ilike('nickname', `%${q}%`).limit(6);
+      drop.innerHTML = (data||[]).map(u => `<a href="perfil.html?id=${u.id}" onclick="document.getElementById('search-drop').classList.add('hidden')" class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-famr-100 transition-colors">
         <span class="w-8 h-8 rounded-full bg-famr-700 text-white grid place-items-center text-xs font-bold">${esc(u.nickname.charAt(0).toUpperCase())}</span>
         <span class="text-sm font-bold">${esc(u.nickname)}</span></a>`).join('') || '<p class="p-3 text-xs text-muted">Nenhum militar encontrado.</p>';
       drop.classList.remove('hidden');
@@ -372,7 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', e => { if(!e.target.closest('#global-search')) drop.classList.add('hidden'); });
 });
 
-/* ══════════════════ PAINEL ADMIN ══════════════════ */
+/* ══════════════════ PAINEL ADMIN (mantido na íntegra) ══════════════════ */
 const A = { tab:'usuarios', page:0, q:'' };
 async function renderAdmin(c){
   if(!isAdmin()){ c.innerHTML = `<div class="card card-body text-center py-16"><i class="fas fa-lock text-3xl text-red-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso negado</h2></div>`; return; }
@@ -393,7 +386,7 @@ window.adminTab = async function(tab){
 
 async function tabUsuarios(b){
   const from = A.page*20;
-  let q = supabase.from('profiles').select('*').order('created_at',{ascending:false}).range(from, from+19);
+  let q = supabase.from('profiles_view').select('*').order('created_at',{ascending:false}).range(from, from+19);
   if(A.q) q = q.ilike('nickname', `%${A.q}%`);
   const { data } = await q;
   b.innerHTML = `<div class="card fade-up">
@@ -422,18 +415,18 @@ async function tabUsuarios(b){
 window.setUser = async (id, status) => {
   const { error } = await supabase.from('profiles').update({ status }).eq('id', id);
   if(error) return toast('Erro: '+error.message,'err');
-  await supabase.rpc('log_action', { action:'USER_STATUS', details:{ id, status } });
+  try{ await supabase.rpc('log_action', { action:'USER_STATUS', details:{ id, status } }); }catch(e){}
   toast('Status atualizado.'); tabUsuarios(document.getElementById('admin-body'));
 };
 window.toggleInvisible = async (id, v) => {
   await supabase.from('profiles').update({ is_invisible: v }).eq('id', id);
-  await supabase.rpc('log_action', { action:'USER_INVISIBLE', details:{ id, v } });
+  try{ await supabase.rpc('log_action', { action:'USER_INVISIBLE', details:{ id, v } }); }catch(e){}
   tabUsuarios(document.getElementById('admin-body'));
 };
 window.unlockUser = async (id) => {
   const { error } = await supabase.from('profiles').update({ login_locked:false, failed_logins:0 }).eq('id', id);
   if(error) return toast('Erro: '+error.message,'err');
-  await supabase.rpc('log_action', { action:'LOCK_REMOVIDO_ADMIN', details:{ id } });
+  try{ await supabase.rpc('log_action', { action:'LOCK_REMOVIDO_ADMIN', details:{ id } }); }catch(e){}
   toast('Conta destravada pelo comando.'); tabUsuarios(document.getElementById('admin-body'));
 };
 window.manageGroups = async (userId, nick) => {
@@ -452,7 +445,7 @@ window.saveGroups = async userId => {
   const ids = [...document.querySelectorAll('#modal-body input:checked')].map(i => i.value);
   await supabase.from('user_groups').delete().eq('user_id', userId);
   if(ids.length) await supabase.from('user_groups').insert(ids.map(g => ({ user_id: userId, group_id: g })));
-  await supabase.rpc('log_action', { action:'USER_GROUPS', details:{ userId, ids } });
+  try{ await supabase.rpc('log_action', { action:'USER_GROUPS', details:{ userId, ids } }); }catch(e){}
   closeModal(); toast('Grupos atualizados.');
 };
 
@@ -498,13 +491,13 @@ window.saveGroup = async id => {
   const q = id ? supabase.from('groups').update(row).eq('id', id) : supabase.from('groups').insert([row]);
   const { error } = await q;
   if(error) return toast('Erro: '+error.message,'err');
-  await supabase.rpc('log_action', { action:'GROUP_SAVE', details: row });
+  try{ await supabase.rpc('log_action', { action:'GROUP_SAVE', details: row }); }catch(e){}
   closeModal(); toast('Grupo salvo.'); buildSidebar(); tabGrupos(document.getElementById('admin-body'));
 };
 window.delGroup = async id => {
   if(!await confirmDlg('Excluir grupo? Membros perdem acesso aos tópicos dele.')) return;
   await supabase.from('groups').delete().eq('id', id);
-  await supabase.rpc('log_action', { action:'GROUP_DEL', details:{ id } });
+  try{ await supabase.rpc('log_action', { action:'GROUP_DEL', details:{ id } }); }catch(e){}
   tabGrupos(document.getElementById('admin-body'));
 };
 
@@ -544,7 +537,7 @@ window.saveSection = async () => {
     icon: document.getElementById('s-icon').value.trim() || 'fa-folder-open', description: document.getElementById('s-desc').value,
     required_group_id: document.getElementById('s-group').value || null, order_index: (count||0)+1 }]);
   if(error) return toast('Erro: '+error.message,'err');
-  await supabase.rpc('log_action', { action:'SECTION_CRIADA', details:{} });
+  try{ await supabase.rpc('log_action', { action:'SECTION_CRIADA', details:{} }); }catch(e){}
   closeModal(); toast('Setor criado.'); buildSidebar(); tabTopicos(document.getElementById('admin-body'));
 };
 window.delSection = async id => { if(await confirmDlg('Excluir setor e todos os subtópicos?')) { await supabase.from('sections').delete().eq('id', id); buildSidebar(); tabTopicos(document.getElementById('admin-body')); } };
@@ -573,13 +566,13 @@ window.saveSubtopic = async () => {
 };
 
 async function tabProtocolos(b){
-  const { data } = await supabase.from('requests').select('*,profiles(nickname),subtopics(name,auto_listagem_category)').eq('status','pending').order('created_at');
+  const { data } = await supabase.from('requests').select('*,profiles_view(nickname),subtopics(name,auto_listagem_category)').eq('status','pending').order('created_at');
   b.innerHTML = `<div class="card fade-up"><div class="cat-head"><i class="fas fa-inbox"></i> Pendentes de análise (${(data||[]).length})</div>
   <div class="divide-y divide-line">${(data||[]).map(r => `<div class="p-4">
     <div class="flex flex-wrap items-center gap-3 justify-between">
       <div><b class="text-sm">${esc(r.title)}</b> <span class="chip chip-neutral ml-1">${esc(r.subtopics?.name||'')}</span>
       ${r.subtopics?.auto_listagem_category?`<span class="chip chip-ok">→ vira "${esc(r.subtopics.auto_listagem_category)}" na Listagem</span>`:''}
-      <p class="text-[11px] text-muted mt-1">${esc(r.profiles?.nickname||'')} • ${fmtDate(r.created_at)}</p></div>
+      <p class="text-[11px] text-muted mt-1">${esc(r.profiles_view?.nickname||'')} • ${fmtDate(r.created_at)}</p></div>
       <div class="space-x-1"><button class="btn btn-primary btn-sm" onclick="review('${r.id}','approved')"><i class="fas fa-check"></i> Aprovar</button>
       <button class="btn btn-danger btn-sm" onclick="review('${r.id}','rejected')"><i class="fas fa-xmark"></i> Reprovar</button></div></div>
     <div class="mt-3 grid sm:grid-cols-2 gap-2 text-xs bg-famr-50 rounded-lg p-3">${Object.entries(r.form_data||{}).map(([k,v])=>`<p><b class="text-famr-700">${esc(k)}:</b> ${esc(v)}</p>`).join('')}</div>
@@ -633,13 +626,13 @@ window.saveMaint = async () => {
   const value = { enabled: document.getElementById('c-maint').checked, message: document.getElementById('c-maint-msg').value };
   await supabase.from('settings').upsert({ key:'maintenance', value });
   STATE.settings.maintenance = value;
-  await supabase.rpc('log_action', { action:'MANUTENCAO', details: value });
+  try{ await supabase.rpc('log_action', { action:'MANUTENCAO', details: value }); }catch(e){}
   toast('Configuração salva.'); document.getElementById('maintenance-banner').classList.toggle('hidden', !value.enabled);
 };
 window.saveAnn = async () => {
   const value = { text: document.getElementById('c-ann').value };
   await supabase.from('settings').upsert({ key:'announcement', value });
   STATE.settings.announcement = value;
-  await supabase.rpc('log_action', { action:'AVISO', details: value });
+  try{ await supabase.rpc('log_action', { action:'AVISO', details: value }); }catch(e){}
   toast('Aviso publicado na home.');
 };
