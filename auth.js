@@ -1,8 +1,6 @@
-/* ══════════ FAMR • AUTENTICAÇÃO FINAL (verificação própria + senha-ponte) ══════════
-   • A senha real é verificada NA COLUNA pass_hash (função SQL segura)
-   • O Supabase Auth só vê a senha-ponte (bridge_pass) para criar a sessão/RLS
-   • E-mail usado apenas para redefinição e alertas
-   • Inatividade 1h + virada de dia + anti-spam + bloqueio em 4 erros */
+/* ══════════ FAMR • LOGIN VALIDA NA SUA COLUNA (credentials) ══════════
+   senha real -> pass_hash (sua coluna, trancada) | e-mail -> só recuperação/alerta
+   o gotrue recebe a ponte automaticamente para abrir a sessão/RLS */
 
 const SCREENS = ['screen-login','screen-register','screen-forgot','screen-reset','screen-maintenance'];
 const INACTIVITY_MS = 60*60*1000, BROWSER_WINDOW_MS = 5*60*1000, BROWSER_BLOCK_MS = 5*60*1000;
@@ -112,7 +110,7 @@ async function initSession(){
   }
 }
 
-/* ── LOGIN: verifica na nossa coluna → troca pela ponte ── */
+/* LOGIN: valida na SUA coluna (famr_login_verify) -> abre sessão com a ponte */
 async function doLogin(e){
   loginAlertHide();
   if(!sbOk()){ loginAlert(MSG_SERVIDOR, 'err'); return; }
@@ -138,7 +136,6 @@ async function doLogin(e){
     if(v.locked){ showLockedMsg(); return; }
     if(v.ok !== true){ loginAlert('Senha incorreta (<b>'+(v.fails ?? '?')+'/'+MAX_WRONG_PASS+'</b>). Na 4ª tentativa a conta é bloqueada.', 'err'); return; }
 
-    // sessão via senha-ponte (fallback: senha real, para contas antigas sem ponte)
     const { data, error: le } = await supabase.auth.signInWithPassword({ email: v.email, password: v.bridge || pass });
     if(le){
       console.error('[FAMR] signIn ponte:', le);
@@ -183,7 +180,7 @@ async function enterSystem(userId){
   try{ await route(); }catch(err){ console.error('[FAMR] route:', err); }
 }
 
-/* ── ALISTAMENTO: cria com senha real → converte para ponte ── */
+/* ALISTAMENTO: senha real -> sua coluna; gotrue recebe ponte automática */
 async function doRegister(e){
   if(!sbOk()){ toast('Falha de conexão com o servidor. Tente novamente.', 'err'); return; }
   const nick = document.getElementById('reg-nick').value.trim();
@@ -206,7 +203,7 @@ async function doRegister(e){
   finally { btn.disabled = false; }
 }
 
-/* ── ESQUECI A SENHA (e-mail só para isto e alertas) ── */
+/* ESQUECI A SENHA (e-mail só para isto e alertas) */
 async function doForgot(e){
   if(!sbOk()){ toast('Falha de conexão com o servidor. Tente novamente.', 'err'); return; }
   const nick = document.getElementById('forgot-nick').value.trim();
@@ -224,7 +221,7 @@ async function doForgot(e){
   finally { btn.disabled = false; }
 }
 
-/* ── NOVA SENHA (redefinição): troca hash real + ponte ── */
+/* NOVA SENHA: grava hash real na sua coluna + nova ponte no gotrue (destrava) */
 async function doResetSave(){
   const p1 = document.getElementById('reset-pass').value;
   const p2 = document.getElementById('reset-pass2').value;
