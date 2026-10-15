@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v8 (todas as correções) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v9 ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -27,7 +27,7 @@ function confirmDlg(msg){ return new Promise(res => {
   window._cf = res;
 });}
 
-/* ── ROUTER (100% interno — nunca recarrega a página) ── */
+/* ── ROUTER (100% interno) ── */
 window.addEventListener('hashchange', route);
 async function route(){
   if(!STATE.profile) return;
@@ -38,13 +38,14 @@ async function route(){
   try{
     if(page === 'admin')   return await renderAdmin(c);
     if(page === 'perfil')  return await renderProfile(c, param);
+    if(page === 'grupo')   return await renderGroupPage(c, param);
     if(page === 'section') return await renderSection(c, param);
     if(page === 'sub')     return await renderSubtopic(c, param);
     return await renderHome(c);
   }catch(err){ console.error(err); c.innerHTML = `<div class="card card-body text-red-600 text-sm"><i class="fas fa-plug-circle-xmark mr-2"></i>Falha de conexão. Tente novamente.</div>`; }
 }
 
-/* ── SIDEBAR (links internos, sem "Companhias" duplicado) ── */
+/* ── SIDEBAR ── */
 async function buildSidebar(){
   const { data: sections } = await supabase.from('sections').select('*').order('order_index');
   STATE.sections = sections || [];
@@ -68,16 +69,14 @@ function canAccessGroup(gid){
   return STATE.groups.some(g => g.id === gid);
 }
 
-/* ══════════ HOME (barra de ambiente estilo fórum, sem termos técnicos) ══════════ */
+/* ══════════ HOME ══════════ */
 async function renderHome(c){
   const [{ data: sections }, { data: subs }, { data: posts }, { count: nMembers }, 
          { data: newest }, { data: groups }] = await Promise.all([
     supabase.from('sections').select('*').order('order_index'),
     supabase.from('subtopics').select('id,name,description,section_id,required_group_id,is_request_form,allow_posts').order('order_index'),
     supabase.from('posts').select('id,subtopic_id,title,created_at,profiles_view(nickname)').order('created_at',{ascending:false}).limit(300),
-    // Efetivo ativo SEM contar o admin master
     supabase.from('profiles_view').select('*', { count:'planned', head:true }).eq('status','active').neq('nickname','admin master'),
-    // Últimos alistamentos SEM o admin master
     supabase.from('profiles_view').select('nickname,created_at').eq('status','active').eq('is_invisible', false).neq('nickname','admin master').order('created_at',{ascending:false}).limit(5),
     supabase.from('groups').select('id,name,color,power_level,visible,parent_id').eq('visible',true).order('power_level',{ascending:false})
   ]);
@@ -110,20 +109,6 @@ async function renderHome(c){
     <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-user-plus"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Mais recente</p><p class="font-display text-sm font-extrabold text-famr-800 truncate">${esc(newest?.[0]?.nickname || '—')}</p></div></div>
   </section>
 
-  <!-- AMBIENTE DOS GRUPOS (barra horizontal estilo fórum) -->
-  ${(groups||[]).length > 0 ? `
-  <section class="fade-up">
-    <h2 class="font-display font-bold text-sm mb-2"><i class="fas fa-building-columns text-gold-500 mr-2"></i>Ambiente das Companhias</h2>
-    <div class="group-bar">
-      ${(groups||[]).map((g,i,arr) => `
-        <a href="#/section/companhias#${g.id}" class="gb-item">
-          <i class="fas fa-shield-halved" style="color:${g.color}"></i>
-          <span>${esc(g.name)}</span>
-          <span class="text-[10px] text-muted">(${memberCount[g.id]||0})</span>
-        </a>${i < arr.length-1 ? '<span class="gb-sep"></span>' : ''}`).join('')}
-    </div>
-  </section>` : ''}
-
   <!-- ÍNDICE POR SETORES (fórum) -->
   ${(sections||[]).map(sec => {
     const rows = visibleSubs.filter(s => s.section_id === sec.id);
@@ -137,6 +122,20 @@ async function renderHome(c){
       </div>
     </section>`;
   }).join('')}
+
+  <!-- GRUPOS (barra horizontal, perto do rodapé) -->
+  ${(groups||[]).length > 0 ? `
+  <section class="fade-up">
+    <h2 class="font-display font-bold text-sm mb-2"><i class="fas fa-layer-group text-gold-500 mr-2"></i>Grupos</h2>
+    <div class="group-bar">
+      ${(groups||[]).map((g,i,arr) => `
+        <a href="#/grupo/${g.id}" class="gb-item">
+          <i class="fas fa-shield-halved" style="color:${g.color}"></i>
+          <span>${esc(g.name)}</span>
+          <span class="text-[10px] text-muted">(${memberCount[g.id]||0})</span>
+        </a>${i < arr.length-1 ? '<span class="gb-sep"></span>' : ''}`).join('')}
+    </div>
+  </section>` : ''}
 
   <!-- RODAPÉ: ÚLTIMOS ALISTAMENTOS + LEGENDA LIMPA -->
   <div class="grid md:grid-cols-2 gap-4 fade-up">
@@ -172,13 +171,46 @@ function forumRow(s, counts, lastMap){
   </a>`;
 }
 
+/* ── PÁGINA DE GRUPO (#/grupo/{id}) — lista membros do grupo ── */
+async function renderGroupPage(c, groupId){
+  const [{ data: grp }, { data: members }] = await Promise.all([
+    supabase.from('groups').select('*, groups(name)').eq('id', groupId).single(),
+    supabase.from('user_groups').select('profiles_view(id,nickname,status)').eq('group_id', groupId)
+  ]);
+  if(!grp){ c.innerHTML = '<div class="card card-body text-sm text-muted">Grupo não encontrado.</div>'; return; }
+  
+  const filtered = (members||[]).map(m => m.profiles_view).filter(Boolean).filter(p => p.status==='active' && p.nickname !== 'admin master');
+  
+  c.innerHTML = `
+  <div class="fade-up">
+    <p class="text-xs text-muted mb-2"><a href="#/home" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>Início</a> / <b>${esc(grp.name)}</b></p>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="font-display text-xl md:text-2xl font-extrabold text-famr-900">
+        <i class="fas fa-shield-halved mr-2" style="color:${grp.color}"></i>${esc(grp.name)}
+      </h1>
+      <span class="text-gold-500 text-sm">${powerStars(grp.power_level)}</span>
+    </div>
+    <p class="text-sm text-muted mt-1">${grp.groups ? 'Subgrupo de <b>'+esc(grp.groups.name)+'</b>' : 'Companhia principal'} • Poder: ${grp.power_level}/100</p>
+  </div>
+  
+  <section class="card overflow-hidden fade-up mt-4">
+    <div class="cat-head"><i class="fas fa-users"></i> Membros efetivos (${filtered.length})</div>
+    <div class="overflow-x-auto"><table class="table-famr">
+      <thead><tr><th>Nickname</th><th>Status</th></tr></thead>
+      <tbody>${filtered.map(m => `<tr>
+        <td><a href="#/perfil/${m.id}" class="font-bold text-famr-700 hover:underline">${esc(m.nickname)}</a></td>
+        <td><span class="chip chip-ok">ATIVO</span></td>
+      </tr>`).join('') || '<tr><td colspan="2" class="text-center text-muted py-8">Nenhum membro ativo neste grupo.</td></tr>'}
+      </tbody></table></div>
+  </section>`;
+}
+
 /* ── SETOR (categoria) ── */
 async function renderSection(c, slug){
   const { data: sec } = await supabase.from('sections').select('*').eq('slug', slug).single();
   if(!sec){ c.innerHTML = '<div class="card card-body text-sm text-muted">Seção não encontrada.</div>'; return; }
   if(slug === 'listagem')      return await renderListagem(c, sec);
   if(slug === 'requerimentos') return await renderRequerimentos(c, sec);
-  if(slug === 'companhias')    return await renderCompanhias(c, sec);
   if(slug === 'documentos')    return await renderDocumentos(c, sec);
   if(sec.required_group_id && !canAccessGroup(sec.required_group_id)){
     c.innerHTML = `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i>
@@ -347,24 +379,6 @@ async function renderDocumentos(c, sec){
   </div>`;
 }
 
-/* ── COMPANHIAS (setor interno, único ponto de acesso) ── */
-async function renderCompanhias(c, sec){
-  const { data: groups } = await supabase.from('groups').select('*, groups(name)').eq('visible', true).order('power_level',{ascending:false});
-  const { data: members } = await supabase.from('user_groups').select('group_id').limit(5000);
-  const count = {}; (members||[]).forEach(m => count[m.group_id] = (count[m.group_id]||0)+1);
-  c.innerHTML = secHead(sec) + `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up">
-    ${(groups||[]).map(g => `<div class="card card-hover overflow-hidden">
-      <div class="h-2" style="background:linear-gradient(90deg,${g.color},${g.color}88)"></div>
-      <div class="p-5">
-        <div class="flex items-center justify-between"><h3 class="font-display font-bold" style="color:${g.color}">${esc(g.name)}</h3>
-        <span class="text-gold-500 text-xs">${powerStars(g.power_level)}</span></div>
-        <p class="text-xs text-muted mt-1">${g.groups ? 'Subgrupo de <b>'+esc(g.groups.name)+'</b>' : 'Companhia principal'}</p>
-        <div class="flex items-center justify-between mt-4 text-xs text-muted">
-          <span><i class="fas fa-users mr-1 text-famr-600"></i>${count[g.id]||0} membro(s)</span><span class="chip chip-ok">VISÍVEL</span></div>
-      </div></div>`).join('') || '<div class="card card-body text-sm text-muted">Nenhuma companhia visível.</div>'}
-  </div>`;
-}
-
 /* ── PERFIL (rota interna #/perfil/[id|me]) ── */
 async function renderProfile(c, param){
   const me = (!param || param === 'me');
@@ -422,14 +436,13 @@ async function renderAdmin(c){
   drawAdminTabs();
   await adminTab(A.tab);
 }
-/* redesenha as tabs sempre que troca — garante que a cor segue o clique */
 function drawAdminTabs(){
   const wrap = document.getElementById('admin-tabs'); if(!wrap) return;
   wrap.innerHTML = ADMIN_TABS.map(([k,i,l]) => `<button onclick="adminTab('${k}')" class="btn btn-sm ${A.tab===k?'btn-primary':'btn-outline'}"><i class="fas ${i}"></i> ${l}</button>`).join('');
 }
 window.adminTab = async function(tab){
   A.tab = tab; A.page = 0;
-  drawAdminTabs();                                  // ← atualiza o destaque
+  drawAdminTabs();
   const b = document.getElementById('admin-body');
   b.innerHTML = '<div class="skeleton h-64"></div>';
   ({usuarios:tabUsuarios, grupos:tabGrupos, topicos:tabTopicos, protocolos:tabProtocolos, logs:tabLogs, config:tabConfig})[tab](b);
@@ -437,7 +450,6 @@ window.adminTab = async function(tab){
 
 async function tabUsuarios(b){
   const from = A.page*20;
-  // nunca mostra/conta o admin master
   let q = supabase.from('profiles_view').select('*', { count:'exact' })
     .neq('nickname','admin master')
     .order('created_at',{ascending:false}).range(from, from+19);
