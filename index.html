@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FAMR • Portal Oficial — Força Armada Militar Revolucionária</title>
+<!-- Anti-flash de tema (aplica dark antes do paint) -->
+<script>(function(){try{if(localStorage.getItem('famr-theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();</script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -151,7 +153,7 @@ tailwind.config = { theme: { extend: {
   </div>
 </div>
 
-<!-- ══════════ SHELL (APP) — layout split: header + sidebar + main ══════════ -->
+<!-- ══════════ SHELL (APP) ══════════ -->
 <div id="shell" class="hidden h-screen flex flex-col overflow-hidden">
 
   <!-- HEADER TOPO -->
@@ -171,7 +173,7 @@ tailwind.config = { theme: { extend: {
         </div>
         <div id="search-drop" class="hidden absolute left-0 right-0 mt-2 card p-2 z-50 max-h-80 overflow-auto shadow-xl"></div>
       </div>
-      <div class="flex items-center gap-3 shrink-0 ml-auto">
+      <div class="flex items-center gap-2 shrink-0 ml-auto">
         <a href="#/perfil/me" id="chip-profile" title="Meu Perfil">
           <span id="user-avatar">?</span>
           <div class="profile-texts">
@@ -179,6 +181,8 @@ tailwind.config = { theme: { extend: {
             <span id="user-group">—</span>
           </div>
         </a>
+        <!-- ÚNICO BOTÃO DE MODO ESCURO -->
+        <button id="btn-theme" class="btn-theme-icon" title="Modo escuro" aria-label="Alternar tema"><i class="fas fa-moon"></i></button>
         <button id="btn-logout" class="btn-logout-icon" title="Sair do Sistema"><i class="fas fa-power-off"></i></button>
       </div>
     </div>
