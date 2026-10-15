@@ -1,18 +1,21 @@
-/* ══════════ FAMR • APP.JS COMPLETO v10 (Router fix + Stats bar + User chip) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v13 (Layout Imagem + Rodapé Interativo) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 const groupChip = g => g ? `<span class="chip" style="background:${g.color}18;color:${g.color};border:1px solid ${g.color}55">${esc(g.name)}</span>` : '<span class="chip chip-neutral">Geral</span>';
 const statusChip = s => s==='approved' ? '<span class="chip chip-ok">APROVADO</span>' : s==='rejected' ? '<span class="chip chip-no">REPROVADO</span>' : '<span class="chip chip-wait">EM ANÁLISE</span>';
 const powerStars = p => '★'.repeat(Math.max(1, Math.min(5, Math.ceil((p||0)/20)))) + '☆'.repeat(Math.max(0, 5-Math.min(5, Math.ceil((p||0)/20))));
 
 function toast(msg, type='ok'){
+  const root = document.getElementById('toast-root');
+  if(!root) return;
   const el = document.createElement('div');
-  el.className = 'toast ' + (type==='ok'?'':type);
-  el.innerHTML = `<i class="fas ${type==='err'?'fa-circle-exclamation text-red-600':type==='warn'?'fa-triangle-exclamation text-gold-500':'fa-circle-check text-famr-600'} mt-0.5"></i><span>${esc(msg)}</span>`;
-  document.getElementById('toast-root').appendChild(el);
-  setTimeout(() => el.remove(), 4500);
+  el.className = `bg-white shadow-lg rounded-lg p-3 text-sm font-medium flex items-start gap-2 border-l-4 ${type==='err'?'border-red-500 text-red-700':type==='warn'?'border-yellow-500 text-yellow-700':'border-green-600 text-green-700'}`;
+  el.innerHTML = `<i class="fas ${type==='err'?'fa-circle-exclamation':type==='warn'?'fa-triangle-exclamation':'fa-circle-check'} mt-0.5"></i><span>${esc(msg)}</span>`;
+  root.appendChild(el);
+  setTimeout(()=>el.remove(), 4000);
 }
+
 function openModal(title, bodyHTML, footerHTML=''){
   document.getElementById('modal-title').innerHTML = title;
   document.getElementById('modal-body').innerHTML = bodyHTML;
@@ -20,96 +23,130 @@ function openModal(title, bodyHTML, footerHTML=''){
   document.getElementById('modal-root').classList.remove('hidden');
 }
 function closeModal(){ document.getElementById('modal-root').classList.add('hidden'); }
-function confirmDlg(msg){ return new Promise(res => {
-  openModal('<i class="fas fa-triangle-exclamation text-gold-500 mr-2"></i>Confirmar', `<p class="text-sm text-muted">${esc(msg)}</p>`,
-    `<button class="btn btn-outline btn-sm" onclick="closeModal();window._cf(false)">Cancelar</button>
-     <button class="btn btn-primary btn-sm" onclick="closeModal();window._cf(true)">Confirmar</button>`);
-  window._cf = res;
-});}
+function confirmDlg(msg){ 
+  return new Promise(res => {
+    openModal('<i class="fas fa-triangle-exclamation text-gold-500 mr-2"></i>Confirmar', `<p class="text-sm text-muted">${esc(msg)}</p>`,
+      `<button class="btn btn-outline btn-sm" onclick="closeModal();window._cf(false)">Cancelar</button>
+       <button class="btn btn-primary btn-sm" onclick="closeModal();window._cf(true)">Confirmar</button>`);
+    window._cf = res;
+  });
+}
 
-/* ── ROUTER ROBUSTO (cliques sempre funcionam) ── */
+/* ── ROUTER ROBUSTO ── */
 window.addEventListener('hashchange', route);
 async function route(){
-  if(!STATE.profile){ console.warn('[FAMR] profile não carregou — ignorando rota'); return; }
-  const rawHash = location.hash || '#/home';
-  const clean = rawHash.startsWith('#/') ? rawHash.slice(2) : rawHash.replace(/^#/, '');
-  const parts = clean.split('/');
-  const page = parts[0] || 'home';
-  const param = parts[1] || null;
+  if(!STATE.profile) return;
   
-  const c = document.getElementById('content');
-  if(!c){ console.error('[FAMR] #content não encontrado!'); return; }
+  const hash = location.hash.replace('#/','') || 'home';
+  const [page, param] = hash.split('/');
   
-  c.innerHTML = '<div class="skeleton h-40"></div><div class="skeleton h-64 mt-4"></div>';
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.route === page));
+  // Atualiza estado visual da sidebar
+  updateSidebarActive(page);
+  
+  const container = document.getElementById('content');
+  if(!container) return;
+  
+  container.innerHTML = '<div class="flex justify-center py-20"><i class="fas fa-spinner fa-spin text-2xl text-famr-500"></i></div>';
   
   try{
-    switch(page){
-      case 'admin':   await renderAdmin(c); break;
-      case 'perfil':  await renderProfile(c, param); break;
-      case 'grupo':   await renderGroupPage(c, param); break;
-      case 'section': await renderSection(c, param); break;
-      case 'sub':     await renderSubtopic(c, param); break;
-      default:        await renderHome(c);
-    }
-  }catch(err){ 
+    if(page === 'admin')   await renderAdmin(container);
+    else if(page === 'perfil')  await renderProfile(container, param);
+    else if(page === 'grupo')   await renderGroupPage(container, param);
+    else if(page === 'section') await renderSection(container, param);
+    else if(page === 'sub')     await renderSubtopic(container, param);
+    else                        await renderHome(container);
+  }catch(err){
     console.error('[FAMR] ERRO na rota "'+page+'":', err); 
-    c.innerHTML = `<div class="card card-body text-red-600 text-sm"><i class="fas fa-plug-circle-xmark mr-2"></i>Erro ao carregar esta tela.<br><small>${esc(err.message)}</small></div>`; 
+    container.innerHTML = `<div class="card card-body text-red-600 text-sm"><i class="fas fa-plug-circle-xmark mr-2"></i>Erro ao carregar esta tela.<br><small>${esc(err.message)}</small></div>`; 
   }
 }
 
-/* ── SIDEBAR ── */
+function updateSidebarActive(currentPage){
+  document.querySelectorAll('.nav-item').forEach(n => {
+    const isActive = n.dataset.route === currentPage || 
+                     (currentPage === 'home' && n.dataset.route === 'home');
+    n.classList.toggle('active', isActive);
+  });
+}
+
+/* ── SIDEBAR BUILD ── */
 async function buildSidebar(){
+  const nav = document.getElementById('sidebar-nav');
+  if(!nav) return;
+  
   const { data: sections } = await supabase.from('sections').select('*').order('order_index');
   STATE.sections = sections || [];
-  let html = `<a class="nav-item active" data-route="home" href="#/home"><i class="fas fa-house"></i> Início</a>
-              <div class="nav-sep">Tópicos oficiais</div>`;
+  
+  let html = `
+    <a class="nav-item active" data-route="home" href="#/home">
+      <i class="fas fa-house"></i> Início
+    </a>
+    <div class="nav-sep">Tópicos Oficiais</div>
+  `;
+  
   for(const s of STATE.sections){
     const locked = s.required_group_id && !canAccessGroup(s.required_group_id) && !isAdmin();
-    html += `<a class="nav-item" data-route="section" href="#/section/${s.slug}">
-      <i class="fas ${esc(s.icon)}"></i> ${esc(s.name)} ${locked?'<i class="fas fa-lock lock-badge ml-auto text-xs"></i>':''}</a>`;
+    html += `
+      <a class="nav-item" data-route="section" href="#/section/${s.slug}">
+        <i class="fas ${esc(s.icon||'fa-folder')}"></i> ${esc(s.name)}
+        ${locked ? '<i class="fas fa-lock ml-auto text-xs opacity-50"></i>' : ''}
+      </a>
+    `;
   }
-  html += `<div class="nav-sep">Minha conta</div>
-           <a class="nav-item" data-route="perfil" href="#/perfil/me"><i class="fas fa-id-badge"></i> Meu perfil</a>`;
-  if(isAdmin()) html += `<div class="nav-sep">Comando</div>
-           <a class="nav-item" data-route="admin" href="#/admin"><i class="fas fa-sliders"></i> Painel Admin</a>`;
-  document.getElementById('sidebar-nav').innerHTML = html;
-  if(STATE.settings.maintenance?.enabled && isAdmin()) document.getElementById('maintenance-banner').classList.remove('hidden');
+  
+  html += `
+    <div class="nav-sep">Minha Conta</div>
+    <a class="nav-item" data-route="perfil" href="#/perfil/me">
+      <i class="fas fa-id-badge"></i> Meu Perfil
+    </a>
+  `;
+  
+  if(isAdmin()){
+    html += `
+      <div class="nav-sep">Comando</div>
+      <a class="nav-item" data-route="admin" href="#/admin">
+        <i class="fas fa-sliders"></i> Painel Admin
+      </a>
+    `;
+  }
+  
+  nav.innerHTML = html;
 }
+
 function canAccessGroup(gid){
   if(!gid) return true;
   if(isAdmin()) return true;
   return STATE.groups.some(g => g.id === gid);
 }
 
-/* Helper: escolhe ícone baseado no nome do grupo */
+/* Helper: Ícone personalizado para grupos */
 function getGroupIcon(name){
   const n = (name||'').toLowerCase();
-  if(n.includes('chefia') || n.includes('polícia') || n.includes('policia')) return 'fa-crown';
-  if(n.includes('logística') || n.includes('infraestrutura') || n.includes('infra')) return 'fa-boxes-stacked';
+  if(n.includes('chefia') || n.includes('polícia')) return 'fa-crown';
+  if(n.includes('logística') || n.includes('infraestrutura')) return 'fa-boxes-stacked';
   if(n.includes('corregedoria')) return 'fa-scale-balanced';
-  if(n.includes('ações especiais') || n.includes('acoes especiais')) return 'fa-bolt';
-  if(n.includes('conselho') || n.includes('deliberativo')) return 'fa-gavel';
+  if(n.includes('ações especiais')) return 'fa-bolt';
+  if(n.includes('conselho')) return 'fa-gavel';
   if(n.includes('feminino')) return 'fa-person-dress';
-  if(n.includes('ensino') || n.includes('capacitação') || n.includes('academia') || n.includes('superior')) return 'fa-graduation-cap';
+  if(n.includes('ensino') || n.includes('academia')) return 'fa-graduation-cap';
   if(n.includes('marketing')) return 'fa-megaphone';
   if(n.includes('financeiro')) return 'fa-chart-pie';
-  if(n.includes('diretoria') || n.includes('executiva')) return 'fa-building';
-  if(n.includes('recruta') || n.includes('especializado')) return 'fa-user-plus';
-  if(n.includes('comissariado')) return 'fa-store';
+  if(n.includes('diretoria')) return 'fa-building';
+  if(n.includes('recruta')) return 'fa-user-plus';
   return 'fa-shield-halved';
 }
 
-/* ══════════ HOME ══════════ */
+/* ══════════ HOME RENDER (Com Novo Rodapé Interativo) ══════════ */
 async function renderHome(c){
-  const [{ data: sections }, { data: subs }, { data: posts }, { count: nMembers }, 
+  // Fetch Data em paralelo
+  const [{ data: sections }, { data: subs }, { data: posts }, { count: membersCount }, 
          { data: newest }, { data: groups }] = await Promise.all([
     supabase.from('sections').select('*').order('order_index'),
     supabase.from('subtopics').select('id,name,description,section_id,required_group_id,is_request_form,allow_posts').order('order_index'),
     supabase.from('posts').select('id,subtopic_id,title,created_at,profiles_view(nickname)').order('created_at',{ascending:false}).limit(300),
-    supabase.from('profiles_view').select('*', { count:'planned', head:true }).eq('status','active').neq('nickname','admin master'),
+    supabase.from('profiles_view').select('*', { count:'exact', head:true }).eq('status','active').neq('nickname','admin master'),
     supabase.from('profiles_view').select('nickname,created_at').eq('status','active').eq('is_invisible', false).neq('nickname','admin master').order('created_at',{ascending:false}).limit(10),
-    supabase.from('groups').select('id,name,color,power_level,visible,parent_id').eq('visible',true).order('power_level',{ascending:false})
+    supabase.from('groups').select('id,name,color,power_level,visible,parent_id').eq('visible',true).order('power_level',{descending:true})
   ]);
   
   const { data: allUG } = await supabase.from('user_groups').select('group_id').limit(5000);
@@ -121,94 +158,116 @@ async function renderHome(c){
 
   // Estatísticas para a barra de abas
   const totalOnline = 1;
-  const registeredCount = nMembers ?? 0;
+  const registeredCount = membersCount ?? 0;
   const recordDate = 'Sáb 26 Set 2026 - 22:42';
-  const legendItems = [
-    { icon:'fa-comments', color:'#14563f', label:'Tópico aberto para publicação' },
-    { icon:'fa-lock', color:'#c9a227', label:'Conteúdo reservado a companhia específica' },
-    { icon:'fa-file-signature', color:'#a8861d', label:'Formulário de requerimento CRH/RH' },
-    { icon:'fa-shield-halved', color:'#0e4433', label:'Sessão segura • expira após 1h de inatividade' }
-  ];
 
   c.innerHTML = `
-  <!-- HERO -->
-  <section class="hero p-6 md:p-8 fade-up">
-    <div class="relative flex flex-wrap items-center gap-6 justify-between">
-      <div>
-        <p class="text-gold-300 text-xs font-bold tracking-[0.3em] uppercase">Índice do quartel • Habbo BR</p>
-        <h1 class="font-display text-2xl md:text-3xl font-extrabold mt-1">Bem-vindo, ${esc(STATE.profile.nickname)}</h1>
-        <div class="flex flex-wrap gap-2 mt-3">${STATE.groups.map(groupChip).join('') || '<span class="chip">Sem grupo</span>'}</div>
+    <!-- HERO BANNER -->
+    <div class="hero fade-up">
+      <h2 class="font-display text-xl font-bold mb-1">Bem-vindo, ${esc(STATE.profile.nickname)}</h2>
+      <p class="text-emerald-100 text-sm opacity-80">Índice do Quartel • Habbo BR</p>
+      <div class="mt-3 flex gap-2 flex-wrap">
+        ${STATE.groups.map(g => `<span class="chip bg-white/20 text-white border border-white/30">${esc(g.name)}</span>`).join('') || '<span class="chip bg-white/20 text-white">Sem grupo</span>'}
       </div>
-      <img src="${CONFIG.logoUrl}" class="w-20 md:w-28 drop-shadow-xl hidden sm:block" onerror="this.style.display='none'">
     </div>
-  </section>
 
-  <!-- STATS CARDS -->
-  <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 fade-up">
-    <div class="stat-tile"><span class="forum-ico"><i class="fas fa-users"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Efetivo ativo</p><p class="font-display text-xl font-extrabold text-famr-800">${registeredCount}</p></div></div>
-    <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-comments"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Publicações</p><p class="font-display text-xl font-extrabold text-famr-800">${(posts||[]).length}+</p></div></div>
-    <div class="stat-tile"><span class="forum-ico"><i class="fas fa-folder-open"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Subtópicos</p><p class="font-display text-xl font-extrabold text-famr-800">${visibleSubs.length}</p></div></div>
-    <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-user-plus"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Mais recente</p><p class="font-display text-sm font-extrabold text-famr-800 truncate">${esc(newest?.[0]?.nickname || '—')}</p></div></div>
-  </section>
+    <!-- STATS GRID -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 fade-up delay-100">
+      <div class="stat-tile">
+        <div class="forum-ico"><i class="fas fa-users"></i></div>
+        <div>
+          <div class="text-xs text-muted font-bold uppercase">Efetivo</div>
+          <div class="text-lg font-display font-bold text-famr-800">${registeredCount}</div>
+        </div>
+      </div>
+      <div class="stat-tile">
+        <div class="forum-ico bg-blue-50 text-blue-600"><i class="fas fa-comments"></i></div>
+        <div>
+          <div class="text-xs text-muted font-bold uppercase">Posts</div>
+          <div class="text-lg font-display font-bold text-famr-800">${(posts||[]).length}+</div>
+        </div>
+      </div>
+      <div class="stat-tile">
+        <div class="forum-ico bg-purple-50 text-purple-600"><i class="fas fa-layer-group"></i></div>
+        <div>
+          <div class="text-xs text-muted font-bold uppercase">Grupos</div>
+          <div class="text-lg font-display font-bold text-famr-800">${groups.length}</div>
+        </div>
+      </div>
+      <div class="stat-tile">
+        <div class="forum-ico bg-orange-50 text-orange-600"><i class="fas fa-fire"></i></div>
+        <div>
+          <div class="text-xs text-muted font-bold uppercase">Online</div>
+          <div class="text-lg font-display font-bold text-famr-800">${totalOnline}</div>
+        </div>
+      </div>
+    </div>
 
-  <!-- ÍNDICE POR SETORES (fórum) -->
-  ${(sections||[]).map(sec => {
-    const rows = visibleSubs.filter(s => s.section_id === sec.id);
-    const secLocked = sec.required_group_id && !canAccessGroup(sec.required_group_id);
-    if(secLocked && rows.length === 0) return '';
-    return `<section class="card overflow-hidden fade-up">
-      <div class="cat-head"><i class="fas ${esc(sec.icon)}"></i> ${esc(sec.name)}
-        <a href="#/section/${sec.slug}" class="ml-auto text-[10px] font-bold text-gold-300 hover:text-white normal-case tracking-normal">ver setor →</a></div>
-      <div class="divide-y divide-line">
-        ${rows.map(s => forumRow(s, counts, lastMap)).join('') || '<p class="p-5 text-sm text-muted text-center">Nenhum subtópico visível neste setor.</p>'}
-      </div>
-    </section>`;
-  }).join('')}
+    <!-- SEÇÕES DO FORUM (Lista Vertical) -->
+    <div class="space-y-4 fade-up delay-200">
+      ${(sections||[]).map(sec => {
+        const rows = visibleSubs.filter(s => s.section_id === sec.id);
+        const secLocked = sec.required_group_id && !canAccessGroup(sec.required_group_id);
+        if(secLocked && rows.length === 0) return '';
+        
+        return `
+        <div class="card overflow-hidden">
+          <div class="cat-head">
+            <i class="fas ${esc(sec.icon)}"></i> ${esc(sec.name)}
+            <a href="#/section/${sec.slug}" class="ml-auto text-xs opacity-70 hover:opacity-100 transition-opacity normal-case tracking-normal">ver setor →</a>
+          </div>
+          <div class="divide-y divide-gray-100">
+            ${rows.map(s => forumRow(s, counts, lastMap)).join('') || '<div class="p-6 text-center text-sm text-gray-400 italic">Nenhum subtópico visível neste setor.</div>'}
+          </div>
+        </div>
+        `;
+      }).join('')}
+    </div>
 
-  <!-- BARRA INTERATIVA DE ESTATÍSTICAS (abas: Usuários / Aniversários / Grupos) -->
-  <section class="stats-tabs fade-up">
-    <div class="st-head">
-      <button class="st-tab active" data-stab="usuarios"><i class="fas fa-users"></i> Usuários</button>
-      <button class="st-tab" data-stab="aniversarios"><i class="fas fa-cake-candles"></i> Aniversários</button>
-      <button class="st-tab" data-stab="grupos"><i class="fas fa-layer-group"></i> Grupos</button>
-    </div>
-    
-    <!-- PAINEL: USUÁRIOS -->
-    <div class="st-body stab-panel" id="stab-usuarios">
-      Há <strong>${totalOnline}</strong> usuário online :: ${registeredCount} registrado${registeredCount!==1?'s':''}, 0 invisíveis e 0 visitantes<br>
-      O recorde de utilizadores online foi de <strong>27</strong> em ${recordDate}<br>
-      Utilizadores registados: ${(newest||[]).slice(0,8).map(u=>`<span class="sg-link"><i class="fas fa-code"></i> ${esc(u.nickname)}</span>`).join(', ') || '<em>nenhum</em>'}
-    </div>
-    
-    <!-- PAINEL: ANIVERSÁRIOS -->
-    <div class="st-body stab-panel hidden" id="stab-aniversarios">
-      <p class="st-empty">Nenhum membro festeja o aniversário hoje</p>
-      <p class="st-empty mt-2">Nenhum membro festeja o aniversário nos próximos 7 dias</p>
-    </div>
-    
-    <!-- PAINEL: GRUPOS -->
-    <div class="st-body stab-panel hidden" id="stab-grupos">
-      <div class="st-groups-list">
-        ${(groups||[]).map(g => `
-          <a href="#/grupo/${g.id}" class="sg-link">
-            <i class="fas ${getGroupIcon(g.name)}" style="color:${g.color}"></i>
-            <span>${esc(g.name)}</span>
-          </a>`).join('') || '<em class="text-muted text-xs">Nenhum grupo cadastrado.</em>'}
+    <!-- ═══════════════════════════════════════════════════════════════════
+         NOVO RODAPÉ INTERATIVO (ABAIXO DOS SETORES)
+         ═══════════════════════════════════════════════════════════════════ -->
+    <section class="stats-tabs fade-up delay-300">
+      <div class="st-head">
+        <button class="st-tab active" data-stab="usuarios"><i class="fas fa-users"></i> Usuários</button>
+        <button class="st-tab" data-stab="aniversarios"><i class="fas fa-cake-candles"></i> Aniversários</button>
+        <button class="st-tab" data-stab="grupos"><i class="fas fa-layer-group"></i> Grupos</button>
       </div>
-    </div>
-    
-    <!-- LEGENDA FIXA NO RODAPÉ DA BARRA -->
-    <div class="st-body border-t border-line bg-paper/50 text-xs">
-      <strong class="text-famr-800">Legenda:</strong>
-      <div class="flex flex-wrap gap-3 mt-1">
-        ${legendItems.map(item => `
-          <span class="inline-flex items-center gap-1.5">
-            <i class="fas ${item.icon}" style="color:${item.color}"></i>
-            <span class="text-muted">${esc(item.label)}</span>
-          </span>`).join('')}
+      
+      <!-- PAINEL: USUÁRIOS -->
+      <div class="st-body stab-panel" id="stab-usuarios">
+        Há <strong>${totalOnline}</strong> usuário online :: ${registeredCount} registrados<br>
+        Utilizadores registados: ${(newest||[]).slice(0,8).map(u=>`<span class="sg-link"><i class="fas fa-code"></i> ${esc(u.nickname)}</span>`).join(', ') || '<em>nenhum</em>'}
       </div>
-    </div>
-  </section>`;
+      
+      <!-- PAINEL: ANIVERSÁRIOS -->
+      <div class="st-body stab-panel hidden" id="stab-aniversarios">
+        <p class="st-empty">Nenhum membro festeja o aniversário hoje</p>
+        <p class="st-empty mt-2">Nenhum membro festeja o aniversário nos próximos 7 dias</p>
+      </div>
+      
+      <!-- PAINEL: GRUPOS -->
+      <div class="st-body stab-panel hidden" id="stab-grupos">
+        <div class="st-groups-list">
+          ${(groups||[]).map(g => `
+            <a href="#/grupo/${g.id}" class="sg-link">
+              <i class="fas ${getGroupIcon(g.name)}" style="color:${g.color}"></i>
+              <span>${esc(g.name)}</span>
+            </a>`).join('') || '<em class="text-muted text-xs">Nenhum grupo cadastrado.</em>'}
+        </div>
+      </div>
+      
+      <!-- LEGENDA FIXA NO RODAPÉ DA BARRA -->
+      <div class="st-body border-t border-line bg-paper/50 text-xs">
+        <strong class="text-famr-800">Legenda:</strong>
+        <div class="flex flex-wrap gap-3 mt-1">
+          <span class="inline-flex items-center gap-1.5"><i class="fas fa-comments text-green-700"></i><span class="text-muted">Tópico aberto</span></span>
+          <span class="inline-flex items-center gap-1.5"><i class="fas fa-lock text-yellow-600"></i><span class="text-muted">Conteúdo reservado</span></span>
+          <span class="inline-flex items-center gap-1.5"><i class="fas fa-file-signature text-orange-600"></i><span class="text-muted">Requerimento CRH/RH</span></span>
+        </div>
+      </div>
+    </section>
+  `;
 
   // Ativa as abas da barra de estatísticas
   document.querySelectorAll('.st-tab').forEach(btn => {
