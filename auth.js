@@ -1,6 +1,4 @@
-/* ══════════ FAMR • LOGIN VALIDA NA SUA COLUNA (credentials) ══════════
-   senha real -> pass_hash (sua coluna, trancada) | e-mail -> só recuperação/alerta
-   o gotrue recebe a ponte automaticamente para abrir a sessão/RLS */
+/* ══════════ FAMR • LOGIN VALIDA NA COLUNA pass_hash DA profiles ══════════ */
 
 const SCREENS = ['screen-login','screen-register','screen-forgot','screen-reset','screen-maintenance'];
 const INACTIVITY_MS = 60*60*1000, BROWSER_WINDOW_MS = 5*60*1000, BROWSER_BLOCK_MS = 5*60*1000;
@@ -110,7 +108,7 @@ async function initSession(){
   }
 }
 
-/* LOGIN: valida na SUA coluna (famr_login_verify) -> abre sessão com a ponte */
+/* LOGIN: valida na SUA coluna (pass_hash) -> abre sessão no gotrue */
 async function doLogin(e){
   loginAlertHide();
   if(!sbOk()){ loginAlert(MSG_SERVIDOR, 'err'); return; }
@@ -130,15 +128,17 @@ async function doLogin(e){
 
   const btn = e.target.querySelector('button'); btn.disabled = true;
   try{
+    // 1) valida a senha na SUA coluna
     const { data: v, error } = await supabase.rpc('famr_login_verify', { nick, pass });
     if(error){ console.error('[FAMR] verify:', error); loginAlert(MSG_SERVIDOR, 'err'); return; }
     if(!v){ loginAlert('Nickname não encontrado ou conta banida.<br><span class="text-xs font-normal">Confirme o nickname ou procure o Alto Comando.</span>', 'err'); return; }
     if(v.locked){ showLockedMsg(); return; }
     if(v.ok !== true){ loginAlert('Senha incorreta (<b>'+(v.fails ?? '?')+'/'+MAX_WRONG_PASS+'</b>). Na 4ª tentativa a conta é bloqueada.', 'err'); return; }
 
-    const { data, error: le } = await supabase.auth.signInWithPassword({ email: v.email, password: v.bridge || pass });
+    // 2) senha conferiu na sua coluna -> abre sessão no gotrue com a MESMA senha
+    const { data, error: le } = await supabase.auth.signInWithPassword({ email: v.email, password: pass });
     if(le){
-      console.error('[FAMR] signIn ponte:', le);
+      console.error('[FAMR] signIn:', le);
       loginAlert('Falha ao abrir a sessão do quartel. Tente novamente; se persistir, contate o Alto Comando.', 'err');
       return;
     }
@@ -180,7 +180,7 @@ async function enterSystem(userId){
   try{ await route(); }catch(err){ console.error('[FAMR] route:', err); }
 }
 
-/* ALISTAMENTO: senha real -> sua coluna; gotrue recebe ponte automática */
+/* ALISTAMENTO: senha real -> sua coluna; gotrue recebe a mesma senha */
 async function doRegister(e){
   if(!sbOk()){ toast('Falha de conexão com o servidor. Tente novamente.', 'err'); return; }
   const nick = document.getElementById('reg-nick').value.trim();
@@ -188,12 +188,11 @@ async function doRegister(e){
   const pass = document.getElementById('reg-pass').value;
   const btn = e.target.querySelector('button'); btn.disabled = true;
   try{
-    const bridge = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+Math.random());
-    const { data, error } = await supabase.auth.signUp({ email, password: bridge, options: { data: { nickname: nick } } });
+    const { data, error } = await supabase.auth.signUp({ email, password: pass, options: { data: { nickname: nick } } });
     if(error){ toast('Erro no alistamento: ' + error.message, 'err'); return; }
     if(data.user && (data.user.identities || []).length === 0){ toast('Este e-mail já está cadastrado. Use "Esqueci a senha".', 'warn'); return; }
     if(data.session){
-      await supabase.rpc('famr_set_credentials', { new_pass: pass, new_bridge: bridge });
+      await supabase.rpc('famr_set_credentials', { new_pass: pass });
       await supabase.auth.signOut();
     }
     document.getElementById('form-register').classList.add('hidden');
@@ -221,16 +220,15 @@ async function doForgot(e){
   finally { btn.disabled = false; }
 }
 
-/* NOVA SENHA: grava hash real na sua coluna + nova ponte no gotrue (destrava) */
+/* NOVA SENHA: grava hash real na sua coluna + destrava */
 async function doResetSave(){
   const p1 = document.getElementById('reset-pass').value;
   const p2 = document.getElementById('reset-pass2').value;
   if(p1.length < 6){ toast('Senha mínima: 6 caracteres.', 'warn'); return; }
   if(p1 !== p2){ toast('As senhas não conferem.', 'err'); return; }
-  const bridge = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+Math.random());
-  const { error } = await supabase.auth.updateUser({ password: bridge });
+  const { error } = await supabase.auth.updateUser({ password: p1 });
   if(error){ console.error('[FAMR] reset update:', error); toast('Erro ao salvar a senha. Tente novamente.', 'err'); return; }
-  await supabase.rpc('famr_set_credentials', { new_pass: p1, new_bridge: bridge });
+  await supabase.rpc('famr_set_credentials', { new_pass: p1 });
   await supabase.rpc('log_action', { action:'SENHA_REDEFINIDA', details:{} }).catch(()=>{});
   await supabase.auth.signOut();
   showScreen('screen-login');
