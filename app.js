@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v7 (todas as alterações) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v8 (todas as correções) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -27,7 +27,7 @@ function confirmDlg(msg){ return new Promise(res => {
   window._cf = res;
 });}
 
-/* ── ROUTER ── */
+/* ── ROUTER (100% interno — nunca recarrega a página) ── */
 window.addEventListener('hashchange', route);
 async function route(){
   if(!STATE.profile) return;
@@ -36,13 +36,15 @@ async function route(){
   c.innerHTML = '<div class="skeleton h-40"></div><div class="skeleton h-64 mt-4"></div>';
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.route === (page||'home')));
   try{
+    if(page === 'admin')   return await renderAdmin(c);
+    if(page === 'perfil')  return await renderProfile(c, param);
     if(page === 'section') return await renderSection(c, param);
     if(page === 'sub')     return await renderSubtopic(c, param);
     return await renderHome(c);
   }catch(err){ console.error(err); c.innerHTML = `<div class="card card-body text-red-600 text-sm"><i class="fas fa-plug-circle-xmark mr-2"></i>Falha de conexão. Tente novamente.</div>`; }
 }
 
-/* ── SIDEBAR (links para páginas externas: perfil.html, companhias.html, admin.html) ── */
+/* ── SIDEBAR (links internos, sem "Companhias" duplicado) ── */
 async function buildSidebar(){
   const { data: sections } = await supabase.from('sections').select('*').order('order_index');
   STATE.sections = sections || [];
@@ -54,10 +56,9 @@ async function buildSidebar(){
       <i class="fas ${esc(s.icon)}"></i> ${esc(s.name)} ${locked?'<i class="fas fa-lock lock-badge ml-auto text-xs"></i>':''}</a>`;
   }
   html += `<div class="nav-sep">Minha conta</div>
-           <a class="nav-item" href="perfil.html"><i class="fas fa-id-badge"></i> Meu perfil</a>
-           <a class="nav-item" href="companhias.html"><i class="fas fa-shield-halved"></i> Companhias</a>`;
+           <a class="nav-item" data-route="perfil" href="#/perfil/me"><i class="fas fa-id-badge"></i> Meu perfil</a>`;
   if(isAdmin()) html += `<div class="nav-sep">Comando</div>
-           <a class="nav-item" href="admin.html"><i class="fas fa-sliders"></i> Painel Admin</a>`;
+           <a class="nav-item" data-route="admin" href="#/admin"><i class="fas fa-sliders"></i> Painel Admin</a>`;
   document.getElementById('sidebar-nav').innerHTML = html;
   if(STATE.settings.maintenance?.enabled && isAdmin()) document.getElementById('maintenance-banner').classList.remove('hidden');
 }
@@ -67,19 +68,20 @@ function canAccessGroup(gid){
   return STATE.groups.some(g => g.id === gid);
 }
 
-/* ══════════ HOME (índice estilo fórum — SEM termos técnicos, COM ambiente dos grupos) ══════════ */
+/* ══════════ HOME (barra de ambiente estilo fórum, sem termos técnicos) ══════════ */
 async function renderHome(c){
   const [{ data: sections }, { data: subs }, { data: posts }, { count: nMembers }, 
          { data: newest }, { data: groups }] = await Promise.all([
     supabase.from('sections').select('*').order('order_index'),
     supabase.from('subtopics').select('id,name,description,section_id,required_group_id,is_request_form,allow_posts').order('order_index'),
     supabase.from('posts').select('id,subtopic_id,title,created_at,profiles_view(nickname)').order('created_at',{ascending:false}).limit(300),
-    supabase.from('profiles_view').select('*', { count:'planned', head:true }).eq('status','active'),
-    supabase.from('profiles_view').select('nickname,created_at').eq('status','active').eq('is_invisible',false).order('created_at',{ascending:false}).limit(5),
+    // Efetivo ativo SEM contar o admin master
+    supabase.from('profiles_view').select('*', { count:'planned', head:true }).eq('status','active').neq('nickname','admin master'),
+    // Últimos alistamentos SEM o admin master
+    supabase.from('profiles_view').select('nickname,created_at').eq('status','active').eq('is_invisible', false).neq('nickname','admin master').order('created_at',{ascending:false}).limit(5),
     supabase.from('groups').select('id,name,color,power_level,visible,parent_id').eq('visible',true).order('power_level',{ascending:false})
   ]);
   
-  // contagem de membros por grupo
   const { data: allUG } = await supabase.from('user_groups').select('group_id').limit(5000);
   const memberCount = {}; (allUG||[]).forEach(m => memberCount[m.group_id] = (memberCount[m.group_id]||0)+1);
 
@@ -108,18 +110,17 @@ async function renderHome(c){
     <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-user-plus"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Mais recente</p><p class="font-display text-sm font-extrabold text-famr-800 truncate">${esc(newest?.[0]?.nickname || '—')}</p></div></div>
   </section>
 
-  <!-- AMBIENTE DOS GRUPOS (novidade!) -->
+  <!-- AMBIENTE DOS GRUPOS (barra horizontal estilo fórum) -->
   ${(groups||[]).length > 0 ? `
   <section class="fade-up">
-    <h2 class="font-display font-bold text-sm mb-3"><i class="fas fa-building-columns text-gold-500 mr-2"></i>Ambiente das Companhias</h2>
-    <div class="group-env">
-      ${(groups||[]).map(g => `
-        <a href="companhias.html#${g.id}" class="group-card">
-          <div class="gc-bar" style="background:linear-gradient(90deg,${g.color},${g.color}88)"></div>
-          <span class="gc-name" style="color:${g.color}">${esc(g.name)}</span>
-          <span class="gc-count"><i class="fas fa-users mr-1"></i>${memberCount[g.id]||0} membro(s)</span>
-          <span class="gc-stars">${powerStars(g.power_level)}</span>
-        </a>`).join('')}
+    <h2 class="font-display font-bold text-sm mb-2"><i class="fas fa-building-columns text-gold-500 mr-2"></i>Ambiente das Companhias</h2>
+    <div class="group-bar">
+      ${(groups||[]).map((g,i,arr) => `
+        <a href="#/section/companhias#${g.id}" class="gb-item">
+          <i class="fas fa-shield-halved" style="color:${g.color}"></i>
+          <span>${esc(g.name)}</span>
+          <span class="text-[10px] text-muted">(${memberCount[g.id]||0})</span>
+        </a>${i < arr.length-1 ? '<span class="gb-sep"></span>' : ''}`).join('')}
     </div>
   </section>` : ''}
 
@@ -177,6 +178,7 @@ async function renderSection(c, slug){
   if(!sec){ c.innerHTML = '<div class="card card-body text-sm text-muted">Seção não encontrada.</div>'; return; }
   if(slug === 'listagem')      return await renderListagem(c, sec);
   if(slug === 'requerimentos') return await renderRequerimentos(c, sec);
+  if(slug === 'companhias')    return await renderCompanhias(c, sec);
   if(slug === 'documentos')    return await renderDocumentos(c, sec);
   if(sec.required_group_id && !canAccessGroup(sec.required_group_id)){
     c.innerHTML = `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i>
@@ -345,7 +347,48 @@ async function renderDocumentos(c, sec){
   </div>`;
 }
 
-/* ── BUSCA GLOBAL ── */
+/* ── COMPANHIAS (setor interno, único ponto de acesso) ── */
+async function renderCompanhias(c, sec){
+  const { data: groups } = await supabase.from('groups').select('*, groups(name)').eq('visible', true).order('power_level',{ascending:false});
+  const { data: members } = await supabase.from('user_groups').select('group_id').limit(5000);
+  const count = {}; (members||[]).forEach(m => count[m.group_id] = (count[m.group_id]||0)+1);
+  c.innerHTML = secHead(sec) + `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up">
+    ${(groups||[]).map(g => `<div class="card card-hover overflow-hidden">
+      <div class="h-2" style="background:linear-gradient(90deg,${g.color},${g.color}88)"></div>
+      <div class="p-5">
+        <div class="flex items-center justify-between"><h3 class="font-display font-bold" style="color:${g.color}">${esc(g.name)}</h3>
+        <span class="text-gold-500 text-xs">${powerStars(g.power_level)}</span></div>
+        <p class="text-xs text-muted mt-1">${g.groups ? 'Subgrupo de <b>'+esc(g.groups.name)+'</b>' : 'Companhia principal'}</p>
+        <div class="flex items-center justify-between mt-4 text-xs text-muted">
+          <span><i class="fas fa-users mr-1 text-famr-600"></i>${count[g.id]||0} membro(s)</span><span class="chip chip-ok">VISÍVEL</span></div>
+      </div></div>`).join('') || '<div class="card card-body text-sm text-muted">Nenhuma companhia visível.</div>'}
+  </div>`;
+}
+
+/* ── PERFIL (rota interna #/perfil/[id|me]) ── */
+async function renderProfile(c, param){
+  const me = (!param || param === 'me');
+  const id = me ? STATE.profile.id : param;
+  const { data: p } = await supabase.from('profiles_view').select('*').eq('id', id).single();
+  if(!p){ c.innerHTML = '<div class="card card-body text-sm text-muted">Perfil não encontrado.</div>'; return; }
+  const { data: ug } = await supabase.from('user_groups').select('groups(*)').eq('user_id', id);
+  const gs = (ug||[]).map(r => r.groups).filter(g => g && (g.visible || me || isAdmin()));
+  c.innerHTML = `
+  <div class="card fade-up overflow-hidden">
+    <div class="h-24" style="background:linear-gradient(120deg,#0e4433,#14563f 60%,#c9a227)"></div>
+    <div class="p-6 -mt-12">
+      <div class="flex flex-wrap items-end gap-4">
+        <span class="w-20 h-20 rounded-2xl grid place-items-center text-3xl font-extrabold text-white border-4 border-white shadow-lg" style="background:${gs[0]?.color||'#14563f'}">${esc(p.nickname.charAt(0).toUpperCase())}</span>
+        <div class="flex-1"><h1 class="font-display text-2xl font-extrabold">${esc(p.nickname)}</h1>
+        <p class="text-xs text-muted">No sistema desde ${fmtDate(p.created_at)} ${me?`• ${esc(p.email)}`:''}</p></div>
+        <span class="chip ${p.status==='active'?'chip-ok':p.status==='pending'?'chip-wait':'chip-no'}">${p.status.toUpperCase()}</span>
+        ${p.login_locked ? '<span class="chip chip-no"><i class="fas fa-lock mr-1"></i>BLOQUEADA</span>' : ''}
+      </div>
+      <div class="flex flex-wrap gap-2 mt-4">${gs.map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}</div>
+    </div></div>`;
+}
+
+/* ── BUSCA GLOBAL (redireciona para rota interna) ── */
 document.addEventListener('DOMContentLoaded', () => {
   const inp = document.getElementById('global-search'), drop = document.getElementById('search-drop');
   if(!inp || !drop) return;
@@ -355,8 +398,8 @@ document.addEventListener('DOMContentLoaded', () => {
     t = setTimeout(async () => {
       const q = inp.value.trim();
       if(q.length < 2){ drop.classList.add('hidden'); return; }
-      const { data } = await supabase.from('profiles_view').select('id,nickname').eq('status','active').eq('is_invisible', false).ilike('nickname', `%${q}%`).limit(6);
-      drop.innerHTML = (data||[]).map(u => `<a href="perfil.html?id=${u.id}" onclick="document.getElementById('search-drop').classList.add('hidden')" class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-famr-100 transition-colors">
+      const { data } = await supabase.from('profiles_view').select('id,nickname').eq('status','active').eq('is_invisible', false).neq('nickname','admin master').ilike('nickname', `%${q}%`).limit(6);
+      drop.innerHTML = (data||[]).map(u => `<a href="#/perfil/${u.id}" onclick="document.getElementById('search-drop').classList.add('hidden')" class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-famr-100 transition-colors">
         <span class="w-8 h-8 rounded-full bg-famr-700 text-white grid place-items-center text-xs font-bold">${esc(u.nickname.charAt(0).toUpperCase())}</span>
         <span class="text-sm font-bold">${esc(u.nickname)}</span></a>`).join('') || '<p class="p-3 text-xs text-muted">Nenhum militar encontrado.</p>';
       drop.classList.remove('hidden');
@@ -365,20 +408,28 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', e => { if(!e.target.closest('#global-search')) drop.classList.add('hidden'); });
 });
 
-/* ══════════════════ PAINEL ADMIN (mantido na íntegra) ══════════════════ */
+/* ══════════════════ PAINEL ADMIN (tabs seguem o clique) ══════════════════ */
 const A = { tab:'usuarios', page:0, q:'' };
+const ADMIN_TABS = [['usuarios','fa-users','Usuários'],['grupos','fa-layer-group','Grupos'],['topicos','fa-sitemap','Tópicos'],['protocolos','fa-inbox','Protocolos'],['logs','fa-scroll','Logs'],['config','fa-sliders','Config']];
+
 async function renderAdmin(c){
   if(!isAdmin()){ c.innerHTML = `<div class="card card-body text-center py-16"><i class="fas fa-lock text-3xl text-red-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso negado</h2></div>`; return; }
-  const tabs = [['usuarios','fa-users','Usuários'],['grupos','fa-layer-group','Grupos'],['topicos','fa-sitemap','Tópicos'],['protocolos','fa-inbox','Protocolos'],['logs','fa-scroll','Logs'],['config','fa-sliders','Config']];
   c.innerHTML = `
   <div class="fade-up"><p class="text-xs font-bold tracking-[0.3em] uppercase text-gold-600">Comando</p>
   <h1 class="font-display text-2xl md:text-3xl font-extrabold text-famr-900"><i class="fas fa-shield-halved text-gold-500 mr-2"></i>Painel Administrativo</h1>
-  <div class="flex flex-wrap gap-2 mt-4">${tabs.map(([k,i,l]) => `<button onclick="adminTab('${k}')" class="btn btn-sm ${A.tab===k?'btn-primary':'btn-outline'}"><i class="fas ${i}"></i> ${l}</button>`).join('')}</div></div>
+  <div id="admin-tabs" class="flex flex-wrap gap-2 mt-4"></div></div>
   <div id="admin-body" class="mt-6"></div>`;
+  drawAdminTabs();
   await adminTab(A.tab);
+}
+/* redesenha as tabs sempre que troca — garante que a cor segue o clique */
+function drawAdminTabs(){
+  const wrap = document.getElementById('admin-tabs'); if(!wrap) return;
+  wrap.innerHTML = ADMIN_TABS.map(([k,i,l]) => `<button onclick="adminTab('${k}')" class="btn btn-sm ${A.tab===k?'btn-primary':'btn-outline'}"><i class="fas ${i}"></i> ${l}</button>`).join('');
 }
 window.adminTab = async function(tab){
   A.tab = tab; A.page = 0;
+  drawAdminTabs();                                  // ← atualiza o destaque
   const b = document.getElementById('admin-body');
   b.innerHTML = '<div class="skeleton h-64"></div>';
   ({usuarios:tabUsuarios, grupos:tabGrupos, topicos:tabTopicos, protocolos:tabProtocolos, logs:tabLogs, config:tabConfig})[tab](b);
@@ -386,12 +437,16 @@ window.adminTab = async function(tab){
 
 async function tabUsuarios(b){
   const from = A.page*20;
-  let q = supabase.from('profiles_view').select('*').order('created_at',{ascending:false}).range(from, from+19);
+  // nunca mostra/conta o admin master
+  let q = supabase.from('profiles_view').select('*', { count:'exact' })
+    .neq('nickname','admin master')
+    .order('created_at',{ascending:false}).range(from, from+19);
   if(A.q) q = q.ilike('nickname', `%${A.q}%`);
-  const { data } = await q;
+  const { data, count } = await q;
+  const totalPages = Math.ceil((count||0)/20);
   b.innerHTML = `<div class="card fade-up">
     <div class="card-head justify-between gap-3 flex-wrap">
-      <h2 class="font-display font-bold text-sm">Militares cadastrados</h2>
+      <h2 class="font-display font-bold text-sm">Militares cadastrados <span class="chip chip-neutral ml-2 normal-case">${count??0}</span></h2>
       <input class="input !py-1.5 !pl-3 w-56" placeholder="Filtrar nickname..." value="${esc(A.q)}" oninput="A.q=this.value;clearTimeout(window._t);window._t=setTimeout(()=>tabUsuarios(document.getElementById('admin-body')),350)">
     </div>
     <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Nickname</th><th>Status</th><th>Tentativas</th><th>Desde</th><th class="text-right">Ações</th></tr></thead><tbody>
@@ -410,6 +465,7 @@ async function tabUsuarios(b){
       </td></tr>`).join('') || '<tr><td colspan="5" class="text-center text-muted py-8">Nada encontrado.</td></tr>'}
     </tbody></table></div>
     <div class="p-3 flex justify-center gap-2">${A.page>0?`<button class="btn btn-outline btn-sm" onclick="A.page--;tabUsuarios(document.getElementById('admin-body'))">← Anterior</button>`:''}
+    <span class="text-xs text-muted self-center">Página ${A.page+1}${totalPages>1?` de ${totalPages}`:''}</span>
     ${(data||[]).length===20?`<button class="btn btn-outline btn-sm" onclick="A.page++;tabUsuarios(document.getElementById('admin-body'))">Próxima →</button>`:''}</div></div>`;
 }
 window.setUser = async (id, status) => {
