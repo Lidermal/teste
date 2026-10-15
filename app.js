@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v10 (router fix + stats bar) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v10 (Router fix + Stats bar + User chip) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
