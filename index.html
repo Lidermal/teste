@@ -235,8 +235,7 @@ window.addEventListener('error', function(e){ console.error('[FAMR] erro de scri
 <script src="config.js"></script>
 
 <script>
-/* Fallback de emergência: se o config.js falhar (404/erro), cria o cliente aqui.
-   SOMENTE window.* — nenhuma declaração const/let/var de 'supabase'. */
+/* Fallback de emergência: só window.*, nenhuma declaração, null-safe */
 (function(){
   if(window.FAMR_CONFIG_OK) return;
   console.warn('[FAMR] config.js não executou — ativando fallback embutido.');
@@ -252,11 +251,10 @@ window.addEventListener('error', function(e){ console.error('[FAMR] erro de scri
     window.isAdmin  = function(){ return hasPerm('admin'); };
     window.isMaster = function(){ return hasPerm('master'); };
   }
-  if(typeof window.supabase !== 'undefined' &&
-     typeof window.supabase.createClient === 'function' &&
-     typeof window.supabase.from !== 'function'){
+  var lib = window.supabase;
+  if(lib && typeof lib.createClient === 'function' && typeof lib.from !== 'function'){
     try{
-      window.supabase = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
+      window.supabase = lib.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
       window.FAMR_CONFIG_OK = true;
     }catch(e){ console.error('[FAMR] fallback:', e); }
   }
