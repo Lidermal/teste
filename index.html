@@ -153,6 +153,7 @@ tailwind.config = { theme: { extend: {
 
 <!-- ══════════ SHELL (HOME) ══════════ -->
 <div id="shell" class="hidden min-h-screen flex flex-col">
+  <!-- HEADER RESTAURADO COM CHIP DE USUÁRIO -->
   <header class="topbar z-40">
     <div class="max-w-[1500px] mx-auto px-4 h-16 flex items-center gap-4">
       <a href="#/home" class="flex items-center gap-3 shrink-0">
@@ -162,21 +163,25 @@ tailwind.config = { theme: { extend: {
           <span class="block text-[10px] tracking-[0.3em] uppercase text-muted">Habbo BR • Oficial</span>
         </div>
       </a>
-      <div class="relative flex-1 max-w-xl mx-auto">
+      <div class="relative flex-1 max-w-xl mx-auto hidden md:block">
         <div class="input-wrap"><i class="fas fa-magnifying-glass"></i>
           <input id="global-search" class="input" placeholder="Buscar militar..." autocomplete="off">
         </div>
         <div id="search-drop" class="hidden absolute left-0 right-0 mt-2 card p-2 z-50 max-h-80 overflow-auto"></div>
       </div>
-      <div class="flex items-center gap-3 shrink-0">
-        <a href="perfil.html" id="chip-profile" class="flex items-center gap-2 rounded-full border border-line bg-white pl-1 pr-3 py-1 hover:border-famr-500 transition-colors">
-          <span id="user-avatar" class="w-8 h-8 rounded-full grid place-items-center text-white font-bold text-sm bg-famr-700">?</span>
-          <span class="hidden md:block leading-tight text-left">
-            <span id="user-nick" class="block text-sm font-bold">—</span>
-            <span id="user-group" class="block text-[10px] uppercase tracking-wider text-gold-600 font-bold">—</span>
-          </span>
+      
+      <!-- ÁREA DO USUÁRIO LOGADO -->
+      <div class="flex items-center gap-3 shrink-0 ml-auto">
+        <a href="#/perfil/me" id="chip-profile" title="Meu Perfil">
+          <span id="user-avatar" class="rounded-full grid place-items-center text-white font-bold bg-famr-700">?</span>
+          <div class="profile-texts hidden md:flex">
+            <span id="user-nick" class="block">Carregando...</span>
+            <span id="user-group" class="block">—</span>
+          </div>
         </a>
-        <button id="btn-logout" title="Sair" class="w-9 h-9 rounded-full grid place-items-center text-muted hover:text-red-600 hover:bg-red-50 transition-colors"><i class="fas fa-power-off"></i></button>
+        <button id="btn-logout" class="btn-logout-icon" title="Sair do Sistema">
+          <i class="fas fa-power-off"></i>
+        </button>
       </div>
     </div>
   </header>
