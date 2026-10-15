@@ -156,16 +156,16 @@ tailwind.config = { theme: { extend: {
 <div id="shell" class="hidden h-screen flex flex-col overflow-hidden">
   <header class="topbar shrink-0 z-40">
     <div class="max-w-[1600px] mx-auto px-4 h-16 flex items-center gap-4">
-      <!-- MARCA (agora com classes próprias → nunca some) -->
+      <!-- MARCA: .brand-box (sem 'hidden sm:block' → não some mais) -->
       <a href="#/home" class="flex items-center gap-3 shrink-0 group no-underline">
         <img src="famrlogo.png" class="w-10 h-10 object-contain transition-transform group-hover:scale-110" onerror="this.style.display='none'">
-        <div class="leading-tight hidden sm:block">
+        <div class="brand-box leading-tight">
           <span class="brand-name block">FAMR SYSTEM</span>
           <span class="brand-sub block">HABBO BR • OFICIAL</span>
         </div>
       </a>
-      <!-- BUSCA CENTRAL -->
-      <div class="relative flex-1 max-w-xl mx-auto hidden md:block">
+      <!-- BUSCA CENTRAL: .search-box (sem 'hidden md:block' → não some mais) -->
+      <div class="search-box">
         <div class="input-wrap search-pill">
           <i class="fas fa-magnifying-glass"></i>
           <input id="global-search" class="input search-input" placeholder="Buscar militar..." autocomplete="off">
