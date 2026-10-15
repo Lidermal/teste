@@ -1,4 +1,4 @@
-/* ══════════ FAMR • TEMA CERIMONIAL v17 (header cheio + dark completo, sem faixa) ══════════ */
+/* ══════════ FAMR • TEMA CERIMONIAL v18 (header fixo + faixa de plantão + dark) ══════════ */
 :root{
   --green-900:#0b3d2c; --green-800:#0e4433; --green-700:#14563f; --green-600:#1a6b4f;
   --gold-600:#a8861d; --gold-500:#c9a227; --gold-300:#e6c65c; --gold-100:#faf3dc;
@@ -101,6 +101,45 @@ select.input,textarea.input{padding-left:.9rem}
 .hero .chip{background:rgba(255,255,255,.14)!important;color:#fff!important;border:1px solid rgba(255,255,255,.28)!important;backdrop-filter:blur(4px)}
 .hero .chip i{color:var(--gold-300)!important}
 
+/* ══════════ FAIXA DE PLANTÃO DO QUARTEL (restaurada — online + hora) ══════════ */
+.quartel-strip{position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:.9rem 1.3rem;
+  padding:1rem 1.25rem;border-radius:18px;overflow:hidden;color:#eaf4ee;
+  background:radial-gradient(520px 200px at 92% -40%, rgba(201,162,39,.30), transparent 60%),
+             linear-gradient(120deg,var(--green-800),var(--green-900));
+  border:1px solid rgba(201,162,39,.35);
+  box-shadow:0 12px 30px -18px rgba(11,61,44,.8), inset 0 1px 0 rgba(255,255,255,.06)}
+.quartel-strip::before{content:'';position:absolute;inset:0;pointer-events:none;opacity:.10;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='46'%3E%3Cpath d='M23 6 l3.2 9.6 10 0 -8.1 5.9 3.1 9.5 -8.2 -5.7 -8.2 5.7 3.1 -9.5 -8.1 -5.9 10 0z' fill='none' stroke='%23e6c65c' stroke-width='1.2'/%3E%3C/svg%3E");
+  background-size:46px 46px}
+.qs-glow{position:absolute;right:8%;top:50%;transform:translateY(-50%);width:160px;height:160px;border-radius:50%;
+  background:radial-gradient(circle, rgba(201,162,39,.22), transparent 70%);pointer-events:none}
+.qs-left{display:flex;align-items:center;gap:.8rem;position:relative;z-index:1;min-width:0}
+.qs-badge{width:2.7rem;height:2.7rem;border-radius:12px;display:grid;place-items:center;flex-shrink:0;
+  background:linear-gradient(135deg,var(--gold-300),var(--gold-500));color:#3a2f0b;font-size:1.15rem;
+  box-shadow:0 8px 18px -8px rgba(168,134,29,.7), inset 0 0 0 2px rgba(255,255,255,.25)}
+.qs-txt{display:flex;flex-direction:column;line-height:1.18;min-width:0}
+.qs-title{font-family:'Sora',sans-serif;font-weight:800;font-size:1rem;color:#fff;letter-spacing:.01em}
+.qs-sub{font-size:.72rem;color:rgba(234,244,238,.72);display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+.qs-sub .qs-clock{font-variant-numeric:tabular-nums;font-weight:800;color:var(--gold-300)}
+.qs-mid{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;position:relative;z-index:1;margin-left:auto}
+.qs-pill{display:inline-flex;align-items:center;gap:.4rem;font-size:.72rem;font-weight:800;letter-spacing:.02em;
+  color:#eaf4ee;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.16);
+  border-radius:999px;padding:.32rem .7rem;backdrop-filter:blur(4px);white-space:nowrap}
+.qs-pill i{color:var(--gold-300);font-size:.8rem}
+.qs-on{color:#5ee08a!important;animation:qsPulse 1.6s ease-in-out infinite}
+@keyframes qsPulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(94,224,138,.6)}50%{opacity:.5;box-shadow:0 0 0 4px rgba(94,224,138,0)}}
+.qs-notice{display:flex;align-items:center;gap:.5rem;font-size:.76rem;font-weight:700;color:#3a2f0b;
+  background:linear-gradient(135deg,var(--gold-300),var(--gold-500));border-radius:10px;padding:.4rem .8rem;
+  position:relative;z-index:1;max-width:100%;min-width:0;box-shadow:0 6px 14px -8px rgba(168,134,29,.7)}
+.qs-notice span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qs-notice i{flex-shrink:0}
+.qs-emblem{position:relative;z-index:1;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;flex-shrink:0;
+  background:rgba(255,255,255,.06);border:1px solid rgba(201,162,39,.45);box-shadow:0 0 0 4px rgba(201,162,39,.10), 0 8px 18px -10px rgba(0,0,0,.6)}
+.qs-emblem img{width:30px;height:30px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))}
+.qs-emblem.qs-emblem-empty{display:none}
+@media (max-width:980px){.qs-mid{margin-left:0;width:100%;order:3}.qs-notice{order:4;width:100%}}
+@media (max-width:560px){.qs-emblem{display:none}.qs-title{font-size:.92rem}}
+
 /* ── Animações / skeleton / toast ── */
 .fade-up{animation:fadeUp .45s cubic-bezier(.16,1,.3,1) both}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
@@ -114,7 +153,11 @@ select.input,textarea.input{padding-left:.9rem}
 .topbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.94);backdrop-filter:blur(16px) saturate(180%);border-bottom:1px solid var(--line);box-shadow:0 4px 20px -10px rgba(16,24,20,.1)}
 .topbar::after{content:'';display:block;height:3px;background:linear-gradient(90deg,transparent,var(--gold-500) 20%,var(--green-700) 50%,var(--gold-500) 80%,transparent);opacity:.85}
 
-/* MARCA DO CABEÇALHO (classes próprias → visíveis nos 2 temas, não somem) */
+/* MARCA + BUSCA DO CABEÇALHO — controladas por mim (sem depender de 'hidden sm/md:block' do Tailwind) */
+.brand-box{display:none}
+.search-box{display:none;position:relative;flex:1 1 0%;max-width:36rem;margin:0 auto}
+@media (min-width:640px){.brand-box{display:block}}
+@media (min-width:768px){.search-box{display:block}}
 .brand-name{font-family:'Sora',sans-serif;font-weight:800;font-size:1.05rem;letter-spacing:.02em;color:var(--green-900);line-height:1.1}
 .brand-sub{font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-600);font-weight:800;line-height:1.1;margin-top:1px}
 
