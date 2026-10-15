@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FAMR • Portal Oficial — Força Armada Militar Revolucionária</title>
-<!-- Anti-flash de tema (aplica dark antes do paint) -->
 <script>(function(){try{if(localStorage.getItem('famr-theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();</script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -155,8 +154,6 @@ tailwind.config = { theme: { extend: {
 
 <!-- ══════════ SHELL (APP) ══════════ -->
 <div id="shell" class="hidden h-screen flex flex-col overflow-hidden">
-
-  <!-- HEADER TOPO -->
   <header class="topbar shrink-0 z-40">
     <div class="max-w-[1600px] mx-auto px-4 h-16 flex items-center gap-4">
       <a href="#/home" class="flex items-center gap-3 shrink-0 group">
@@ -181,14 +178,12 @@ tailwind.config = { theme: { extend: {
             <span id="user-group">—</span>
           </div>
         </a>
-        <!-- ÚNICO BOTÃO DE MODO ESCURO -->
         <button id="btn-theme" class="btn-theme-icon" title="Modo escuro" aria-label="Alternar tema"><i class="fas fa-moon"></i></button>
         <button id="btn-logout" class="btn-logout-icon" title="Sair do Sistema"><i class="fas fa-power-off"></i></button>
       </div>
     </div>
   </header>
 
-  <!-- CORPO -->
   <div class="flex-1 flex overflow-hidden">
     <aside class="sidebar w-64 shrink-0 flex flex-col overflow-y-auto custom-scroll">
       <nav id="sidebar-nav" class="p-3 space-y-1 flex-1"></nav>
@@ -218,7 +213,6 @@ tailwind.config = { theme: { extend: {
 </div>
 <div id="toast-root" class="fixed top-20 right-4 z-[80] space-y-2 w-80"></div>
 
-<!-- ANTI TELA BRANCA -->
 <script>
 window.addEventListener('DOMContentLoaded', function(){
   setTimeout(function(){
