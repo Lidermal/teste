@@ -1,10 +1,21 @@
-/* ══════════ FAMR • AUTENTICAÇÃO FINAL (Validação na Coluna pass_hash) ══════════ */
+/* ══════════ FAMR • AUTENTICAÇÃO v21 (Reset redireciona para o próprio sistema) ══════════ */
 
 const SCREENS = ['screen-login','screen-register','screen-forgot','screen-reset','screen-maintenance'];
 const INACTIVITY_MS = 60*60*1000, BROWSER_WINDOW_MS = 5*60*1000, BROWSER_BLOCK_MS = 5*60*1000;
 const MAX_REQ_WINDOW = 4, MAX_WRONG_PASS = 4;
 let watchTimer = null, lastTouch = 0, cdTimer = null;
 const dayStr = () => new Date().toISOString().slice(0,10);
+
+/* ── DETECÇÃO DE RECUPERAÇÃO DE SENHA (link do e-mail) ── */
+const RECOVERY_IN_URL = /(#|&|\?)(type=recovery|access_token=|recovery_token=)/.test(location.hash + location.search);
+window._famrRecovery = RECOVERY_IN_URL;
+
+/* Remove tokens sensíveis da URL após detectar recuperação */
+function cleanRecoveryHash(){
+  if(/access_token|type=recovery|recovery_token/.test(location.hash)){
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+}
 
 function showScreen(id){
   SCREENS.forEach(s => document.getElementById(s)?.classList.add('hidden'));
@@ -71,8 +82,14 @@ document.addEventListener('DOMContentLoaded', () => {
     on('btn-reset-save','click', e => { e.preventDefault(); doResetSave(); });
     on('btn-maint-login','click', () => showScreen('screen-login'));
     on('btn-logout','click', doLogout);
-    supabase.auth.onAuthStateChange((event) => {
-      if(event === 'PASSWORD_RECOVERY') showScreen('screen-reset');
+    
+    supabase.auth.onAuthStateChange((event, session) => {
+      if(event === 'PASSWORD_RECOVERY'){
+        console.log('[FAMR] Recuperação de senha detectada');
+        window._famrRecovery = true;
+        showScreen('screen-reset');
+        cleanRecoveryHash();
+      }
       if(event === 'SIGNED_OUT'){
         STATE.profile = null; STATE.groups = []; stopWatchdog();
         if(!document.getElementById('shell').classList.contains('hidden')){
@@ -96,6 +113,16 @@ async function initSession(){
   if(!sbOk()){ console.error('[FAMR] cliente Supabase indisponível.'); showScreen('screen-login'); loginAlert(MSG_SERVIDOR, 'err'); return; }
   const { data: sets } = await supabase.from('settings').select('*').in('key', ['maintenance','announcement']);
   (sets||[]).forEach(s => STATE.settings[s.key] = s.value);
+
+  /* Se veio de link de recuperação, vai direto para tela de nova senha */
+  if(window._famrRecovery || RECOVERY_IN_URL){
+    console.log('[FAMR] Link de recuperação detectado na URL');
+    window._famrRecovery = true;
+    showScreen('screen-reset');
+    cleanRecoveryHash();
+    return;
+  }
+
   const { data:{ session } } = await supabase.auth.getSession();
   if(session){
     const day = localStorage.getItem('famr_day');
@@ -108,7 +135,7 @@ async function initSession(){
   }
 }
 
-/* LOGIN: valida na SUA coluna (pass_hash) -> abre sessão no gotrue */
+/* LOGIN: valida na coluna pass_hash -> abre sessão no gotrue */
 async function doLogin(e){
   loginAlertHide();
   if(!sbOk()){ loginAlert(MSG_SERVIDOR, 'err'); return; }
@@ -128,14 +155,12 @@ async function doLogin(e){
 
   const btn = e.target.querySelector('button'); btn.disabled = true;
   try{
-    // 1) valida a senha na SUA coluna
     const { data: v, error } = await supabase.rpc('famr_login_verify', { nick, pass });
     if(error){ console.error('[FAMR] verify:', error); loginAlert(MSG_SERVIDOR, 'err'); return; }
     if(!v){ loginAlert('Nickname não encontrado ou conta banida.<br><span class="text-xs font-normal">Confirme o nickname ou procure o Alto Comando.</span>', 'err'); return; }
     if(v.locked){ showLockedMsg(); return; }
     if(v.ok !== true){ loginAlert('Senha incorreta (<b>'+(v.fails ?? '?')+'/'+MAX_WRONG_PASS+'</b>). Na 4ª tentativa a conta é bloqueada.', 'err'); return; }
 
-    // 2) senha conferiu na sua coluna -> abre sessão no gotrue com a MESMA senha
     const { data, error: le } = await supabase.auth.signInWithPassword({ email: v.email, password: pass });
     if(le){
       console.error('[FAMR] signIn:', le);
@@ -152,6 +177,13 @@ async function doLogin(e){
 }
 
 async function enterSystem(userId){
+  /* Se estiver em fluxo de recuperação, não entra no shell */
+  if(window._famrRecovery){
+    console.log('[FAMR] Fluxo de recuperação ativo, não entrando no shell');
+    showScreen('screen-reset');
+    return;
+  }
+
   const { data: profile, error } = await supabase.from('profiles_view').select('*').eq('id', userId).single();
   if(error || !profile){ console.error('[FAMR] perfil:', error); await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Perfil não encontrado. Procure um administrador da FAMR.', 'err'); return; }
   if(profile.status === 'banned'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta BANIDA do sistema.', 'err'); return; }
@@ -180,7 +212,7 @@ async function enterSystem(userId){
   try{ await route(); }catch(err){ console.error('[FAMR] route:', err); }
 }
 
-/* ALISTAMENTO: CORREÇÃO DO BUG DE SENHA */
+/* ALISTAMENTO */
 async function doRegister(e){
   if(!sbOk()){ toast('Falha de conexão com o servidor. Tente novamente.', 'err'); return; }
   const nick = document.getElementById('reg-nick').value.trim();
@@ -188,44 +220,21 @@ async function doRegister(e){
   const pass = document.getElementById('reg-pass').value;
   const btn = e.target.querySelector('button'); btn.disabled = true;
   try{
-    // 1. Cria no Supabase Auth
     const { data, error } = await supabase.auth.signUp({ email, password: pass, options: { data: { nickname: nick } } });
     if(error){ toast('Erro no alistamento: ' + error.message, 'err'); return; }
     
-    // Verifica se já existe
     if(data.user && (data.user.identities || []).length === 0){ 
       toast('Este e-mail já está cadastrado. Use "Esqueci a senha".', 'warn'); 
       return; 
     }
 
-    // 2. CORREÇÃO CRÍTICA: Gravar o hash na nossa coluna imediatamente se houver sessão
-    // Se o projeto exigir confirmação de email, data.session será null.
-    // Nesse caso, o hash só será gravado quando o usuário confirmar o email e logar pela primeira vez?
-    // NÃO. Precisamos garantir que o hash exista.
-    // Se não houver sessão imediata, vamos tentar logar manualmente para pegar a sessão e gravar o hash?
-    // Isso falharia se o email não estiver confirmado.
-    
-    // SOLUÇÃO ROBUSTA: Se houver sessão, grava. Se não houver, o admin terá que ativar.
-    // MAS, para o login funcionar com nossa lógica, o pass_hash PRECISA estar lá.
-    // Se o signUp não retorna sessão (email confirmation on), o pass_hash fica vazio.
-    // Quando o usuário clica no link de confirmação, ele ganha sessão. Podemos interceptar isso?
-    // Sim, no onAuthStateChange 'SIGNED_IN'.
-    
     if(data.session){
       console.log('[FAMR] Sessão imediata detectada. Gravando hash...');
       const { error: rpcErr } = await supabase.rpc('famr_set_credentials', { new_pass: pass });
       if(rpcErr) console.error('[FAMR] Falha ao gravar hash imediato:', rpcErr);
-      await supabase.auth.signOut(); // Desloga para voltar ao login
+      await supabase.auth.signOut();
     } else {
-      console.log('[FAMR] Sem sessão imediata (confirmação de email necessária). O hash será gravado após confirmação.');
-      // O hash será gravado no evento SIGNED_IN abaixo ou no primeiro login se ajustarmos a lógica.
-      // Para garantir, vamos adicionar um listener temporário ou confiar que o admin vai ativar.
-      // Se o admin ativa pelo painel, o status muda para active, mas o pass_hash continua null.
-      // PRECISAMOS de uma forma de gravar o hash sem sessão se o email não for confirmado.
-      // Isso é impossível via client-side seguro.
-      // WORKAROUND: Se o projeto tem "Confirm Email" OFF, data.session sempre existe.
-      // Se tem ON, o usuário não consegue logar até confirmar. Após confirmar, ele ganha sessão.
-      // Vamos adicionar um listener para quando ele confirmar e logar automaticamente (se o link redirecionar para cá).
+      console.log('[FAMR] Sem sessão imediata (confirmação de email necessária).');
     }
 
     document.getElementById('form-register').classList.add('hidden');
@@ -237,33 +246,7 @@ async function doRegister(e){
   } finally { btn.disabled = false; }
 }
 
-// Listener para capturar o momento pós-confirmação de email e gravar o hash se estiver faltando
-supabase.auth.onAuthStateChange(async (event, session) => {
-  if (event === 'SIGNED_IN' && session) {
-    // Verifica se o pass_hash está vazio para este usuário
-    const { data: profile } = await supabase.from('profiles_view').select('pass_hash').eq('id', session.user.id).single();
-    // Nota: profiles_view não expõe pass_hash por segurança geralmente.
-    // Precisamos checar via RPC ou assumir que se veio do fluxo de registro recente, precisamos gravar.
-    // Como não temos estado global fácil aqui, vamos tentar gravar se viermos de um contexto de "recém registrado".
-    // Uma forma simples: tentar chamar famr_set_credentials com uma senha padrão? Não, não temos a senha.
-    
-    // MELHOR ABORDAGEM PARA O SEU CASO:
-    // Se você está com "Confirm Email" OFF no Supabase, o bloco `if(data.session)` acima SEMPRE roda.
-    // Se o hash não subiu, é porque o RLS bloqueou o `famr_set_credentials`.
-    // VERIFIQUE AS POLÍTICAS RLS DA TABELA PROFILES/CREDENTIALS.
-    // A função famr_set_credentials é SECURITY DEFINER, então ela ignora RLS.
-    // O erro deve ser outro.
-    
-    // Vamos forçar a gravação aqui se detectarmos que é um usuário novo sem hash?
-    // Não temos a senha aqui.
-    
-    // DEBUG: Se o login falhar depois, é porque pass_hash é null.
-    // A única forma de pass_hash ser null após signUp com sessão é se a RPC falhou.
-    // Verifique o console do navegador após o alistamento.
-  }
-});
-
-/* ESQUECI A SENHA (e-mail só para isto e alertas) */
+/* ESQUECI A SENHA — redirectTo aponta para o próprio sistema */
 async function doForgot(e){
   if(!sbOk()){ toast('Falha de conexão com o servidor. Tente novamente.', 'err'); return; }
   const nick = document.getElementById('forgot-nick').value.trim();
@@ -273,33 +256,71 @@ async function doForgot(e){
     const { data: email, error } = await supabase.rpc('resolve_login_email', { nick });
     if(error){ console.error('[FAMR] resolve:', error); toast('Não foi possível processar agora. Tente novamente.', 'err'); return; }
     if(!email){ toast('Nickname não encontrado. Confirme com o Alto Comando.', 'err'); return; }
-    const { error: rErr } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
-    if(rErr){ console.error('[FAMR] reset:', rErr); toast('Não foi possível enviar agora. Tente novamente.', 'err'); return; }
+    
+    /* redirectTo = URL do próprio sistema (deve estar na whitelist do Supabase) */
+    const redirectURL = location.origin + location.pathname;
+    console.log('[FAMR] Enviando link de recuperação para:', email, 'com redirectTo:', redirectURL);
+    
+    const { error: rErr } = await supabase.auth.resetPasswordForEmail(email, { 
+      redirectTo: redirectURL 
+    });
+    
+    if(rErr){ 
+      console.error('[FAMR] reset:', rErr); 
+      const msg = String(rErr.message || '');
+      if(/sending recovery email|retryablefetch|smtp/i.test(msg)){
+        toast('O servidor de e-mail do quartel está indisponível agora. Aguarde 1 minuto e tente de novo; se persistir, avise o Alto Comando.', 'warn');
+      } else if(/rate limit|too many/i.test(msg)){
+        toast('Muitas solicitações em sequência. Aguarde 1 minuto antes de pedir outro link.', 'warn');
+      } else if(/redirect url not allowed/i.test(msg)){
+        toast('URL de redirecionamento não permitida. Verifique a configuração no painel do Supabase.', 'err');
+      } else {
+        toast('Não foi possível enviar agora. Tente novamente.', 'err');
+      }
+      return; 
+    }
+    
     document.getElementById('form-forgot').classList.add('hidden');
     document.getElementById('forgot-ok').classList.remove('hidden');
-  } catch(err){ console.error('[FAMR] forgot:', err); toast('Erro inesperado. Tente novamente.', 'err'); }
-  finally { btn.disabled = false; }
+    try{ await supabase.rpc('log_action', { action:'SENHA_LINK_ENVIADO', details:{ nick } }); }catch(e){}
+  } catch(err){ 
+    console.error('[FAMR] forgot:', err); 
+    toast('Erro inesperado. Tente novamente.', 'err'); 
+  } finally { 
+    btn.disabled = false; 
+  }
 }
 
-/* NOVA SENHA: grava hash real na sua coluna + destrava */
+/* NOVA SENHA — grava no Auth + pass_hash do usuário em recuperação */
 async function doResetSave(){
   const p1 = document.getElementById('reset-pass').value;
   const p2 = document.getElementById('reset-pass2').value;
   if(p1.length < 6){ toast('Senha mínima: 6 caracteres.', 'warn'); return; }
   if(p1 !== p2){ toast('As senhas não conferem.', 'err'); return; }
   
-  // Atualiza no Supabase Auth
+  /* Atualiza senha no Supabase Auth (consome o token de recuperação) */
   const { error } = await supabase.auth.updateUser({ password: p1 });
-  if(error){ console.error('[FAMR] reset update:', error); toast('Erro ao salvar a senha. Tente novamente.', 'err'); return; }
+  if(error){ 
+    console.error('[FAMR] reset update:', error); 
+    toast('Erro ao salvar a senha. O link pode ter expirado (15 min) — solicite um novo.', 'err'); 
+    return; 
+  }
   
-  // CORREÇÃO: Atualiza na nossa coluna também
+  /* Grava hash na coluna pass_hash do usuário da sessão atual */
   try{ 
     await supabase.rpc('famr_set_credentials', { new_pass: p1 }); 
+    console.log('[FAMR] Hash gravado com sucesso após recuperação');
   }catch(e){
     console.error('[FAMR] Falha ao atualizar hash local:', e);
   }
   
   try{ await supabase.rpc('log_action', { action:'SENHA_REDEFINIDA', details:{} }); }catch(e){}
+  
+  /* Limpa flag de recuperação e URL */
+  window._famrRecovery = false;
+  cleanRecoveryHash();
+  
+  /* Desloga e volta para tela de login */
   await supabase.auth.signOut();
   showScreen('screen-login');
   loginAlert('<i class="fas fa-check-circle mr-1"></i> Senha redefinida e conta desbloqueada. Faça login novamente.', 'ok');
