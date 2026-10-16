@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v22 (grupos sem poder + permissões por tópico) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v23 (perfil corrigido + grupos/permissões) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -175,7 +175,7 @@ async function renderHome(c){
   const { data: allUG } = await supabase.from('user_groups').select('group_id').limit(5000);
   const memberCount = {}; (allUG||[]).forEach(m => memberCount[m.group_id] = (memberCount[m.group_id]||0)+1);
 
-  /* ANEXO 1: ícone do último recruta aprovado (ícone do grupo prioritário ou fa-user) */
+  /* Último recruta aprovado com o ícone do grupo prioritário (ou fa-user) */
   let lastChip = '<em>nenhum</em>';
   if(newest?.[0]){
     const { data: ug2 } = await supabase.from('user_groups').select('groups(id,icon,order_index,apply_color)').eq('user_id', newest[0].id);
@@ -234,7 +234,7 @@ async function renderHome(c){
   ${(sections||[]).map(sec => {
     if(!canViewSection(sec)) return '';
     const rows = visibleSubs.filter(s => s.section_id === sec.id);
-    if(rows.length === 0 && (STATE.restrictedSecs?.has(sec.id))) return '';
+    if(rows.length === 0 && STATE.restrictedSecs?.has(sec.id)) return '';
     return `<section class="card overflow-hidden fade-up">
       <div class="cat-head"><i class="fas ${esc(sec.icon)}"></i> ${esc(sec.name)}
         <a href="#/section/${sec.slug}" class="ml-auto text-[10px] font-bold text-gold-300 hover:text-white normal-case tracking-normal">ver setor →</a></div>
@@ -294,7 +294,7 @@ function forumRow(s, counts, lastMap){
   </a>`;
 }
 
-/* ── PÁGINA DE GRUPO (sem poder; tipo + ícone + membros com ícone) ── */
+/* ── PÁGINA DE GRUPO ── */
 async function renderGroupPage(c, groupId){
   const [{ data: grp }, { data: members }] = await Promise.all([
     supabase.from('groups').select('*, groups(name)').eq('id', groupId).single(),
@@ -382,7 +382,7 @@ const secHead = sec => `<div class="flex flex-wrap items-center justify-between 
   <h1 class="font-display text-2xl md:text-3xl font-extrabold text-famr-900"><i class="fas ${esc(sec.icon)} text-gold-500 mr-2"></i>${esc(sec.name)}</h1>
   <p class="text-sm text-muted mt-1">${esc(sec.description||'')}</p></div><div class="star-row text-sm">★★★★</div></div>`;
 
-/* ── SUBTÓPICO (criar/editar/excluir respeitando a matriz) ── */
+/* ── SUBTÓPICO ── */
 async function renderSubtopic(c, id){
   const { data: sub } = await supabase.from('subtopics').select('*,sections(name,slug)').eq('id', id).single();
   if(!sub){ c.innerHTML = '<div class="card card-body text-sm text-muted">Subtópico não encontrado.</div>'; return; }
@@ -521,26 +521,55 @@ async function renderDocumentos(c, sec){
   </div>`;
 }
 
-/* ── PERFIL ── */
+/* ══════════ PERFIL (CORRIGIDO — busca em 2 passos + fallback + visibilidade) ══════════ */
 async function renderProfile(c, param){
   const me = (!param || param === 'me');
   const id = me ? STATE.profile.id : param;
   const { data: p } = await supabase.from('profiles_view').select('*').eq('id', id).single();
   if(!p){ c.innerHTML = '<div class="card card-body text-sm text-muted">Perfil não encontrado.</div>'; return; }
-  const { data: ug } = await supabase.from('user_groups').select('groups(*)').eq('user_id', id);
-  const gs = sortGroups((ug||[]).map(r => r.groups).filter(g => g && (g.group_type !== 'invisible' || me || isAdmin())));
+
+  /* 1) Vínculos do perfil: consulta direta (sem embed que pode vir vazio) */
+  let gs = [];
+  const { data: ug, error: ugErr } = await supabase.from('user_groups').select('group_id').eq('user_id', id);
+  if(ugErr) console.error('[FAMR] perfil → vínculos:', ugErr);
+  const gids = (ug||[]).map(r => r.group_id).filter(Boolean);
+  if(gids.length){
+    const { data: groups, error: gErr } = await supabase.from('groups').select('*').in('id', gids);
+    if(gErr) console.error('[FAMR] perfil → grupos:', gErr);
+    gs = sortGroups(groups||[]);
+  } else if(me && (STATE.groups||[]).length){
+    gs = sortGroups(STATE.groups);   /* fallback: grupos da própria sessão */
+  }
+
+  /* 2) Visibilidade: invisível só para o dono, admin ou moderador do grupo */
+  const viewerOk = me || isAdmin();
+  gs = gs.filter(g => g.group_type !== 'invisible' || viewerOk || STATE.modGroups?.has(g.id));
+
+  const main = primaryGroupOf(gs);
+  const cg   = colorGroupOf(gs);
+
   c.innerHTML = `
   <div class="card fade-up overflow-hidden">
     <div class="h-24" style="background:linear-gradient(120deg,#0e4433,#14563f 60%,#c9a227)"></div>
     <div class="p-6 -mt-12">
       <div class="flex flex-wrap items-end gap-4">
-        <span class="w-20 h-20 rounded-2xl grid place-items-center text-3xl font-extrabold text-white border-4 border-white shadow-lg" style="background:${(colorGroupOf(gs)||{}).color||'#14563f'}"><i class="fas ${userIconOf(gs)}"></i></span>
-        <div class="flex-1"><h1 class="font-display text-2xl font-extrabold">${esc(p.nickname)}</h1><p class="text-xs text-muted">No sistema desde ${fmtDate(p.created_at)} ${me?`• ${esc(p.email)}`:''}</p></div>
+        <span class="w-20 h-20 rounded-2xl grid place-items-center text-3xl font-extrabold text-white border-4 border-white shadow-lg"
+              style="background:${cg?.color || '#14563f'}">
+          <i class="fas ${main?.icon || 'fa-user'}"></i>
+        </span>
+        <div class="flex-1">
+          <h1 class="font-display text-2xl font-extrabold">${esc(p.nickname)}</h1>
+          <p class="text-xs text-muted">No sistema desde ${fmtDate(p.created_at)} ${me ? `• ${esc(p.email)}` : ''}</p>
+        </div>
         <span class="chip ${p.status==='active'?'chip-ok':p.status==='pending'?'chip-wait':'chip-no'}">${p.status.toUpperCase()}</span>
         ${p.login_locked ? '<span class="chip chip-no"><i class="fas fa-lock mr-1"></i>BLOQUEADA</span>' : ''}
       </div>
-      <div class="flex flex-wrap gap-2 mt-4">${gs.map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}</div>
-    </div></div>`;
+      <div class="flex flex-wrap gap-2 mt-4">
+        ${gs.map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}
+      </div>
+      ${gs.length ? `<p class="text-[11px] text-muted mt-3"><i class="fas fa-circle-info mr-1"></i>Grupo prioritário (cor/ícone): <b style="color:${main.color}">${esc(main.name)}</b> — definido pela ordem dos grupos.</p>` : ''}
+    </div>
+  </div>`;
 }
 
 /* ── BUSCA GLOBAL (com ícone do grupo prioritário) ── */
@@ -641,7 +670,7 @@ window.saveGroups = async userId => {
   closeModal(); toast('Grupos atualizados.');
 };
 
-/* ── GRUPOS (sem poder; ordem = prioridade; ícone; tipo; permissões; membros) ── */
+/* ── GRUPOS (ordem = prioridade; ícone; tipo; permissões; membros) ── */
 async function tabGrupos(b){
   const { data } = await supabase.from('groups').select('*, groups(name)').order('order_index');
   const { data: ug } = await supabase.from('user_groups').select('group_id').limit(5000);
@@ -734,7 +763,7 @@ window.delGroup = async id => {
   tabGrupos(document.getElementById('admin-body'));
 };
 
-/* ── MATRIZ DE PERMISSÕES (estilo fórum, por setor/subtópico) ── */
+/* ── MATRIZ DE PERMISSÕES ── */
 window.groupPermissions = async gid => {
   const [{ data: secs }, { data: subs }, { data: rows }, { data: grp }] = await Promise.all([
     supabase.from('sections').select('*').order('order_index'),
@@ -777,7 +806,7 @@ window.savePermissions = async gid => {
   closeModal(); toast('Permissões salvas.');
 };
 
-/* ── MEMBROS DO GRUPO (adicionar/remover, funciona p/ subgrupos) ── */
+/* ── MEMBROS DO GRUPO ── */
 window.groupMembers = async gid => {
   const [{ data: grp }, { data: mem }] = await Promise.all([
     supabase.from('groups').select('name,color,icon,group_type').eq('id', gid).single(),
@@ -906,7 +935,7 @@ async function tabConfig(b){
 window.saveMaint = async () => { const value = { enabled: document.getElementById('c-maint').checked, message: document.getElementById('c-maint-msg').value }; await supabase.from('settings').upsert({ key:'maintenance', value }); STATE.settings.maintenance = value; try{ await supabase.rpc('log_action', { action:'MANUTENCAO', details: value }); }catch(e){} toast('Configuração salva.'); document.getElementById('maintenance-banner').classList.toggle('hidden', !value.enabled); };
 window.saveAnn = async () => { const value = { text: document.getElementById('c-ann').value }; await supabase.from('settings').upsert({ key:'announcement', value }); STATE.settings.announcement = value; try{ await supabase.rpc('log_action', { action:'AVISO', details: value }); }catch(e){} toast('Aviso publicado na home.'); };
 
-/* ── ENTRADA NO SISTEMA (carrega grupos ordenados + permissões) ── */
+/* ── ENTRADA NO SISTEMA (grupos ordenados + permissões) ── */
 async function enterSystem(userId){
   if(window._famrRecovery){ showScreen('screen-reset'); return; }
   const { data: profile, error } = await supabase.from('profiles_view').select('*').eq('id', userId).single();
