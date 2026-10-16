@@ -1,4 +1,4 @@
-/* ══════════ FAMR • AUTENTICAÇÃO v21 (Reset redireciona para o próprio sistema) ══════════ */
+/* ══════════ FAMR • AUTENTICAÇÃO v22 (Detecção imediata de Recovery) ══════════ */
 
 const SCREENS = ['screen-login','screen-register','screen-forgot','screen-reset','screen-maintenance'];
 const INACTIVITY_MS = 60*60*1000, BROWSER_WINDOW_MS = 5*60*1000, BROWSER_BLOCK_MS = 5*60*1000;
@@ -6,11 +6,28 @@ const MAX_REQ_WINDOW = 4, MAX_WRONG_PASS = 4;
 let watchTimer = null, lastTouch = 0, cdTimer = null;
 const dayStr = () => new Date().toISOString().slice(0,10);
 
-/* ── DETECÇÃO DE RECUPERAÇÃO DE SENHA (link do e-mail) ── */
-const RECOVERY_IN_URL = /(#|&|\?)(type=recovery|access_token=|recovery_token=)/.test(location.hash + location.search);
-window._famrRecovery = RECOVERY_IN_URL;
+/* ── DETECÇÃO IMEDIATA DE RECUPERAÇÃO (antes de qualquer outra lógica) ── */
+/* Detecta tokens de recuperação na URL (access_token, type=recovery, recovery_token) */
+const _urlHash = location.hash || '';
+const _urlSearch = location.search || '';
+const _hasRecoveryToken = /type=recovery|recovery_token=|access_token=[^&]+.*type=recovery/i.test(_urlHash + _urlSearch);
 
-/* Remove tokens sensíveis da URL após detectar recuperação */
+/* Flag global que controla o fluxo de recuperação */
+window._famrRecovery = _hasRecoveryToken;
+
+/* Mostra a tela de reset IMEDIATAMENTE se houver token de recovery */
+if(window._famrRecovery){
+  console.log('[FAMR] Token de recuperação detectado na URL. Mostrando tela de nova senha.');
+  /* Precisamos esperar o DOM estar pronto para manipular as telas */
+  document.addEventListener('DOMContentLoaded', () => {
+    SCREENS.forEach(s => document.getElementById(s)?.classList.add('hidden'));
+    document.getElementById('shell')?.classList.add('hidden');
+    document.getElementById('screen-reset')?.classList.remove('hidden');
+    cleanRecoveryHash();
+  }, { once: true });
+}
+
+/* Remove tokens sensíveis da URL */
 function cleanRecoveryHash(){
   if(/access_token|type=recovery|recovery_token/.test(location.hash)){
     history.replaceState(null, '', location.pathname + location.search);
@@ -18,6 +35,11 @@ function cleanRecoveryHash(){
 }
 
 function showScreen(id){
+  /* Se estiver em recuperação, NUNCA sai da tela de reset até o usuário salvar */
+  if(window._famrRecovery && id !== 'screen-reset' && id !== 'screen-login'){
+    console.log('[FAMR] Bloqueado redirecionamento para', id, '(recuperação ativa)');
+    return;
+  }
   SCREENS.forEach(s => document.getElementById(s)?.classList.add('hidden'));
   document.getElementById('shell')?.classList.add('hidden');
   if(id === 'shell') document.getElementById('shell')?.classList.remove('hidden');
@@ -85,12 +107,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     supabase.auth.onAuthStateChange((event, session) => {
       if(event === 'PASSWORD_RECOVERY'){
-        console.log('[FAMR] Recuperação de senha detectada');
+        console.log('[FAMR] PASSWORD_RECOVERY capturado pelo onAuthStateChange');
         window._famrRecovery = true;
         showScreen('screen-reset');
         cleanRecoveryHash();
       }
-      if(event === 'SIGNED_OUT'){
+      if(event === 'SIGNED_OUT' && !window._famrRecovery){
         STATE.profile = null; STATE.groups = []; stopWatchdog();
         if(!document.getElementById('shell').classList.contains('hidden')){
           showScreen('screen-login'); loginAlert('Sessão encerrada. Faça login novamente.', 'warn');
@@ -99,29 +121,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }catch(err){
     console.error('[FAMR] listeners:', err);
-    showScreen('screen-login');
+    if(!window._famrRecovery) showScreen('screen-login');
     loginAlert('Erro interno ao preparar a tela. Tente novamente (Ctrl+F5).', 'err');
   }
-  initSession().catch(err => {
-    console.error('[FAMR] boot:', err);
-    showScreen('screen-login');
-    loginAlert('Não foi possível iniciar o sistema. Tente novamente (Ctrl+F5). Se persistir, contate o Alto Comando.', 'err');
-  });
+  
+  /* Só roda initSession se NÃO estiver em fluxo de recuperação */
+  if(!window._famrRecovery){
+    initSession().catch(err => {
+      console.error('[FAMR] boot:', err);
+      showScreen('screen-login');
+      loginAlert('Não foi possível iniciar o sistema. Tente novamente (Ctrl+F5). Se persistir, contate o Alto Comando.', 'err');
+    });
+  } else {
+    console.log('[FAMR] Fluxo de recuperação ativo — pulando initSession normal');
+  }
 });
 
 async function initSession(){
   if(!sbOk()){ console.error('[FAMR] cliente Supabase indisponível.'); showScreen('screen-login'); loginAlert(MSG_SERVIDOR, 'err'); return; }
   const { data: sets } = await supabase.from('settings').select('*').in('key', ['maintenance','announcement']);
   (sets||[]).forEach(s => STATE.settings[s.key] = s.value);
-
-  /* Se veio de link de recuperação, vai direto para tela de nova senha */
-  if(window._famrRecovery || RECOVERY_IN_URL){
-    console.log('[FAMR] Link de recuperação detectado na URL');
-    window._famrRecovery = true;
-    showScreen('screen-reset');
-    cleanRecoveryHash();
-    return;
-  }
 
   const { data:{ session } } = await supabase.auth.getSession();
   if(session){
@@ -135,7 +154,6 @@ async function initSession(){
   }
 }
 
-/* LOGIN: valida na coluna pass_hash -> abre sessão no gotrue */
 async function doLogin(e){
   loginAlertHide();
   if(!sbOk()){ loginAlert(MSG_SERVIDOR, 'err'); return; }
@@ -177,12 +195,7 @@ async function doLogin(e){
 }
 
 async function enterSystem(userId){
-  /* Se estiver em fluxo de recuperação, não entra no shell */
-  if(window._famrRecovery){
-    console.log('[FAMR] Fluxo de recuperação ativo, não entrando no shell');
-    showScreen('screen-reset');
-    return;
-  }
+  if(window._famrRecovery){ showScreen('screen-reset'); return; }
 
   const { data: profile, error } = await supabase.from('profiles_view').select('*').eq('id', userId).single();
   if(error || !profile){ console.error('[FAMR] perfil:', error); await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Perfil não encontrado. Procure um administrador da FAMR.', 'err'); return; }
@@ -212,7 +225,6 @@ async function enterSystem(userId){
   try{ await route(); }catch(err){ console.error('[FAMR] route:', err); }
 }
 
-/* ALISTAMENTO */
 async function doRegister(e){
   if(!sbOk()){ toast('Falha de conexão com o servidor. Tente novamente.', 'err'); return; }
   const nick = document.getElementById('reg-nick').value.trim();
@@ -222,21 +234,16 @@ async function doRegister(e){
   try{
     const { data, error } = await supabase.auth.signUp({ email, password: pass, options: { data: { nickname: nick } } });
     if(error){ toast('Erro no alistamento: ' + error.message, 'err'); return; }
-    
     if(data.user && (data.user.identities || []).length === 0){ 
       toast('Este e-mail já está cadastrado. Use "Esqueci a senha".', 'warn'); 
       return; 
     }
-
     if(data.session){
       console.log('[FAMR] Sessão imediata detectada. Gravando hash...');
       const { error: rpcErr } = await supabase.rpc('famr_set_credentials', { new_pass: pass });
       if(rpcErr) console.error('[FAMR] Falha ao gravar hash imediato:', rpcErr);
       await supabase.auth.signOut();
-    } else {
-      console.log('[FAMR] Sem sessão imediata (confirmação de email necessária).');
     }
-
     document.getElementById('form-register').classList.add('hidden');
     document.getElementById('register-success').classList.remove('hidden');
     try{ await supabase.rpc('log_action', { action:'REGISTRO', details:{ nick } }); }catch(e){}
@@ -246,7 +253,6 @@ async function doRegister(e){
   } finally { btn.disabled = false; }
 }
 
-/* ESQUECI A SENHA — redirectTo aponta para o próprio sistema */
 async function doForgot(e){
   if(!sbOk()){ toast('Falha de conexão com o servidor. Tente novamente.', 'err'); return; }
   const nick = document.getElementById('forgot-nick').value.trim();
@@ -257,13 +263,10 @@ async function doForgot(e){
     if(error){ console.error('[FAMR] resolve:', error); toast('Não foi possível processar agora. Tente novamente.', 'err'); return; }
     if(!email){ toast('Nickname não encontrado. Confirme com o Alto Comando.', 'err'); return; }
     
-    /* redirectTo = URL do próprio sistema (deve estar na whitelist do Supabase) */
     const redirectURL = location.origin + location.pathname;
     console.log('[FAMR] Enviando link de recuperação para:', email, 'com redirectTo:', redirectURL);
     
-    const { error: rErr } = await supabase.auth.resetPasswordForEmail(email, { 
-      redirectTo: redirectURL 
-    });
+    const { error: rErr } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: redirectURL });
     
     if(rErr){ 
       console.error('[FAMR] reset:', rErr); 
@@ -286,27 +289,26 @@ async function doForgot(e){
   } catch(err){ 
     console.error('[FAMR] forgot:', err); 
     toast('Erro inesperado. Tente novamente.', 'err'); 
-  } finally { 
-    btn.disabled = false; 
-  }
+  } finally { btn.disabled = false; }
 }
 
-/* NOVA SENHA — grava no Auth + pass_hash do usuário em recuperação */
 async function doResetSave(){
   const p1 = document.getElementById('reset-pass').value;
   const p2 = document.getElementById('reset-pass2').value;
   if(p1.length < 6){ toast('Senha mínima: 6 caracteres.', 'warn'); return; }
   if(p1 !== p2){ toast('As senhas não conferem.', 'err'); return; }
   
-  /* Atualiza senha no Supabase Auth (consome o token de recuperação) */
   const { error } = await supabase.auth.updateUser({ password: p1 });
   if(error){ 
     console.error('[FAMR] reset update:', error); 
-    toast('Erro ao salvar a senha. O link pode ter expirado (15 min) — solicite um novo.', 'err'); 
+    if(/token/i.test(error.message)){
+      toast('O link expirou ou já foi usado. Solicite um novo link de redefinição.', 'err');
+    } else {
+      toast('Erro ao salvar a senha. Tente novamente.', 'err');
+    }
     return; 
   }
   
-  /* Grava hash na coluna pass_hash do usuário da sessão atual */
   try{ 
     await supabase.rpc('famr_set_credentials', { new_pass: p1 }); 
     console.log('[FAMR] Hash gravado com sucesso após recuperação');
@@ -316,11 +318,10 @@ async function doResetSave(){
   
   try{ await supabase.rpc('log_action', { action:'SENHA_REDEFINIDA', details:{} }); }catch(e){}
   
-  /* Limpa flag de recuperação e URL */
+  /* Libera a flag de recuperação */
   window._famrRecovery = false;
   cleanRecoveryHash();
   
-  /* Desloga e volta para tela de login */
   await supabase.auth.signOut();
   showScreen('screen-login');
   loginAlert('<i class="fas fa-check-circle mr-1"></i> Senha redefinida e conta desbloqueada. Faça login novamente.', 'ok');
@@ -329,6 +330,7 @@ async function doResetSave(){
 async function doLogout(){
   try{ await supabase.rpc('log_action', { action:'LOGOUT', details:{} }); }catch(e){}
   stopWatchdog();
+  window._famrRecovery = false;
   await supabase.auth.signOut();
   location.hash = '';
   location.reload();
