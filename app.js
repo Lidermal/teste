@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v24 (login via RPC security definer = à prova de RLS) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v25 (tópicos: mover/editar/permissões + Companhias por grupo) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -6,16 +6,15 @@ const statusChip = s => s==='approved' ? '<span class="chip chip-ok">APROVADO</s
 
 const ICON_OPTIONS = ['fa-shield-halved','fa-crown','fa-star','fa-bolt','fa-gavel','fa-scale-balanced','fa-user-shield','fa-users','fa-hand-fist','fa-fire','fa-snowflake','fa-leaf','fa-anchor','fa-plane','fa-helicopter','fa-truck-fast','fa-wrench','fa-screwdriver-wrench','fa-graduation-cap','fa-book-open','fa-scroll','fa-flag','fa-bullhorn','fa-chart-pie','fa-coins','fa-heart','fa-person-dress','fa-paw','fa-dragon','fa-chess-knight','fa-crosshairs','fa-eye','fa-mask','fa-ghost','fa-robot'];
 const GROUP_TYPES = { open:'ABERTO', closed:'FECHADO', invisible:'INVISÍVEL' };
+const SLUGS_REQUIRE_GROUP = ['companhias']; /* v25: setores que só aparecem p/ quem tem grupo */
 
 function groupChip(g){ return g ? `<span class="chip" style="background:${g.color}18;color:${g.color};border:1px solid ${g.color}55"><i class="fas ${g.icon||'fa-shield-halved'}"></i> ${esc(g.name)}</span>` : '<span class="chip chip-neutral">Geral</span>'; }
 
-/* ── PRIORIDADE (ordem da lista = prioridade de cor/ícone) ── */
 function sortGroups(list){ return [...(list||[])].sort((a,b)=>(a.order_index||0)-(b.order_index||0)); }
 function primaryGroupOf(list){ return sortGroups(list)[0] || null; }
 function colorGroupOf(list){ return sortGroups(list).find(g => g.apply_color) || null; }
 function userIconOf(list){ return primaryGroupOf(list)?.icon || 'fa-user'; }
 
-/* ── PERMISSÕES (matriz por setor/subtópico) ── */
 function permOf(type,id){ return STATE.perms?.[type+':'+id] || null; }
 function canViewSection(sec){
   if(isAdmin()) return true;
@@ -45,7 +44,14 @@ function canEditIn(sub){ if(isAdmin()) return true; const p = permOf('subtopic',
 function canDeleteIn(sub){ if(isAdmin()) return true; const p = permOf('subtopic', sub.id) || permOf('section', sub.section_id); return !!(p && (p.del || p.mod)); }
 function isModOf(groupId){ return isAdmin() || STATE.modGroups?.has(groupId); }
 
-/* ── TEMA ── */
+/* v25: visibilidade na sidebar/home — além das permissões, setores da lista exigem ter ALGUM grupo */
+function sectionNeedsGroup(sec){ return SLUGS_REQUIRE_GROUP.includes(sec?.slug); }
+function canSeeSection(sec){
+  if(!canViewSection(sec)) return false;
+  if(sectionNeedsGroup(sec) && !isAdmin() && (STATE.groups||[]).length===0) return false;
+  return true;
+}
+
 function applyThemeIcon(){
   const b = document.getElementById('btn-theme'); if(!b) return;
   const dark = document.documentElement.getAttribute('data-theme')==='dark';
@@ -81,7 +87,6 @@ function confirmDlg(msg){ return new Promise(res => {
   window._cf = res;
 });}
 
-/* ── CHIP DO USUÁRIO ── */
 function updateUserChip(){
   if(!STATE.profile) return;
   const nick = STATE.profile.nickname || '—';
@@ -95,7 +100,6 @@ function updateUserChip(){
   if(av){ av.textContent = nick.charAt(0).toUpperCase(); av.style.background = cg ? cg.color : '#14563f'; }
 }
 
-/* ── RELÓGIO ── */
 function startQsClock(){
   if(window._qsTimer){ clearInterval(window._qsTimer); window._qsTimer = null; }
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
@@ -106,7 +110,6 @@ function startQsClock(){
   window._qsTimer = setInterval(tick, 1000);
 }
 
-/* ── ROUTER ── */
 window.addEventListener('hashchange', route);
 async function route(){
   if(!STATE.profile) return;
@@ -139,7 +142,6 @@ function updateSidebarActive(key){
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.key === key));
 }
 
-/* ── SIDEBAR ── */
 async function buildSidebar(){
   const nav = document.getElementById('sidebar-nav');
   if(!nav) return;
@@ -148,7 +150,7 @@ async function buildSidebar(){
   let html = `<a class="nav-item" data-key="home" href="#/home"><i class="fas fa-house"></i> Início</a>
               <div class="nav-sep">Tópicos oficiais</div>`;
   for(const s of STATE.sections){
-    if(!canViewSection(s)) continue;
+    if(!canSeeSection(s)) continue; /* v25: esconde Companhias p/ quem não tem grupo */
     html += `<a class="nav-item" data-key="section/${s.slug}" href="#/section/${s.slug}">
       <i class="fas ${esc(s.icon||'fa-folder')}"></i> ${esc(s.name)}</a>`;
   }
@@ -161,7 +163,6 @@ async function buildSidebar(){
   if(STATE.settings.maintenance?.enabled && isAdmin()) document.getElementById('maintenance-banner').classList.remove('hidden');
 }
 
-/* ══════════ HOME ══════════ */
 async function renderHome(c){
   const [{ data: sections }, { data: subs }, { data: posts }, { count: nMembers },
          { data: newest }, { data: groups }] = await Promise.all([
@@ -193,6 +194,7 @@ async function renderHome(c){
     { icon:'fa-file-signature', color:'#a8861d', label:'Requerimento CRH/RH' },
     { icon:'fa-shield-halved', color:'#0e4433', label:'Sessão segura • expira em 1h' }
   ];
+  const myIds = new Set((STATE.groups||[]).map(g=>g.id));
 
   c.innerHTML = `
   <section class="quartel-strip fade-up">
@@ -231,7 +233,21 @@ async function renderHome(c){
   </section>
 
   ${(sections||[]).map(sec => {
-    if(!canViewSection(sec)) return '';
+    if(!canSeeSection(sec)) return ''; /* v25 */
+    /* v25: Companhias na home vira vitrine de grupos (não lista de subtópicos) */
+    if(sectionNeedsGroup(sec)){
+      const grows = (groups||[]).map(g => `<a href="#/grupo/${g.id}" class="forum-row">
+        <span class="forum-ico"><i class="fas ${g.icon||'fa-shield-halved'}" style="color:${g.color}"></i></span>
+        <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(g.name)}</b>
+          <p class="text-xs text-muted">${GROUP_TYPES[g.group_type]||''} • ${memberCount[g.id]||0} membro(s)</p></div>
+        ${myIds.has(g.id)?'<span class="chip chip-ok">SEU GRUPO</span>':''}
+        <i class="fas fa-chevron-right text-xs text-muted"></i></a>`).join('');
+      return `<section class="card overflow-hidden fade-up">
+        <div class="cat-head"><i class="fas ${esc(sec.icon)}"></i> ${esc(sec.name)}
+          <a href="#/section/${sec.slug}" class="ml-auto text-[10px] font-bold text-gold-300 hover:text-white normal-case tracking-normal">ver todas →</a></div>
+        <div class="divide-y divide-line">${grows || '<p class="p-5 text-sm text-muted text-center">Nenhuma companhia cadastrada.</p>'}</div>
+      </section>`;
+    }
     const rows = visibleSubs.filter(s => s.section_id === sec.id);
     if(rows.length === 0 && STATE.restrictedSecs?.has(sec.id)) return '';
     return `<section class="card overflow-hidden fade-up">
@@ -293,7 +309,6 @@ function forumRow(s, counts, lastMap){
   </a>`;
 }
 
-/* ── PÁGINA DE GRUPO ── */
 async function renderGroupPage(c, groupId){
   const [{ data: grp }, { data: members }] = await Promise.all([
     supabase.from('groups').select('*, groups(name)').eq('id', groupId).single(),
@@ -334,9 +349,7 @@ async function renderGroupPage(c, groupId){
 window.joinGroup = async id => { const { error } = await supabase.from('user_groups').insert([{ user_id: STATE.profile.id, group_id: id }]); if(error) return toast('Erro: '+error.message,'err'); toast('Você entrou no grupo.'); reloadSessionGroups(); };
 window.leaveGroup = async id => { await supabase.from('user_groups').delete().eq('user_id', STATE.profile.id).eq('group_id', id); toast('Você saiu do grupo.'); reloadSessionGroups(); };
 
-/* ════ CORAÇÃO DO FIX v24: grupos do usuário via RPC (ignora RLS) + fallback ════ */
 async function loadSessionGroups(userId){
-  /* 1) caminho primário: RPC security definer => sempre enxerga Donos/Administradores */
   try{
     const { data, error } = await supabase.rpc('famr_get_my_groups');
     if(!error && Array.isArray(data)){
@@ -346,8 +359,6 @@ async function loadSessionGroups(userId){
     }
     if(error) console.warn('[FAMR] RPC famr_get_my_groups falhou, caindo p/ SELECT:', error.message||error);
   }catch(e){ console.warn('[FAMR] RPC indisponível, caindo p/ SELECT:', e); }
-
-  /* 2) fallback: duas consultas diretas (funciona se o SELECT estiver liberado) */
   const { data: ug, error: ugErr } = await supabase.from('user_groups').select('group_id').eq('user_id', userId);
   if(ugErr) console.error('[FAMR] fallback user_groups:', ugErr);
   const gids = (ug||[]).map(r=>r.group_id).filter(Boolean);
@@ -383,13 +394,13 @@ async function loadPerms(){
   STATE.modGroups = new Set((myPerm||[]).filter(p=>p.is_moderator).map(p=>p.group_id));
 }
 
-/* ── SETOR ── */
 async function renderSection(c, slug){
   const { data: sec } = await supabase.from('sections').select('*').eq('slug', slug).single();
   if(!sec){ c.innerHTML = '<div class="card card-body text-sm text-muted">Seção não encontrada.</div>'; return; }
   if(slug === 'listagem')      return await renderListagem(c, sec);
   if(slug === 'requerimentos') return await renderRequerimentos(c, sec);
   if(slug === 'documentos')    return await renderDocumentos(c, sec);
+  if(slug === 'companhias')    return await renderCompanhias(c, sec); /* v25 */
   if(!canViewSection(sec)){ c.innerHTML = `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2></div>`; return; }
   const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id).order('order_index');
   const ids = (subs||[]).map(s => s.id);
@@ -407,7 +418,33 @@ const secHead = sec => `<div class="flex flex-wrap items-center justify-between 
   <h1 class="font-display text-2xl md:text-3xl font-extrabold text-famr-900"><i class="fas ${esc(sec.icon)} text-gold-500 mr-2"></i>${esc(sec.name)}</h1>
   <p class="text-sm text-muted mt-1">${esc(sec.description||'')}</p></div><div class="star-row text-sm">★★★★</div></div>`;
 
-/* ── SUBTÓPICO ── */
+/* v25: página Companhias — vitrine de grupos, exige pertencer a algum grupo */
+async function renderCompanhias(c, sec){
+  if(!isAdmin() && (STATE.groups||[]).length===0){
+    c.innerHTML = secHead(sec) + `<div class="card card-body text-center py-14 fade-up"><i class="fas fa-user-shield text-4xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2><p class="text-sm text-muted mt-1">Você ainda não pertence a nenhuma companhia. Aguarde o alistamento em um grupo pelo Alto Comando.</p></div>`;
+    return;
+  }
+  const [{ data: groups }, { data: allUG }] = await Promise.all([
+    supabase.from('groups').select('id,name,color,icon,group_type,order_index,parent_id').neq('group_type','invisible').order('order_index'),
+    supabase.from('user_groups').select('group_id').limit(5000)
+  ]);
+  const cnt = {}; (allUG||[]).forEach(m => cnt[m.group_id] = (cnt[m.group_id]||0)+1);
+  const myIds = new Set((STATE.groups||[]).map(g=>g.id));
+  c.innerHTML = secHead(sec) + `
+  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up">
+    ${(groups||[]).map(g => `<div class="card card-hover p-5">
+      <div class="flex items-center justify-between">
+        <span class="forum-ico"><i class="fas ${g.icon||'fa-shield-halved'}" style="color:${g.color}"></i></span>
+        <span class="chip ${g.group_type==='open'?'chip-ok':g.group_type==='closed'?'chip-wait':'chip-neutral'}">${GROUP_TYPES[g.group_type]||g.group_type}</span>
+      </div>
+      <h3 class="font-bold mt-3" style="color:${g.color}">${esc(g.name)}</h3>
+      <p class="text-xs text-muted mt-1">${cnt[g.id]||0} membro(s)</p>
+      ${myIds.has(g.id) ? '<span class="chip chip-ok mt-2"><i class="fas fa-check mr-1"></i>Seu grupo</span>' : ''}
+      <a href="#/grupo/${g.id}" class="btn btn-outline btn-sm mt-3"><i class="fas fa-users"></i> Ver membros</a>
+    </div>`).join('') || '<div class="card card-body text-sm text-muted sm:col-span-2 lg:col-span-3 text-center py-10">Nenhuma companhia cadastrada.</div>'}
+  </div>`;
+}
+
 async function renderSubtopic(c, id){
   const { data: sub } = await supabase.from('subtopics').select('*,sections(name,slug)').eq('id', id).single();
   if(!sub){ c.innerHTML = '<div class="card card-body text-sm text-muted">Subtópico não encontrado.</div>'; return; }
@@ -478,7 +515,6 @@ window.delPost = async function(id){
   closeModal(); toast('Publicação excluída.'); route();
 };
 
-/* ── LISTAGEM / REQUERIMENTOS / DOCUMENTOS ── */
 async function renderListagem(c, sec){
   const { data: entries } = await supabase.from('listagem_entries').select('*').order('created_at',{ascending:false}).limit(100);
   const cats = [...new Set((entries||[]).map(e => e.category))];
@@ -546,7 +582,6 @@ async function renderDocumentos(c, sec){
   </div>`;
 }
 
-/* ── PERFIL (2 passos + fallback + visibilidade) ── */
 async function renderProfile(c, param){
   const me = (!param || param === 'me');
   const id = me ? STATE.profile.id : param;
@@ -554,7 +589,7 @@ async function renderProfile(c, param){
   if(!p){ c.innerHTML = '<div class="card card-body text-sm text-muted">Perfil não encontrado.</div>'; return; }
   let gs = [];
   if(me){
-    gs = sortGroups(STATE.groups);                 /* próprio perfil: usa a sessão (já via RPC) */
+    gs = sortGroups(STATE.groups);
   } else {
     const { data: ug, error: ugErr } = await supabase.from('user_groups').select('group_id').eq('user_id', id);
     if(ugErr) console.error('[FAMR] perfil → vínculos:', ugErr);
@@ -593,7 +628,6 @@ async function renderProfile(c, param){
   </div>`;
 }
 
-/* ── BUSCA GLOBAL + TEMA ── */
 document.addEventListener('DOMContentLoaded', () => {
   applyThemeIcon();
   const bt = document.getElementById('btn-theme');
@@ -820,6 +854,43 @@ window.savePermissions = async gid => {
   for(const r of del){ await supabase.from('group_permissions').delete().eq('group_id', gid).eq('target_type', r.target_type).eq('target_id', r.target_id); }
   closeModal(); toast('Permissões salvas.');
 };
+
+/* v25: matriz de permissões NA PERSPECTIVA DO TÓPICO (linhas = grupos). Grava na MESMA tabela group_permissions. */
+window.targetPermissions = async (type, id, name) => {
+  const [{ data: grps }, { data: rows }] = await Promise.all([
+    supabase.from('groups').select('id,name,color,icon,order_index').order('order_index'),
+    supabase.from('group_permissions').select('*').eq('target_type',type).eq('target_id',id)
+  ]);
+  const cur = {}; (rows||[]).forEach(r => cur[r.group_id] = r);
+  const cb = (gid, field, label) => `<td title="${label}"><input type="checkbox" data-g="${gid}" data-f="${field}" ${cur[gid]?.[field]?'checked':''}></td>`;
+  openModal(`<i class="fas fa-key text-gold-500 mr-2"></i>Permissões: ${esc(name)} <span class="chip chip-neutral ml-1 normal-case">${type==='section'?'setor':'subtópico'}</span>`,
+    `<p class="text-xs text-muted mb-2">Defina o que cada <b>grupo</b> pode neste tópico: <b>Ver</b>, <b>Criar</b>, <b>Editar</b>, <b>Excluir</b> e <b>Moderador</b>. Sem marca em nenhum grupo = tópico público; assim que um grupo ganha regra, o tópico fica restrito a quem tem <i>Ver</i>.</p>
+     <div class="perm-wrap"><table class="perm-matrix">
+       <thead><tr><th>Grupo</th><th>Ver</th><th>Criar</th><th>Editar</th><th>Excluir</th><th>Mod.</th></tr></thead>
+       <tbody>${(grps||[]).map(g => `<tr><td><i class="fas ${g.icon||'fa-shield-halved'} mr-2" style="color:${g.color}"></i><b>${esc(g.name)}</b></td>
+         ${cb(g.id,'can_view','Ver')} ${cb(g.id,'can_create','Criar')} ${cb(g.id,'can_edit','Editar')} ${cb(g.id,'can_delete','Excluir')} ${cb(g.id,'is_moderator','Moderador')}</tr>`).join('')}</tbody>
+     </table></div>`,
+    `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
+     <button class="btn btn-primary btn-sm" onclick="saveTargetPermissions('${type}','${id}')"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
+};
+window.saveTargetPermissions = async (type, id) => {
+  const boxes = [...document.querySelectorAll('#modal-body .perm-matrix input[type=checkbox]')];
+  const map = {};
+  boxes.forEach(bx => {
+    const gid = bx.dataset.g;
+    map[gid] = map[gid] || { group_id: gid, target_type: type, target_id: id, can_view:false, can_create:false, can_edit:false, can_delete:false, is_moderator:false };
+    map[gid][bx.dataset.f] = bx.checked;
+  });
+  const up = [], del = [];
+  Object.values(map).forEach(r => {
+    const any = r.can_view || r.can_create || r.can_edit || r.can_delete || r.is_moderator;
+    (any ? up : del).push(r);
+  });
+  if(up.length){ const { error } = await supabase.from('group_permissions').upsert(up, { onConflict:'group_id,target_type,target_id' }); if(error) return toast('Erro: '+error.message,'err'); }
+  for(const r of del){ await supabase.from('group_permissions').delete().eq('group_id', r.group_id).eq('target_type', type).eq('target_id', id); }
+  closeModal(); toast('Permissões salvas.');
+};
+
 window.groupMembers = async gid => {
   const [{ data: grp }, { data: mem }] = await Promise.all([
     supabase.from('groups').select('name,color,icon,group_type').eq('id', gid).single(),
@@ -856,6 +927,8 @@ window.gmRemove = async (gid, uid) => {
   await supabase.from('user_groups').delete().eq('user_id', uid).eq('group_id', gid);
   toast('Membro removido.'); groupMembers(gid);
 };
+
+/* v25: Tópicos com mover / editar / permissões (setor e subtópico) */
 async function tabTopicos(b){
   const [{ data: secs }, { data: subs }, { data: groups }] = await Promise.all([
     supabase.from('sections').select('*').order('order_index'),
@@ -864,51 +937,99 @@ async function tabTopicos(b){
   window._groupsCache = groups || [];
   b.innerHTML = `<div class="space-y-4 fade-up">
     <div class="flex justify-end"><button class="btn btn-gold btn-sm" onclick="sectionForm()"><i class="fas fa-plus"></i> Novo tópico (setor)</button></div>
-    ${(secs||[]).map(s => `<div class="card">
-      <div class="cat-head"><i class="fas ${esc(s.icon)}"></i> ${esc(s.name)} <span class="chip chip-neutral ml-2 normal-case">/${esc(s.slug)}</span>
-        <span class="ml-auto flex gap-1"><button class="btn btn-outline btn-sm" onclick="subtopicForm('${s.id}')"><i class="fas fa-plus"></i> Subtópico</button>
-        <button class="btn btn-danger btn-sm" onclick="delSection('${s.id}')"><i class="fas fa-trash"></i></button></span></div>
+    ${(secs||[]).map((s,i,arr) => `<div class="card">
+      <div class="cat-head">
+        <span class="flex items-center gap-1 mr-2">
+          <button class="ord-btn" onclick="moveSection('${s.id}',-1)" ${i===0?'disabled':''}><i class="fas fa-chevron-up"></i></button>
+          <button class="ord-btn" onclick="moveSection('${s.id}',1)" ${i===arr.length-1?'disabled':''}><i class="fas fa-chevron-down"></i></button>
+        </span>
+        <i class="fas ${esc(s.icon)}"></i> ${esc(s.name)} <span class="chip chip-neutral ml-2 normal-case">/${esc(s.slug)}</span>
+        ${SLUGS_REQUIRE_GROUP.includes(s.slug) ? '<span class="chip chip-wait ml-1 normal-case"><i class="fas fa-users mr-1"></i>só com grupo</span>' : ''}
+        <span class="ml-auto flex gap-1">
+          <button class="btn btn-outline btn-sm" onclick="targetPermissions('section','${s.id}','${esc(s.name)}')" title="Permissões deste setor"><i class="fas fa-key"></i></button>
+          <button class="btn btn-outline btn-sm" onclick="sectionForm('${s.id}')" title="Editar setor"><i class="fas fa-pen"></i></button>
+          <button class="btn btn-outline btn-sm" onclick="subtopicForm('${s.id}')" title="Novo subtópico"><i class="fas fa-plus"></i> Subtópico</button>
+          <button class="btn btn-danger btn-sm" onclick="delSection('${s.id}')"><i class="fas fa-trash"></i></button>
+        </span>
+      </div>
       <div class="divide-y divide-line">${(subs||[]).filter(x => x.section_id===s.id).map(x => `
         <div class="p-3.5 flex flex-wrap items-center gap-3 text-sm">
           <i class="fas fa-folder-open text-muted"></i><b>${esc(x.name)}</b>
           ${x.required_group_id?`<span class="chip chip-wait"><i class="fas fa-lock"></i> ${esc(x.groups?.name||'')}</span>`:'<span class="chip chip-ok">todos</span>'}
           ${x.is_request_form?'<span class="chip chip-neutral">formulário</span>':''}
           ${x.auto_listagem_category?`<span class="chip chip-ok">→ listagem: ${esc(x.auto_listagem_category)}</span>`:''}
-          <button class="btn btn-danger btn-sm ml-auto" onclick="delSubtopic('${x.id}')"><i class="fas fa-trash"></i></button>
-        </div>`).join('') || '<p class="p-4 text-xs text-muted">Sem subtópicos.</p>'}</div></div>`).join('')}
+          <span class="ml-auto flex gap-1">
+            <button class="btn btn-outline btn-sm" onclick="targetPermissions('subtopic','${x.id}','${esc(x.name)}')" title="Permissões deste subtópico"><i class="fas fa-key"></i></button>
+            <button class="btn btn-outline btn-sm" onclick="subtopicForm('${s.id}','${x.id}')" title="Editar subtópico"><i class="fas fa-pen"></i></button>
+            <button class="btn btn-danger btn-sm" onclick="delSubtopic('${x.id}')"><i class="fas fa-trash"></i></button>
+          </span>
+        </div>`).join('') || '<p class="p-4 text-xs text-muted">Sem subtópicos.</p>'}</div>
+    </div>`).join('')}
   </div>`;
 }
-window.sectionForm = () => openModal('<i class="fas fa-sitemap text-gold-500 mr-2"></i>Novo setor', `
-  <label class="field"><span>Nome</span><input id="s-name" class="input" placeholder="Ex: Condecorações"></label>
-  <label class="field"><span>Slug (url)</span><input id="s-slug" class="input" placeholder="condecoracoes"></label>
-  <label class="field"><span>Ícone (FontAwesome)</span><input id="s-icon" class="input" value="fa-folder-open"></label>
-  <label class="field"><span>Descrição</span><textarea id="s-desc" class="input" rows="2"></textarea></label>
-  <label class="field"><span>Restrito ao grupo (legado)</span><select id="s-group" class="input"><option value="">— todos —</option>${(window._groupsCache||[]).map(g=>`<option value="${g.id}">${esc(g.name)}</option>`).join('')}</select></label>`,
-  `<button class="btn btn-primary btn-sm" onclick="saveSection()"><i class="fas fa-floppy-disk"></i> Criar</button>`);
-window.saveSection = async () => {
-  const { count } = await supabase.from('sections').select('*', { count:'exact', head:true });
-  const { error } = await supabase.from('sections').insert([{ name: document.getElementById('s-name').value.trim(), slug: document.getElementById('s-slug').value.trim().toLowerCase().replace(/\s+/g,'-'), icon: document.getElementById('s-icon').value.trim() || 'fa-folder-open', description: document.getElementById('s-desc').value, required_group_id: document.getElementById('s-group').value || null, order_index: (count||0)+1 }]);
+window.moveSection = async (id, dir) => {
+  const { data } = await supabase.from('sections').select('id,order_index').order('order_index');
+  const i = (data||[]).findIndex(s => s.id === id);
+  const j = i + dir;
+  if(i < 0 || j < 0 || j >= data.length) return;
+  const a = data[i], b2 = data[j];
+  await supabase.from('sections').update({ order_index: b2.order_index }).eq('id', a.id);
+  await supabase.from('sections').update({ order_index: a.order_index }).eq('id', b2.id);
+  tabTopicos(document.getElementById('admin-body'));
+};
+window.sectionForm = async id => {
+  let s = { name:'', slug:'', icon:'fa-folder-open', description:'', required_group_id:null };
+  if(id){ const r = await supabase.from('sections').select('*').eq('id', id).single(); if(r.data) s = r.data; }
+  openModal(`<i class="fas fa-sitemap text-gold-500 mr-2"></i>${id?'Editar':'Novo'} setor`, `
+    <label class="field"><span>Nome</span><input id="s-name" class="input" value="${esc(s.name)}" placeholder="Ex: Condecorações"></label>
+    <label class="field"><span>Slug (url)</span><input id="s-slug" class="input" value="${esc(s.slug)}" placeholder="condecoracoes"></label>
+    <label class="field"><span>Ícone (FontAwesome)</span><input id="s-icon" class="input" value="${esc(s.icon)}"></label>
+    <label class="field"><span>Descrição</span><textarea id="s-desc" class="input" rows="2">${esc(s.description||'')}</textarea></label>
+    <label class="field"><span>Restrito ao grupo (legado)</span><select id="s-group" class="input"><option value="">— todos —</option>${(window._groupsCache||[]).map(g=>`<option value="${g.id}" ${s.required_group_id===g.id?'selected':''}>${esc(g.name)}</option>`).join('')}</select></label>`,
+    `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button><button class="btn btn-primary btn-sm" onclick="saveSection('${id||''}')"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
+};
+window.saveSection = async id => {
+  const row = { name: document.getElementById('s-name').value.trim(), slug: document.getElementById('s-slug').value.trim().toLowerCase().replace(/\s+/g,'-'), icon: document.getElementById('s-icon').value.trim() || 'fa-folder-open', description: document.getElementById('s-desc').value, required_group_id: document.getElementById('s-group').value || null };
+  if(!row.name || !row.slug) return toast('Nome e slug são obrigatórios.','warn');
+  let error = null;
+  if(id){ ({ error } = await supabase.from('sections').update(row).eq('id', id)); }
+  else {
+    const { count } = await supabase.from('sections').select('*', { count:'exact', head:true });
+    row.order_index = (count||0)+1;
+    ({ error } = await supabase.from('sections').insert([row]));
+  }
   if(error) return toast('Erro: '+error.message,'err');
-  try{ await supabase.rpc('log_action', { action:'SECTION_CRIADA', details:{} }); }catch(e){}
-  closeModal(); toast('Setor criado.'); buildSidebar(); tabTopicos(document.getElementById('admin-body'));
+  try{ await supabase.rpc('log_action', { action:'SECTION_SAVE', details: row }); }catch(e){}
+  closeModal(); toast('Setor salvo.'); buildSidebar(); tabTopicos(document.getElementById('admin-body'));
 };
 window.delSection = async id => { if(await confirmDlg('Excluir setor e todos os subtópicos?')) { await supabase.from('sections').delete().eq('id', id); buildSidebar(); tabTopicos(document.getElementById('admin-body')); } };
 window.delSubtopic = async id => { if(await confirmDlg('Excluir subtópico?')) { await supabase.from('subtopics').delete().eq('id', id); tabTopicos(document.getElementById('admin-body')); } };
-window.subtopicForm = sid => openModal('<i class="fas fa-folder-plus text-gold-500 mr-2"></i>Novo subtópico', `
-  <label class="field"><span>Nome</span><input id="t-name" class="input"></label>
-  <label class="field"><span>Descrição</span><textarea id="t-desc" class="input" rows="2"></textarea></label>
-  <label class="field"><span>Restrito ao grupo (legado)</span><select id="t-group" class="input"><option value="">— todos —</option>${(window._groupsCache||[]).map(g=>`<option value="${g.id}">${esc(g.name)}</option>`).join('')}</select></label>
-  <label class="flex items-center gap-2 text-sm font-bold"><input id="t-posts" type="checkbox" checked class="w-4 h-4 accent-[#14563f]"> Permite publicações</label>
-  <label class="flex items-center gap-2 text-sm font-bold"><input id="t-form" type="checkbox" class="w-4 h-4 accent-[#14563f]"> É formulário de requerimento</label>
-  <label class="field"><span>Campos (um por linha: Nome:tipo → text|textarea|number)</span><textarea id="t-fields" class="input" rows="3" placeholder="Nome da Tag:text&#10;Descrição:textarea"></textarea></label>
-  <label class="field"><span>Ao aprovar, publicar na listagem como categoria</span><input id="t-cat" class="input" placeholder="ex: tags"></label>
-  <input type="hidden" id="t-sid" value="${sid}">`,
-  `<button class="btn btn-primary btn-sm" onclick="saveSubtopic()"><i class="fas fa-floppy-disk"></i> Criar</button>`);
+window.subtopicForm = async (sid, tid) => {
+  let t = { name:'', description:'', required_group_id:null, allow_posts:true, is_request_form:false, form_fields:[], auto_listagem_category:null };
+  if(tid){ const r = await supabase.from('subtopics').select('*').eq('id', tid).single(); if(r.data) t = r.data; }
+  const fieldsText = (t.form_fields||[]).map(f => `${f.label}:${f.type||'text'}`).join('\n');
+  openModal(`<i class="fas fa-folder-plus text-gold-500 mr-2"></i>${tid?'Editar':'Novo'} subtópico`, `
+    <label class="field"><span>Nome</span><input id="t-name" class="input" value="${esc(t.name)}"></label>
+    <label class="field"><span>Descrição</span><textarea id="t-desc" class="input" rows="2">${esc(t.description||'')}</textarea></label>
+    <label class="field"><span>Restrito ao grupo (legado)</span><select id="t-group" class="input"><option value="">— todos —</option>${(window._groupsCache||[]).map(g=>`<option value="${g.id}" ${t.required_group_id===g.id?'selected':''}>${esc(g.name)}</option>`).join('')}</select></label>
+    <label class="flex items-center gap-2 text-sm font-bold"><input id="t-posts" type="checkbox" ${t.allow_posts?'checked':''} class="w-4 h-4 accent-[#14563f]"> Permite publicações</label>
+    <label class="flex items-center gap-2 text-sm font-bold"><input id="t-form" type="checkbox" ${t.is_request_form?'checked':''} class="w-4 h-4 accent-[#14563f]"> É formulário de requerimento</label>
+    <label class="field"><span>Campos (um por linha: Nome:tipo → text|textarea|number)</span><textarea id="t-fields" class="input" rows="3" placeholder="Nome da Tag:text&#10;Descrição:textarea">${esc(fieldsText)}</textarea></label>
+    <label class="field"><span>Ao aprovar, publicar na listagem como categoria</span><input id="t-cat" class="input" value="${esc(t.auto_listagem_category||'')}" placeholder="ex: tags"></label>
+    <input type="hidden" id="t-sid" value="${sid}">
+    <input type="hidden" id="t-tid" value="${tid||''}">`,
+    `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button><button class="btn btn-primary btn-sm" onclick="saveSubtopic()"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
+};
 window.saveSubtopic = async () => {
-  const fields = document.getElementById('t-fields').value.split('\n').filter(Boolean).map(l => { const [label, type] = l.split(':'); return { label: label.trim(), type: (type||'text').trim(), required: true }; });
-  const { error } = await supabase.from('subtopics').insert([{ section_id: document.getElementById('t-sid').value, name: document.getElementById('t-name').value.trim(), description: document.getElementById('t-desc').value, required_group_id: document.getElementById('t-group').value || null, allow_posts: document.getElementById('t-posts').checked, is_request_form: document.getElementById('t-form').checked, form_fields: fields, auto_listagem_category: document.getElementById('t-cat').value.trim() || null }]);
+  const tid = document.getElementById('t-tid').value;
+  const fields = document.getElementById('t-fields').value.split('\n').filter(Boolean).map(l => { const [label, type] = l.split(':'); return { label: (label||'').trim(), type: (type||'text').trim(), required: true }; }).filter(f => f.label);
+  const row = { section_id: document.getElementById('t-sid').value, name: document.getElementById('t-name').value.trim(), description: document.getElementById('t-desc').value, required_group_id: document.getElementById('t-group').value || null, allow_posts: document.getElementById('t-posts').checked, is_request_form: document.getElementById('t-form').checked, form_fields: fields, auto_listagem_category: document.getElementById('t-cat').value.trim() || null };
+  if(!row.name) return toast('Informe o nome.','warn');
+  let error = null;
+  if(tid){ ({ error } = await supabase.from('subtopics').update(row).eq('id', tid)); }
+  else { ({ error } = await supabase.from('subtopics').insert([row])); }
   if(error) return toast('Erro: '+error.message,'err');
-  closeModal(); toast('Subtópico criado.'); tabTopicos(document.getElementById('admin-body'));
+  closeModal(); toast('Subtópico salvo.'); tabTopicos(document.getElementById('admin-body'));
 };
 async function tabProtocolos(b){
   const { data } = await supabase.from('requests').select('*,profiles_view(nickname),subtopics(name,auto_listagem_category)').eq('status','pending').order('created_at');
@@ -944,7 +1065,6 @@ async function tabConfig(b){
 window.saveMaint = async () => { const value = { enabled: document.getElementById('c-maint').checked, message: document.getElementById('c-maint-msg').value }; await supabase.from('settings').upsert({ key:'maintenance', value }); STATE.settings.maintenance = value; try{ await supabase.rpc('log_action', { action:'MANUTENCAO', details: value }); }catch(e){} toast('Configuração salva.'); document.getElementById('maintenance-banner').classList.toggle('hidden', !value.enabled); };
 window.saveAnn = async () => { const value = { text: document.getElementById('c-ann').value }; await supabase.from('settings').upsert({ key:'announcement', value }); STATE.settings.announcement = value; try{ await supabase.rpc('log_action', { action:'AVISO', details: value }); }catch(e){} toast('Aviso publicado na home.'); };
 
-/* ── ENTRADA NO SISTEMA (usa loadSessionGroups = RPC primeiro) ── */
 async function enterSystem(userId){
   if(window._famrRecovery){ showScreen('screen-reset'); return; }
   const { data: profile, error } = await supabase.from('profiles_view').select('*').eq('id', userId).single();
@@ -954,7 +1074,7 @@ async function enterSystem(userId){
   if(profile.login_locked){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('<i class="fas fa-lock mr-1"></i> Conta BLOQUEADA. Use "Esqueci a senha" ou procure um administrador.', 'err'); return; }
 
   STATE.profile = profile;
-  STATE.groups = await loadSessionGroups(userId);   /* <<< RPC security definer => à prova de RLS */
+  STATE.groups = await loadSessionGroups(userId);
   await loadPerms();
 
   if(STATE.settings.maintenance?.enabled && !isAdmin()){
