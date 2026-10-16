@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v23 (perfil corrigido + grupos/permissões) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v24 (login via RPC security definer = à prova de RLS) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -9,7 +9,7 @@ const GROUP_TYPES = { open:'ABERTO', closed:'FECHADO', invisible:'INVISÍVEL' };
 
 function groupChip(g){ return g ? `<span class="chip" style="background:${g.color}18;color:${g.color};border:1px solid ${g.color}55"><i class="fas ${g.icon||'fa-shield-halved'}"></i> ${esc(g.name)}</span>` : '<span class="chip chip-neutral">Geral</span>'; }
 
-/* ── PRIORIDADE DE GRUPOS (ordem da lista = prioridade de cor/ícone) ── */
+/* ── PRIORIDADE (ordem da lista = prioridade de cor/ícone) ── */
 function sortGroups(list){ return [...(list||[])].sort((a,b)=>(a.order_index||0)-(b.order_index||0)); }
 function primaryGroupOf(list){ return sortGroups(list)[0] || null; }
 function colorGroupOf(list){ return sortGroups(list).find(g => g.apply_color) || null; }
@@ -81,7 +81,7 @@ function confirmDlg(msg){ return new Promise(res => {
   window._cf = res;
 });}
 
-/* ── CHIP DO USUÁRIO (cor/ícone pela prioridade) ── */
+/* ── CHIP DO USUÁRIO ── */
 function updateUserChip(){
   if(!STATE.profile) return;
   const nick = STATE.profile.nickname || '—';
@@ -175,7 +175,6 @@ async function renderHome(c){
   const { data: allUG } = await supabase.from('user_groups').select('group_id').limit(5000);
   const memberCount = {}; (allUG||[]).forEach(m => memberCount[m.group_id] = (memberCount[m.group_id]||0)+1);
 
-  /* Último recruta aprovado com o ícone do grupo prioritário (ou fa-user) */
   let lastChip = '<em>nenhum</em>';
   if(newest?.[0]){
     const { data: ug2 } = await supabase.from('user_groups').select('groups(id,icon,order_index,apply_color)').eq('user_id', newest[0].id);
@@ -334,9 +333,35 @@ async function renderGroupPage(c, groupId){
 }
 window.joinGroup = async id => { const { error } = await supabase.from('user_groups').insert([{ user_id: STATE.profile.id, group_id: id }]); if(error) return toast('Erro: '+error.message,'err'); toast('Você entrou no grupo.'); reloadSessionGroups(); };
 window.leaveGroup = async id => { await supabase.from('user_groups').delete().eq('user_id', STATE.profile.id).eq('group_id', id); toast('Você saiu do grupo.'); reloadSessionGroups(); };
+
+/* ════ CORAÇÃO DO FIX v24: grupos do usuário via RPC (ignora RLS) + fallback ════ */
+async function loadSessionGroups(userId){
+  /* 1) caminho primário: RPC security definer => sempre enxerga Donos/Administradores */
+  try{
+    const { data, error } = await supabase.rpc('famr_get_my_groups');
+    if(!error && Array.isArray(data)){
+      const gs = sortGroups(data);
+      console.log('[FAMR] grupos via RPC:', gs.map(x=>x.name), '| isAdmin?', gs.some(x=>(x.permissions||[]).includes('admin')));
+      return gs;
+    }
+    if(error) console.warn('[FAMR] RPC famr_get_my_groups falhou, caindo p/ SELECT:', error.message||error);
+  }catch(e){ console.warn('[FAMR] RPC indisponível, caindo p/ SELECT:', e); }
+
+  /* 2) fallback: duas consultas diretas (funciona se o SELECT estiver liberado) */
+  const { data: ug, error: ugErr } = await supabase.from('user_groups').select('group_id').eq('user_id', userId);
+  if(ugErr) console.error('[FAMR] fallback user_groups:', ugErr);
+  const gids = (ug||[]).map(r=>r.group_id).filter(Boolean);
+  let groups = [];
+  if(gids.length){
+    const { data: g, error: gErr } = await supabase.from('groups').select('*').in('id', gids);
+    if(gErr) console.error('[FAMR] fallback groups:', gErr);
+    groups = g || [];
+  }
+  console.log('[FAMR] grupos via SELECT:', groups.map(x=>x.name), '| isAdmin?', groups.some(x=>(x.permissions||[]).includes('admin')));
+  return sortGroups(groups);
+}
 async function reloadSessionGroups(){
-  const { data: ug } = await supabase.from('user_groups').select('group_id, groups(*)').eq('user_id', STATE.profile.id);
-  STATE.groups = sortGroups((ug||[]).map(r=>r.groups).filter(Boolean));
+  STATE.groups = await loadSessionGroups(STATE.profile.id);
   await loadPerms();
   updateUserChip(); route();
 }
@@ -521,33 +546,29 @@ async function renderDocumentos(c, sec){
   </div>`;
 }
 
-/* ══════════ PERFIL (CORRIGIDO — busca em 2 passos + fallback + visibilidade) ══════════ */
+/* ── PERFIL (2 passos + fallback + visibilidade) ── */
 async function renderProfile(c, param){
   const me = (!param || param === 'me');
   const id = me ? STATE.profile.id : param;
   const { data: p } = await supabase.from('profiles_view').select('*').eq('id', id).single();
   if(!p){ c.innerHTML = '<div class="card card-body text-sm text-muted">Perfil não encontrado.</div>'; return; }
-
-  /* 1) Vínculos do perfil: consulta direta (sem embed que pode vir vazio) */
   let gs = [];
-  const { data: ug, error: ugErr } = await supabase.from('user_groups').select('group_id').eq('user_id', id);
-  if(ugErr) console.error('[FAMR] perfil → vínculos:', ugErr);
-  const gids = (ug||[]).map(r => r.group_id).filter(Boolean);
-  if(gids.length){
-    const { data: groups, error: gErr } = await supabase.from('groups').select('*').in('id', gids);
-    if(gErr) console.error('[FAMR] perfil → grupos:', gErr);
-    gs = sortGroups(groups||[]);
-  } else if(me && (STATE.groups||[]).length){
-    gs = sortGroups(STATE.groups);   /* fallback: grupos da própria sessão */
+  if(me){
+    gs = sortGroups(STATE.groups);                 /* próprio perfil: usa a sessão (já via RPC) */
+  } else {
+    const { data: ug, error: ugErr } = await supabase.from('user_groups').select('group_id').eq('user_id', id);
+    if(ugErr) console.error('[FAMR] perfil → vínculos:', ugErr);
+    const gids = (ug||[]).map(r => r.group_id).filter(Boolean);
+    if(gids.length){
+      const { data: groups, error: gErr } = await supabase.from('groups').select('*').in('id', gids);
+      if(gErr) console.error('[FAMR] perfil → grupos:', gErr);
+      gs = sortGroups(groups||[]);
+    }
   }
-
-  /* 2) Visibilidade: invisível só para o dono, admin ou moderador do grupo */
   const viewerOk = me || isAdmin();
   gs = gs.filter(g => g.group_type !== 'invisible' || viewerOk || STATE.modGroups?.has(g.id));
-
   const main = primaryGroupOf(gs);
   const cg   = colorGroupOf(gs);
-
   c.innerHTML = `
   <div class="card fade-up overflow-hidden">
     <div class="h-24" style="background:linear-gradient(120deg,#0e4433,#14563f 60%,#c9a227)"></div>
@@ -572,7 +593,7 @@ async function renderProfile(c, param){
   </div>`;
 }
 
-/* ── BUSCA GLOBAL (com ícone do grupo prioritário) ── */
+/* ── BUSCA GLOBAL + TEMA ── */
 document.addEventListener('DOMContentLoaded', () => {
   applyThemeIcon();
   const bt = document.getElementById('btn-theme');
@@ -619,8 +640,6 @@ window.adminTab = async function(tab){
   const b = document.getElementById('admin-body'); b.innerHTML = '<div class="skeleton h-64"></div>';
   ({usuarios:tabUsuarios, grupos:tabGrupos, topicos:tabTopicos, protocolos:tabProtocolos, logs:tabLogs, config:tabConfig})[tab](b);
 };
-
-/* ── USUÁRIOS ── */
 async function tabUsuarios(b){
   const from = A.page*20;
   let q = supabase.from('profiles_view').select('*', { count:'exact' }).neq('nickname','admin master').order('created_at',{ascending:false}).range(from, from+19);
@@ -669,8 +688,6 @@ window.saveGroups = async userId => {
   try{ await supabase.rpc('log_action', { action:'USER_GROUPS', details:{ userId, ids } }); }catch(e){}
   closeModal(); toast('Grupos atualizados.');
 };
-
-/* ── GRUPOS (ordem = prioridade; ícone; tipo; permissões; membros) ── */
 async function tabGrupos(b){
   const { data } = await supabase.from('groups').select('*, groups(name)').order('order_index');
   const { data: ug } = await supabase.from('user_groups').select('group_id').limit(5000);
@@ -762,8 +779,6 @@ window.delGroup = async id => {
   try{ await supabase.rpc('log_action', { action:'GROUP_DEL', details:{ id } }); }catch(e){}
   tabGrupos(document.getElementById('admin-body'));
 };
-
-/* ── MATRIZ DE PERMISSÕES ── */
 window.groupPermissions = async gid => {
   const [{ data: secs }, { data: subs }, { data: rows }, { data: grp }] = await Promise.all([
     supabase.from('sections').select('*').order('order_index'),
@@ -805,8 +820,6 @@ window.savePermissions = async gid => {
   for(const r of del){ await supabase.from('group_permissions').delete().eq('group_id', gid).eq('target_type', r.target_type).eq('target_id', r.target_id); }
   closeModal(); toast('Permissões salvas.');
 };
-
-/* ── MEMBROS DO GRUPO ── */
 window.groupMembers = async gid => {
   const [{ data: grp }, { data: mem }] = await Promise.all([
     supabase.from('groups').select('name,color,icon,group_type').eq('id', gid).single(),
@@ -843,8 +856,6 @@ window.gmRemove = async (gid, uid) => {
   await supabase.from('user_groups').delete().eq('user_id', uid).eq('group_id', gid);
   toast('Membro removido.'); groupMembers(gid);
 };
-
-/* ── TÓPICOS (setores/subtópicos) ── */
 async function tabTopicos(b){
   const [{ data: secs }, { data: subs }, { data: groups }] = await Promise.all([
     supabase.from('sections').select('*').order('order_index'),
@@ -899,8 +910,6 @@ window.saveSubtopic = async () => {
   if(error) return toast('Erro: '+error.message,'err');
   closeModal(); toast('Subtópico criado.'); tabTopicos(document.getElementById('admin-body'));
 };
-
-/* ── PROTOCOLOS / LOGS / CONFIG ── */
 async function tabProtocolos(b){
   const { data } = await supabase.from('requests').select('*,profiles_view(nickname),subtopics(name,auto_listagem_category)').eq('status','pending').order('created_at');
   b.innerHTML = `<div class="card fade-up"><div class="cat-head"><i class="fas fa-inbox"></i> Pendentes de análise (${(data||[]).length})</div>
@@ -935,7 +944,7 @@ async function tabConfig(b){
 window.saveMaint = async () => { const value = { enabled: document.getElementById('c-maint').checked, message: document.getElementById('c-maint-msg').value }; await supabase.from('settings').upsert({ key:'maintenance', value }); STATE.settings.maintenance = value; try{ await supabase.rpc('log_action', { action:'MANUTENCAO', details: value }); }catch(e){} toast('Configuração salva.'); document.getElementById('maintenance-banner').classList.toggle('hidden', !value.enabled); };
 window.saveAnn = async () => { const value = { text: document.getElementById('c-ann').value }; await supabase.from('settings').upsert({ key:'announcement', value }); STATE.settings.announcement = value; try{ await supabase.rpc('log_action', { action:'AVISO', details: value }); }catch(e){} toast('Aviso publicado na home.'); };
 
-/* ── ENTRADA NO SISTEMA (grupos ordenados + permissões) ── */
+/* ── ENTRADA NO SISTEMA (usa loadSessionGroups = RPC primeiro) ── */
 async function enterSystem(userId){
   if(window._famrRecovery){ showScreen('screen-reset'); return; }
   const { data: profile, error } = await supabase.from('profiles_view').select('*').eq('id', userId).single();
@@ -945,8 +954,7 @@ async function enterSystem(userId){
   if(profile.login_locked){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('<i class="fas fa-lock mr-1"></i> Conta BLOQUEADA. Use "Esqueci a senha" ou procure um administrador.', 'err'); return; }
 
   STATE.profile = profile;
-  const { data: ug } = await supabase.from('user_groups').select('group_id, groups(*)').eq('user_id', userId);
-  STATE.groups = sortGroups((ug||[]).map(r=>r.groups).filter(Boolean));
+  STATE.groups = await loadSessionGroups(userId);   /* <<< RPC security definer => à prova de RLS */
   await loadPerms();
 
   if(STATE.settings.maintenance?.enabled && !isAdmin()){
