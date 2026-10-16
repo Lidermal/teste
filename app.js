@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v18 (faixa de plantão + relógio + dark) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v20 (Reset Route + SMTP + Hash Duplo + Faixa Cinza) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -56,7 +56,7 @@ function updateUserChip(){
   if(av){ av.textContent = nick.charAt(0).toUpperCase(); av.style.background = (g && g.color) ? g.color : '#14563f'; }
 }
 
-/* ── RELÓGIO AO VIVO DA FAIXA DE PLANTÃO ── */
+/* ── RELÓGIO AO VIVO ── */
 function startQsClock(){
   if(window._qsTimer){ clearInterval(window._qsTimer); window._qsTimer = null; }
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
@@ -67,21 +67,29 @@ function startQsClock(){
   window._qsTimer = setInterval(tick, 1000);
 }
 
-/* ── ROUTER ── */
+/* ── ROUTER (Permite #/reset sem login no shell) ── */
 window.addEventListener('hashchange', route);
 async function route(){
-  if(!STATE.profile) return;
   const raw = location.hash || '#/home';
   const clean = raw.startsWith('#/') ? raw.slice(2) : raw.replace(/^#/,'');
   const parts = clean.split('/');
   const page = parts[0] || 'home';
+  
+  // Se for rota de reset, o auth.js cuida da tela. Não renderiza no content do shell.
+  if(page === 'reset'){
+      if(typeof showScreen === 'function') showScreen('screen-reset');
+      return;
+  }
+
+  if(!STATE.profile) return; // Bloqueia outras rotas se não logado
+
   const param = parts[1] || null;
   const key = (page==='home') ? 'home' : (param ? page+'/'+param : page);
 
   updateUserChip();
   applyThemeIcon();
   updateSidebarActive(key);
-  if(window._qsTimer){ clearInterval(window._qsTimer); window._qsTimer = null; } // para o relógio ao sair da home
+  if(window._qsTimer){ clearInterval(window._qsTimer); window._qsTimer = null; }
 
   const c = document.getElementById('content');
   if(!c) return;
@@ -149,7 +157,7 @@ function getGroupIcon(name){
   return 'fa-shield-halved';
 }
 
-/* ══════════ HOME (Faixa de Plantão restaurada + hero + stats + setores + abas) ══════════ */
+/* ══════════ HOME ══════════ */
 async function renderHome(c){
   const [{ data: sections }, { data: subs }, { data: posts }, { count: nMembers },
          { data: newest }, { data: groups }] = await Promise.all([
@@ -175,7 +183,7 @@ async function renderHome(c){
   ];
 
   c.innerHTML = `
-  <!-- FAIXA DE PLANTÃO DO QUARTEL (online + hora + aviso) -->
+  <!-- FAIXA DE PLANTÃO -->
   <section class="quartel-strip fade-up">
     <div class="qs-glow" aria-hidden="true"></div>
     <div class="qs-left">
@@ -195,7 +203,7 @@ async function renderHome(c){
     <div class="qs-emblem"><img src="${CONFIG.logoUrl}" alt="Emblema FAMR" onerror="this.parentElement.classList.add('qs-emblem-empty')"></div>
   </section>
 
-  <!-- HERO COM ARTE MILITAR -->
+  <!-- HERO -->
   <section class="hero fade-up">
     <div class="hero-art" aria-hidden="true"><img src="${CONFIG.logoUrl}" onerror="this.parentElement.style.display='none'"></div>
     <div class="hero-inner flex flex-wrap items-center gap-6 justify-between">
@@ -215,7 +223,7 @@ async function renderHome(c){
     <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-user-plus"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Mais recente</p><p class="font-display text-sm font-extrabold text-famr-800 truncate">${esc(newest?.[0]?.nickname || '—')}</p></div></div>
   </section>
 
-  <!-- SETORES FÓRUM -->
+  <!-- SETORES -->
   ${(sections||[]).map(sec => {
     const rows = visibleSubs.filter(s => s.section_id === sec.id);
     const secLocked = sec.required_group_id && !canAccessGroup(sec.required_group_id);
@@ -229,7 +237,7 @@ async function renderHome(c){
     </section>`;
   }).join('')}
 
-  <!-- BARRA DE ABAS (rodapé) -->
+  <!-- ABAS -->
   <section class="stats-tabs fade-up">
     <div class="st-head">
       <button class="st-tab active" data-stab="usuarios"><i class="fas fa-users"></i> Usuários</button>
