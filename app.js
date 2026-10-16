@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v25 (tópicos: mover/editar/permissões + Companhias por grupo) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v26 (permissão "Todos" nos tópicos) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -6,7 +6,7 @@ const statusChip = s => s==='approved' ? '<span class="chip chip-ok">APROVADO</s
 
 const ICON_OPTIONS = ['fa-shield-halved','fa-crown','fa-star','fa-bolt','fa-gavel','fa-scale-balanced','fa-user-shield','fa-users','fa-hand-fist','fa-fire','fa-snowflake','fa-leaf','fa-anchor','fa-plane','fa-helicopter','fa-truck-fast','fa-wrench','fa-screwdriver-wrench','fa-graduation-cap','fa-book-open','fa-scroll','fa-flag','fa-bullhorn','fa-chart-pie','fa-coins','fa-heart','fa-person-dress','fa-paw','fa-dragon','fa-chess-knight','fa-crosshairs','fa-eye','fa-mask','fa-ghost','fa-robot'];
 const GROUP_TYPES = { open:'ABERTO', closed:'FECHADO', invisible:'INVISÍVEL' };
-const SLUGS_REQUIRE_GROUP = ['companhias']; /* v25: setores que só aparecem p/ quem tem grupo */
+const SLUGS_REQUIRE_GROUP = ['companhias'];
 
 function groupChip(g){ return g ? `<span class="chip" style="background:${g.color}18;color:${g.color};border:1px solid ${g.color}55"><i class="fas ${g.icon||'fa-shield-halved'}"></i> ${esc(g.name)}</span>` : '<span class="chip chip-neutral">Geral</span>'; }
 
@@ -15,11 +15,19 @@ function primaryGroupOf(list){ return sortGroups(list)[0] || null; }
 function colorGroupOf(list){ return sortGroups(list).find(g => g.apply_color) || null; }
 function userIconOf(list){ return primaryGroupOf(list)?.icon || 'fa-user'; }
 
+/* ══ v26: permissões com fallback "Todos" (group_id = NULL) ══ */
 function permOf(type,id){ return STATE.perms?.[type+':'+id] || null; }
+function effectivePerm(type,id){
+  const u = permOf(type,id);                 /* regra dos grupos do usuário (OR) */
+  if(u) return u;
+  const a = STATE.permAll?.[type+':'+id];    /* regra "Todos" (usuários sem grupo) */
+  if(a) return a;
+  return null;                               /* nenhuma regra → legado (público total) */
+}
 function canViewSection(sec){
   if(isAdmin()) return true;
   if(sec.required_group_id && !STATE.groups.some(g=>g.id===sec.required_group_id)) return false;
-  const p = permOf('section', sec.id);
+  const p = effectivePerm('section', sec.id);
   if(p) return p.view || p.mod;
   if(STATE.restrictedSecs?.has(sec.id)) return false;
   return true;
@@ -27,7 +35,7 @@ function canViewSection(sec){
 function canViewSub(sub){
   if(isAdmin()) return true;
   if(sub.required_group_id && !STATE.groups.some(g=>g.id===sub.required_group_id)) return false;
-  const p = permOf('subtopic', sub.id);
+  const p = effectivePerm('subtopic', sub.id);
   if(p) return p.view || p.mod;
   if(STATE.restrictedSubs?.has(sub.id)) return false;
   const sec = (STATE.sections||[]).find(s=>s.id===sub.section_id);
@@ -36,15 +44,14 @@ function canViewSub(sub){
 function canCreateIn(sub){
   if(!sub.allow_posts) return false;
   if(isAdmin()) return true;
-  const p = permOf('subtopic', sub.id) || permOf('section', sub.section_id);
+  const p = effectivePerm('subtopic', sub.id) || effectivePerm('section', sub.section_id);
   if(p) return p.create || p.mod;
   return !(STATE.restrictedSubs?.has(sub.id) || STATE.restrictedSecs?.has(sub.section_id));
 }
-function canEditIn(sub){ if(isAdmin()) return true; const p = permOf('subtopic', sub.id) || permOf('section', sub.section_id); return !!(p && (p.edit || p.mod)); }
-function canDeleteIn(sub){ if(isAdmin()) return true; const p = permOf('subtopic', sub.id) || permOf('section', sub.section_id); return !!(p && (p.del || p.mod)); }
+function canEditIn(sub){ if(isAdmin()) return true; const p=effectivePerm('subtopic',sub.id)||effectivePerm('section',sub.section_id); return !!(p&&(p.edit||p.mod)); }
+function canDeleteIn(sub){ if(isAdmin()) return true; const p=effectivePerm('subtopic',sub.id)||effectivePerm('section',sub.section_id); return !!(p&&(p.del||p.mod)); }
 function isModOf(groupId){ return isAdmin() || STATE.modGroups?.has(groupId); }
 
-/* v25: visibilidade na sidebar/home — além das permissões, setores da lista exigem ter ALGUM grupo */
 function sectionNeedsGroup(sec){ return SLUGS_REQUIRE_GROUP.includes(sec?.slug); }
 function canSeeSection(sec){
   if(!canViewSection(sec)) return false;
@@ -150,7 +157,7 @@ async function buildSidebar(){
   let html = `<a class="nav-item" data-key="home" href="#/home"><i class="fas fa-house"></i> Início</a>
               <div class="nav-sep">Tópicos oficiais</div>`;
   for(const s of STATE.sections){
-    if(!canSeeSection(s)) continue; /* v25: esconde Companhias p/ quem não tem grupo */
+    if(!canSeeSection(s)) continue;
     html += `<a class="nav-item" data-key="section/${s.slug}" href="#/section/${s.slug}">
       <i class="fas ${esc(s.icon||'fa-folder')}"></i> ${esc(s.name)}</a>`;
   }
@@ -233,8 +240,7 @@ async function renderHome(c){
   </section>
 
   ${(sections||[]).map(sec => {
-    if(!canSeeSection(sec)) return ''; /* v25 */
-    /* v25: Companhias na home vira vitrine de grupos (não lista de subtópicos) */
+    if(!canSeeSection(sec)) return '';
     if(sectionNeedsGroup(sec)){
       const grows = (groups||[]).map(g => `<a href="#/grupo/${g.id}" class="forum-row">
         <span class="forum-ico"><i class="fas ${g.icon||'fa-shield-halved'}" style="color:${g.color}"></i></span>
@@ -376,22 +382,32 @@ async function reloadSessionGroups(){
   await loadPerms();
   updateUserChip(); route();
 }
+
+/* ══ v26: loadPerms em UMA query, derivando perms do usuário + permAll ("Todos") ══ */
 async function loadPerms(){
-  const gids = STATE.groups.map(g=>g.id);
-  const [{ data: allPerm }, { data: myPerm }] = await Promise.all([
-    supabase.from('group_permissions').select('target_type,target_id'),
-    gids.length ? supabase.from('group_permissions').select('*').in('group_id', gids) : { data: [] }
-  ]);
-  STATE.restrictedSubs = new Set((allPerm||[]).filter(p=>p.target_type==='subtopic').map(p=>p.target_id));
-  STATE.restrictedSecs = new Set((allPerm||[]).filter(p=>p.target_type==='section').map(p=>p.target_id));
+  const gids = new Set(STATE.groups.map(g=>g.id));
+  const { data: rows, error } = await supabase.from('group_permissions').select('*');
+  if(error){
+    console.error('[FAMR] loadPerms:', error);
+    STATE.perms={}; STATE.permAll={}; STATE.restrictedSubs=new Set(); STATE.restrictedSecs=new Set(); STATE.modGroups=new Set();
+    return;
+  }
+  const all = rows||[];
+  STATE.restrictedSubs = new Set(all.filter(p=>p.target_type==='subtopic').map(p=>p.target_id));
+  STATE.restrictedSecs = new Set(all.filter(p=>p.target_type==='section').map(p=>p.target_id));
   const merged = {};
-  (myPerm||[]).forEach(p=>{
+  all.forEach(p=>{
+    if(p.group_id===null) return;            /* "Todos" tratado à parte */
+    if(!gids.has(p.group_id)) return;        /* só grupos do usuário */
     const k = p.target_type+':'+p.target_id;
-    const m = merged[k] || (merged[k] = {view:false,create:false,edit:false,del:false,mod:false});
-    m.view = m.view || p.can_view; m.create = m.create || p.can_create; m.edit = m.edit || p.can_edit; m.del = m.del || p.can_delete; m.mod = m.mod || p.is_moderator;
+    const m = merged[k] || (merged[k]={view:false,create:false,edit:false,del:false,mod:false});
+    m.view=m.view||p.can_view; m.create=m.create||p.can_create; m.edit=m.edit||p.can_edit; m.del=m.del||p.can_delete; m.mod=m.mod||p.is_moderator;
   });
   STATE.perms = merged;
-  STATE.modGroups = new Set((myPerm||[]).filter(p=>p.is_moderator).map(p=>p.group_id));
+  const pa = {};
+  all.forEach(p=>{ if(p.group_id===null) pa[p.target_type+':'+p.target_id]={view:!!p.can_view,create:!!p.can_create,edit:!!p.can_edit,del:!!p.can_delete,mod:false}; });
+  STATE.permAll = pa;
+  STATE.modGroups = new Set(all.filter(p=>p.is_moderator && p.group_id!==null && gids.has(p.group_id)).map(p=>p.group_id));
 }
 
 async function renderSection(c, slug){
@@ -400,7 +416,7 @@ async function renderSection(c, slug){
   if(slug === 'listagem')      return await renderListagem(c, sec);
   if(slug === 'requerimentos') return await renderRequerimentos(c, sec);
   if(slug === 'documentos')    return await renderDocumentos(c, sec);
-  if(slug === 'companhias')    return await renderCompanhias(c, sec); /* v25 */
+  if(slug === 'companhias')    return await renderCompanhias(c, sec);
   if(!canViewSection(sec)){ c.innerHTML = `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2></div>`; return; }
   const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id).order('order_index');
   const ids = (subs||[]).map(s => s.id);
@@ -418,7 +434,6 @@ const secHead = sec => `<div class="flex flex-wrap items-center justify-between 
   <h1 class="font-display text-2xl md:text-3xl font-extrabold text-famr-900"><i class="fas ${esc(sec.icon)} text-gold-500 mr-2"></i>${esc(sec.name)}</h1>
   <p class="text-sm text-muted mt-1">${esc(sec.description||'')}</p></div><div class="star-row text-sm">★★★★</div></div>`;
 
-/* v25: página Companhias — vitrine de grupos, exige pertencer a algum grupo */
 async function renderCompanhias(c, sec){
   if(!isAdmin() && (STATE.groups||[]).length===0){
     c.innerHTML = secHead(sec) + `<div class="card card-body text-center py-14 fade-up"><i class="fas fa-user-shield text-4xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2><p class="text-sm text-muted mt-1">Você ainda não pertence a nenhuma companhia. Aguarde o alistamento em um grupo pelo Alto Comando.</p></div>`;
@@ -823,7 +838,7 @@ window.groupPermissions = async gid => {
   const cur = {}; (rows||[]).forEach(r => { cur[r.target_type+':'+r.target_id] = r; });
   const cb = (key, field, label) => `<td title="${label}"><input type="checkbox" data-key="${key}" data-f="${field}" ${cur[key]?.[field]?'checked':''}></td>`;
   openModal(`<i class="fas ${grp?.icon||'fa-shield-halved'}" style="color:${grp?.color}"></i> Permissões: ${esc(grp?.name||'')}`,
-    `<p class="text-xs text-muted mb-2">Marque por setor/subtópico: <b>Ver</b>, <b>Criar</b>, <b>Editar</b>, <b>Excluir</b> e <b>Moderador</b> (liderança: gerencia membros). Linhas sem nenhuma marca = sem acesso (ou público, se nenhum grupo tiver regra para aquele tópico).</p>
+    `<p class="text-xs text-muted mb-2">Marque por setor/subtópico: <b>Ver</b>, <b>Criar</b>, <b>Editar</b>, <b>Excluir</b> e <b>Moderador</b>. Linhas sem nenhuma marca = sem acesso (ou público, se nenhum grupo/Todos tiver regra para aquele tópico).</p>
     <div class="perm-wrap"><table class="perm-matrix">
       <thead><tr><th>Fórum</th><th>Ver</th><th>Criar</th><th>Editar</th><th>Excluir</th><th>Moderador</th></tr></thead>
       <tbody>
@@ -855,36 +870,48 @@ window.savePermissions = async gid => {
   closeModal(); toast('Permissões salvas.');
 };
 
-/* v25: matriz de permissões NA PERSPECTIVA DO TÓPICO (linhas = grupos). Grava na MESMA tabela group_permissions. */
+/* ══ v26: matriz por TÓPICO com a linha "Todos" no topo (group_id = NULL) ══ */
 window.targetPermissions = async (type, id, name) => {
   const [{ data: grps }, { data: rows }] = await Promise.all([
     supabase.from('groups').select('id,name,color,icon,order_index').order('order_index'),
     supabase.from('group_permissions').select('*').eq('target_type',type).eq('target_id',id)
   ]);
-  const cur = {}; (rows||[]).forEach(r => cur[r.group_id] = r);
+  const cur = {}; (rows||[]).forEach(r => cur[r.group_id] = r);   /* cur[null] = linha "Todos" */
   const cb = (gid, field, label) => `<td title="${label}"><input type="checkbox" data-g="${gid}" data-f="${field}" ${cur[gid]?.[field]?'checked':''}></td>`;
+  const cbAll = (field, label, dis) => `<td title="${label}"><input type="checkbox" data-g="__ALL__" data-f="${field}" ${dis?'disabled':''} ${(!dis&&cur[null]?.[field])?'checked':''}></td>`;
   openModal(`<i class="fas fa-key text-gold-500 mr-2"></i>Permissões: ${esc(name)} <span class="chip chip-neutral ml-1 normal-case">${type==='section'?'setor':'subtópico'}</span>`,
-    `<p class="text-xs text-muted mb-2">Defina o que cada <b>grupo</b> pode neste tópico: <b>Ver</b>, <b>Criar</b>, <b>Editar</b>, <b>Excluir</b> e <b>Moderador</b>. Sem marca em nenhum grupo = tópico público; assim que um grupo ganha regra, o tópico fica restrito a quem tem <i>Ver</i>.</p>
+    `<p class="text-xs text-muted mb-2">A linha <b>Todos</b> controla o que os militares <b>sem grupo</b> podem fazer. Os demais grupos vêm abaixo; quando um grupo tem regra, ela <b>prevalece sobre Todos</b> para os membros dele. Sem marca em nenhum grupo e nem em Todos = tópico público total.</p>
      <div class="perm-wrap"><table class="perm-matrix">
        <thead><tr><th>Grupo</th><th>Ver</th><th>Criar</th><th>Editar</th><th>Excluir</th><th>Mod.</th></tr></thead>
-       <tbody>${(grps||[]).map(g => `<tr><td><i class="fas ${g.icon||'fa-shield-halved'} mr-2" style="color:${g.color}"></i><b>${esc(g.name)}</b></td>
-         ${cb(g.id,'can_view','Ver')} ${cb(g.id,'can_create','Criar')} ${cb(g.id,'can_edit','Editar')} ${cb(g.id,'can_delete','Excluir')} ${cb(g.id,'is_moderator','Moderador')}</tr>`).join('')}</tbody>
+       <tbody>
+         <tr class="pm-sec"><td><i class="fas fa-users mr-2"></i><b>Todos</b> <span class="text-[10px] text-muted">· usuários sem grupo</span></td>
+           ${cbAll('can_view','Ver')} ${cbAll('can_create','Criar')} ${cbAll('can_edit','Editar')} ${cbAll('can_delete','Excluir')} ${cbAll('is_moderator','Moderador',true)}</tr>
+         ${(grps||[]).map(g => `<tr><td><i class="fas ${g.icon||'fa-shield-halved'} mr-2" style="color:${g.color}"></i><b>${esc(g.name)}</b></td>
+           ${cb(g.id,'can_view','Ver')} ${cb(g.id,'can_create','Criar')} ${cb(g.id,'can_edit','Editar')} ${cb(g.id,'can_delete','Excluir')} ${cb(g.id,'is_moderator','Moderador')}</tr>`).join('')}
+       </tbody>
      </table></div>`,
     `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
      <button class="btn btn-primary btn-sm" onclick="saveTargetPermissions('${type}','${id}')"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
 };
 window.saveTargetPermissions = async (type, id) => {
-  const boxes = [...document.querySelectorAll('#modal-body .perm-matrix input[type=checkbox]')];
+  const boxes = [...document.querySelectorAll('#modal-body .perm-matrix input[type=checkbox]:not([disabled])')];
+  /* linha "Todos" (group_id = NULL) */
+  const allRow = { can_view:false, can_create:false, can_edit:false, can_delete:false, is_moderator:false };
+  boxes.filter(b=>b.dataset.g==='__ALL__').forEach(b=> allRow[b.dataset.f]=b.checked);
+  const anyAll = allRow.can_view||allRow.can_create||allRow.can_edit||allRow.can_delete;
+  await supabase.from('group_permissions').delete().eq('target_type',type).eq('target_id',id).is('group_id',null);
+  if(anyAll){ const { error } = await supabase.from('group_permissions').insert([{ group_id:null, target_type:type, target_id:id, ...allRow }]); if(error) return toast('Erro: '+error.message,'err'); }
+  /* linhas dos grupos */
   const map = {};
-  boxes.forEach(bx => {
+  boxes.filter(b=>b.dataset.g!=='__ALL__').forEach(bx => {
     const gid = bx.dataset.g;
-    map[gid] = map[gid] || { group_id: gid, target_type: type, target_id: id, can_view:false, can_create:false, can_edit:false, can_delete:false, is_moderator:false };
+    map[gid] = map[gid] || { group_id:gid, target_type:type, target_id:id, can_view:false, can_create:false, can_edit:false, can_delete:false, is_moderator:false };
     map[gid][bx.dataset.f] = bx.checked;
   });
   const up = [], del = [];
   Object.values(map).forEach(r => {
-    const any = r.can_view || r.can_create || r.can_edit || r.can_delete || r.is_moderator;
-    (any ? up : del).push(r);
+    const any = r.can_view||r.can_create||r.can_edit||r.can_delete||r.is_moderator;
+    (any?up:del).push(r);
   });
   if(up.length){ const { error } = await supabase.from('group_permissions').upsert(up, { onConflict:'group_id,target_type,target_id' }); if(error) return toast('Erro: '+error.message,'err'); }
   for(const r of del){ await supabase.from('group_permissions').delete().eq('group_id', r.group_id).eq('target_type', type).eq('target_id', id); }
@@ -928,7 +955,6 @@ window.gmRemove = async (gid, uid) => {
   toast('Membro removido.'); groupMembers(gid);
 };
 
-/* v25: Tópicos com mover / editar / permissões (setor e subtópico) */
 async function tabTopicos(b){
   const [{ data: secs }, { data: subs }, { data: groups }] = await Promise.all([
     supabase.from('sections').select('*').order('order_index'),
