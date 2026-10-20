@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v27 (Perf Login/Home + Logs PT/IP) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v28 (Perf Cache+Paginação | Permissão Estrita | Docs TipTap) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -8,7 +8,7 @@ const ICON_OPTIONS = ['fa-shield-halved','fa-crown','fa-star','fa-bolt','fa-gave
 const GROUP_TYPES = { open:'ABERTO', closed:'FECHADO', invisible:'INVISÍVEL' };
 const SLUGS_REQUIRE_GROUP = ['companhias'];
 
-/* v27: Mapas de tradução para Logs */
+/* ══════════ v28: TRADUÇÃO DE LOGS PARA PORTUGUÊS ══════════ */
 const ACTION_PT = {
   LOGIN:'Login', LOGOUT:'Logout', REGISTRO:'Cadastro', USER_STATUS:'Alteração de status',
   USER_INVISIBLE:'Visibilidade alterada', LOCK_REMOVIDO_ADMIN:'Desbloqueio administrativo',
@@ -16,11 +16,12 @@ const ACTION_PT = {
   POST_CRIADO:'Publicação criada', POST_EDITADO:'Publicação editada', POST_EXCLUIDO:'Publicação excluída',
   SECTION_SAVE:'Setor salvo', SECTION_CRIADA:'Setor criado', SUBTOPIC_SAVE:'Subtópico salvo',
   GROUP_SAVE:'Grupo salvo', GROUP_DEL:'Grupo excluído', USER_GROUPS:'Grupos de usuário alterados',
-  MANUTENCAO:'Modo manutenção', AVISO:'Aviso publicado', REVIEW_REQUEST:'Análise de protocolo'
+  MANUTENCAO:'Modo manutenção', AVISO:'Aviso publicado', REVIEW_REQUEST:'Análise de protocolo',
+  DOC_CREATE:'Documento criado', DOC_UPDATE:'Documento atualizado', DOC_DEL:'Documento excluído'
 };
 function ptAction(a){ return ACTION_PT[a] || a; }
 function shortId(s){ return String(s||'').slice(0,8)+'…'; }
-function truncate(s,n){ return s.length>n ? s.slice(0,n)+'…' : s; }
+function truncate(s,n){ return String(s||'').length>n ? String(s).slice(0,n)+'…' : String(s||''); }
 function statusLabel(s){ return ({active:'ativo', pending:'pendente', banned:'banido', approved:'aprovado', rejected:'reprovado'})[s] || s; }
 function ptDetails(d, action){
   if(!d) return '—';
@@ -29,61 +30,83 @@ function ptDetails(d, action){
   else if(action==='USER_INVISIBLE')  out.push(`usuário ${shortId(d.id)} ficou ${d.v?'oculto':'visível'}`);
   else if(action==='LOCK_REMOVIDO_ADMIN') out.push(`conta ${shortId(d.id)} destravada`);
   else if(action==='POST_CRIADO')     out.push(`subtópico ${shortId(d.subtopicId||d.id)}`);
+  else if(action==='POST_EDITADO')    out.push(`publicação ${shortId(d.id)}`);
   else if(action==='POST_EXCLUIDO')   out.push(`publicação ${shortId(d.id)}`);
   else if(action==='GROUP_SAVE')      out.push(`grupo "${d.name||'?'}" (${d.group_type||'?'} · ordem ${d.order_index??'-'})`);
   else if(action==='GROUP_DEL')       out.push(`grupo ${shortId(d.id)}`);
   else if(action==='USER_GROUPS')     out.push(`usuário ${shortId(d.userId)} recebeu ${Array.isArray(d.ids)?d.ids.length+' grupo(s)':d.ids}`);
   else if(action==='SECTION_SAVE'||action==='SECTION_CRIADA') out.push(`setor "${d.name||'?'}" (/ ${d.slug||'?'})`);
+  else if(action==='SUBTOPIC_SAVE')   out.push(`subtópico "${d.name||'?'}"`);
   else if(action==='MANUTENCAO')      out.push(`manutenção ${d.enabled?'ATIVADA':'desativada'}${d.message?` · msg: "${truncate(d.message,40)}"`:''}`);
   else if(action==='AVISO')           out.push(d.text ? `aviso: "${truncate(d.text,60)}"` : 'aviso removido');
   else if(action==='SENHA_LINK_ENVIADO') out.push(`nickname: ${d.nick||'?'}`);
   else if(action==='REVIEW_REQUEST')  out.push(`protocolo ${shortId(d.req_id)} → ${statusLabel(d.new_status)}${d.note?` · motivo: "${truncate(d.note,40)}"`:''}`);
+  else if(action==='DOC_CREATE')      out.push(`documento "${d.title||'?'}"${d.category?` (${d.category})`:''}`);
+  else if(action==='DOC_UPDATE')      out.push(`documento "${d.title||'?'}" atualizado`);
+  else if(action==='DOC_DEL')         out.push(`documento ${shortId(d.id)} excluído`);
   else { Object.entries(d).forEach(([k,v])=>out.push(`${k}: ${typeof v==='object'?JSON.stringify(v):v}`)); }
   return out.join(' · ') || '—';
 }
 
-function groupChip(g){ return g ? `<span class="chip" style="background:${g.color}18;color:${g.color};border:1px solid ${g.color}55"><i class="fas ${g.icon||'fa-shield-halved'}"></i> ${esc(g.name)}</span>` : '<span class="chip chip-neutral">Geral</span>'; }
+/* ══════════ v28: CACHE GLOBAL COM INVALIDAÇÃO POR EVENTO ══════════ */
+const CACHE = { data:{}, ttl:{} };
+function cacheGet(key){ const e=CACHE.data[key]; if(e && Date.now()-e.t < (CACHE.ttl[key]||60_000)) return e.v; return undefined; }
+function cacheSet(key,v,ttl=60_000){ CACHE.data[key]={t:Date.now(),v}; CACHE.ttl[key]=ttl; return v; }
+function invalidate(prefix){ 
+  Object.keys(CACHE.data).forEach(k=>{ 
+    if(!prefix||k.startsWith(prefix)) delete CACHE.data[k]; 
+  }); 
+}
+async function cachedQuery(key, factory, ttl=60_000){
+  const hit = cacheGet(key); 
+  if(hit!==undefined) return hit;
+  const r = await factory(); 
+  cacheSet(key,r,ttl); 
+  return r;
+}
+const PAGE_SIZE = 25;
 
+/* ══════════ HELPERS DE GRUPO / CHIP ══════════ */
+function groupChip(g){ return g ? `<span class="chip" style="background:${g.color}18;color:${g.color};border:1px solid ${g.color}55"><i class="fas ${g.icon||'fa-shield-halved'}"></i> ${esc(g.name)}</span>` : '<span class="chip chip-neutral">Geral</span>'; }
 function sortGroups(list){ return [...(list||[])].sort((a,b)=>(a.order_index||0)-(b.order_index||0)); }
 function primaryGroupOf(list){ return sortGroups(list)[0] || null; }
 function colorGroupOf(list){ return sortGroups(list).find(g => g.apply_color) || null; }
 function userIconOf(list){ return primaryGroupOf(list)?.icon || 'fa-user'; }
 
-/* ══ v26/v27: permissões com fallback "Todos" (group_id = NULL) ══ */
+/* ══════════ v28: RESOLUÇÃO ÚNICA E ESTRITA DE PERMISSÃO ══════════ */
 function permOf(type,id){ return STATE.perms?.[type+':'+id] || null; }
-function effectivePerm(type,id){
-  const u = permOf(type,id);                 /* regra dos grupos do usuário (OR) */
+function hasAnyRule(type,id){ return !!STATE.ruleIndex?.has(type+':'+id); }
+function resolvePerm(type,id){
+  const u = permOf(type,id);                 /* regra dos grupos do usuário */
   if(u) return u;
-  const a = STATE.permAll?.[type+':'+id];    /* regra "Todos" (usuários sem grupo) */
+  const a = STATE.permAll?.[type+':'+id];    /* linha "Todos" (group_id=NULL) */
   if(a) return a;
-  return null;                               /* nenhuma regra → legado (público total) */
+  if(hasAnyRule(type,id))                    /* existe regra mas ninguém aplicável pegou → negado total */
+    return {view:false,create:false,edit:false,del:false,mod:false};
+  return null;                               /* nenhuma regra registrada → público */
 }
 function canViewSection(sec){
   if(isAdmin()) return true;
   if(sec.required_group_id && !STATE.groups.some(g=>g.id===sec.required_group_id)) return false;
-  const p = effectivePerm('section', sec.id);
-  if(p) return p.view || p.mod;
-  if(STATE.restrictedSecs?.has(sec.id)) return false;
-  return true;
+  const p = resolvePerm('section', sec.id);
+  return p ? (p.view||p.mod) : true;
 }
 function canViewSub(sub){
   if(isAdmin()) return true;
   if(sub.required_group_id && !STATE.groups.some(g=>g.id===sub.required_group_id)) return false;
-  const p = effectivePerm('subtopic', sub.id);
-  if(p) return p.view || p.mod;
-  if(STATE.restrictedSubs?.has(sub.id)) return false;
+  const p = resolvePerm('subtopic', sub.id);
+  if(p) return p.view||p.mod;
   const sec = (STATE.sections||[]).find(s=>s.id===sub.section_id);
   return sec ? canViewSection(sec) : true;
 }
 function canCreateIn(sub){
   if(!sub.allow_posts) return false;
   if(isAdmin()) return true;
-  const p = effectivePerm('subtopic', sub.id) || effectivePerm('section', sub.section_id);
-  if(p) return p.create || p.mod;
-  return !(STATE.restrictedSubs?.has(sub.id) || STATE.restrictedSecs?.has(sub.section_id));
+  const p = resolvePerm('subtopic', sub.id) || resolvePerm('section', sub.section_id);
+  return p ? (p.create||p.mod) : true;
 }
-function canEditIn(sub){ if(isAdmin()) return true; const p=effectivePerm('subtopic',sub.id)||effectivePerm('section',sub.section_id); return !!(p&&(p.edit||p.mod)); }
-function canDeleteIn(sub){ if(isAdmin()) return true; const p=effectivePerm('subtopic',sub.id)||effectivePerm('section',sub.section_id); return !!(p&&(p.del||p.mod)); }
+function canEditIn(sub){ if(isAdmin()) return true; const p=resolvePerm('subtopic',sub.id)||resolvePerm('section',sub.section_id); return p ? !!(p.edit||p.mod) : false; }
+function canDeleteIn(sub){ if(isAdmin()) return true; const p=resolvePerm('subtopic',sub.id)||resolvePerm('section',sub.section_id); return p ? !!(p.del||p.mod) : false; }
 function isModOf(groupId){ return isAdmin() || STATE.modGroups?.has(groupId); }
 
 function sectionNeedsGroup(sec){ return SLUGS_REQUIRE_GROUP.includes(sec?.slug); }
@@ -93,6 +116,7 @@ function canSeeSection(sec){
   return true;
 }
 
+/* ══════════ TEMA / UI UTILITIES ══════════ */
 function applyThemeIcon(){
   const b = document.getElementById('btn-theme'); if(!b) return;
   const dark = document.documentElement.getAttribute('data-theme')==='dark';
@@ -151,6 +175,7 @@ function startQsClock(){
   window._qsTimer = setInterval(tick, 1000);
 }
 
+/* ══════════ ROUTER ══════════ */
 window.addEventListener('hashchange', route);
 async function route(){
   if(!STATE.profile) return;
@@ -183,6 +208,7 @@ function updateSidebarActive(key){
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.key === key));
 }
 
+/* ══════════ SIDEBAR ══════════ */
 async function buildSidebar(){
   const nav = document.getElementById('sidebar-nav');
   if(!nav) return;
@@ -204,44 +230,42 @@ async function buildSidebar(){
   if(STATE.settings.maintenance?.enabled && isAdmin()) document.getElementById('maintenance-banner').classList.remove('hidden');
 }
 
+/* ══════════ HOME (com cache + paralelização máxima) ══════════ */
 async function renderHome(c){
-  /* v27: Cache Local de 30 segundos para evitar requisições repetidas ao voltar pra Home */
-  if(window._homeCache && Date.now()-window._homeCache.t < 30_000){
-    c.innerHTML = window._homeCache.html;
-    bindHomeTabs(); startQsClock(); return;
-  }
+  const bundle = await cachedQuery('home:data', async ()=>{
+    const [sections, subs, postsMeta, nMembers, newest, groups, allUG] = await Promise.all([
+      supabase.from('sections').select('id,name,icon,slug,order_index,required_group_id').order('order_index'),
+      supabase.from('subtopics').select('id,name,description,section_id,required_group_id,is_request_form,allow_posts').order('order_index'),
+      supabase.from('posts').select('id,subtopic_id,title,created_at,profiles_view(nickname)').order('created_at',{ascending:false}).limit(500),
+      supabase.from('profiles_view').select('*',{count:'exact',head:true}).eq('status','active').neq('nickname','admin master'),
+      supabase.from('profiles_view').select('id,nickname,created_at').eq('status','active').eq('is_invisible',false).neq('nickname','admin master').order('created_at',{ascending:false}).limit(5),
+      supabase.from('groups').select('id,name,color,icon,apply_color,group_type,order_index,parent_id').neq('group_type','invisible').order('order_index'),
+      supabase.from('user_groups').select('group_id').limit(10000)
+    ]);
+    return { sections:sections.data||[], subs:subs.data||[], posts:postsMeta.data||[], members:nMembers.count||0, newest:newest.data||[], groups:groups.data||[], ug:allUG.data||[] };
+  }, 45_000);
 
-  const [{ data: sections }, { data: subs }, { data: posts }, { count: nMembers },
-         { data: newest }, { data: groups }] = await Promise.all([
-    supabase.from('sections').select('*').order('order_index'),
-    supabase.from('subtopics').select('id,name,description,section_id,required_group_id,is_request_form,allow_posts').order('order_index'),
-    supabase.from('posts').select('id,subtopic_id,title,created_at,profiles_view(nickname)').order('created_at',{ascending:false}).limit(300),
-    supabase.from('profiles_view').select('*', { count:'exact', head:true }).eq('status','active').neq('nickname','admin master'),
-    supabase.from('profiles_view').select('id,nickname,created_at').eq('status','active').eq('is_invisible', false).neq('nickname','admin master').order('created_at',{ascending:false}).limit(5),
-    supabase.from('groups').select('id,name,color,icon,apply_color,group_type,order_index,parent_id').neq('group_type','invisible').order('order_index')
-  ]);
-  const { data: allUG } = await supabase.from('user_groups').select('group_id').limit(5000);
-  const memberCount = {}; (allUG||[]).forEach(m => memberCount[m.group_id] = (memberCount[m.group_id]||0)+1);
-
-  let lastChip = '<em>nenhum</em>';
+  const { sections, subs, posts, members:registeredCount, newest, groups, ug } = bundle;
+  const memberCount={}; (ug||[]).forEach(m=>memberCount[m.group_id]=(memberCount[m.group_id]||0)+1);
+  
+  let lastChip='<em>nenhum</em>';
   if(newest?.[0]){
-    const { data: ug2 } = await supabase.from('user_groups').select('groups(id,icon,order_index,apply_color)').eq('user_id', newest[0].id);
-    const ic = userIconOf((ug2||[]).map(r=>r.groups).filter(Boolean));
-    lastChip = `<span class="sg-link"><i class="fas ${ic}"></i> ${esc(newest[0].nickname)}</span>`;
+    const ic = userIconOf((await cachedQuery('lastug:'+newest[0].id, ()=> supabase.from('user_groups').select('groups(id,icon,order_index,apply_color)').eq('user_id',newest[0].id), 120_000)).data||[]);
+    lastChip=`<span class="sg-link"><i class="fas ${ic}"></i> ${esc(newest[0].nickname)}</span>`;
   }
 
-  const counts = {}, lastMap = {};
-  (posts||[]).forEach(p => { counts[p.subtopic_id]=(counts[p.subtopic_id]||0)+1; if(!lastMap[p.subtopic_id]) lastMap[p.subtopic_id]=p; });
-  const visibleSubs = (subs||[]).filter(s => canViewSub(s));
-  const totalOnline = 1, registeredCount = nMembers ?? 0, pubs = (posts||[]).length;
-  const ann = (STATE.settings.announcement && STATE.settings.announcement.text) ? STATE.settings.announcement.text.trim() : '';
-  const legend = [
-    { icon:'fa-comments', color:'#14563f', label:'Tópico aberto para publicação' },
-    { icon:'fa-lock', color:'#c9a227', label:'Conteúdo reservado a companhia' },
-    { icon:'fa-file-signature', color:'#a8861d', label:'Requerimento CRH/RH' },
-    { icon:'fa-shield-halved', color:'#0e4433', label:'Sessão segura • expira em 1h' }
+  const counts={},lastMap={};
+  (posts||[]).forEach(p=>{counts[p.subtopic_id]=(counts[p.subtopic_id]||0)+1;if(!lastMap[p.subtopic_id])lastMap[p.subtopic_id]=p;});
+  const visibleSubs=(subs||[]).filter(s=>canViewSub(s));
+  const totalOnline=1, pubs=(posts||[]).length;
+  const ann=(STATE.settings.announcement&&STATE.settings.announcement.text)?STATE.settings.announcement.text.trim():'';
+  const legend=[
+    {icon:'fa-comments',color:'#14563f',label:'Tópico aberto para publicação'},
+    {icon:'fa-lock',color:'#c9a227',label:'Conteúdo reservado a companhia'},
+    {icon:'fa-file-signature',color:'#a8861d',label:'Requerimento CRH/RH'},
+    {icon:'fa-shield-halved',color:'#0e4433',label:'Sessão segura • expira em 1h'}
   ];
-  const myIds = new Set((STATE.groups||[]).map(g=>g.id));
+  const myIds=new Set((STATE.groups||[]).map(g=>g.id));
 
   c.innerHTML = `
   <section class="quartel-strip fade-up">
@@ -258,11 +282,11 @@ async function renderHome(c){
       <span class="qs-pill"><i class="fas ${primaryGroupOf(STATE.groups)?.icon || 'fa-id-badge'}"></i> ${esc(STATE.profile.nickname)}</span>
     </div>
     ${ann ? `<div class="qs-notice" title="${esc(ann)}"><i class="fas fa-bullhorn"></i><span>${esc(ann)}</span></div>` : ``}
-    <div class="qs-emblem"><img src="${CONFIG.logoUrl}" alt="" onerror="this.parentElement.classList.add('qs-emblem-empty')"></div>
+    <div class="qs-emblem"><img src="${CONFIG.logoUrl}" alt="" loading="lazy" onerror="this.parentElement.classList.add('qs-emblem-empty')"></div>
   </section>
 
   <section class="hero fade-up">
-    <div class="hero-art" aria-hidden="true"><img src="${CONFIG.logoUrl}" onerror="this.parentElement.style.display='none'"></div>
+    <div class="hero-art" aria-hidden="true"><img src="${CONFIG.logoUrl}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
     <div class="hero-inner flex flex-wrap items-center gap-6 justify-between">
       <div>
         <p class="text-gold-300 text-xs font-bold tracking-[0.3em] uppercase">Índice do quartel • Habbo BR</p>
@@ -295,7 +319,7 @@ async function renderHome(c){
       </section>`;
     }
     const rows = visibleSubs.filter(s => s.section_id === sec.id);
-    if(rows.length === 0 && STATE.restrictedSecs?.has(sec.id)) return '';
+    if(rows.length === 0 && hasAnyRule('section', sec.id)) return '';
     return `<section class="card overflow-hidden fade-up">
       <div class="cat-head"><i class="fas ${esc(sec.icon)}"></i> ${esc(sec.name)}
         <a href="#/section/${sec.slug}" class="ml-auto text-[10px] font-bold text-gold-300 hover:text-white normal-case tracking-normal">ver setor →</a></div>
@@ -332,9 +356,6 @@ async function renderHome(c){
     </div>
   </section>`;
 
-  /* Salva no cache */
-  window._homeCache = { t: Date.now(), html: c.innerHTML };
-  
   startQsClock();
   bindHomeTabs();
 }
@@ -362,6 +383,7 @@ function forumRow(s, counts, lastMap){
   </a>`;
 }
 
+/* ══════════ PÁGINA DE GRUPO ══════════ */
 async function renderGroupPage(c, groupId){
   const [{ data: grp }, { data: members }] = await Promise.all([
     supabase.from('groups').select('*, groups(name)').eq('id', groupId).single(),
@@ -402,6 +424,7 @@ async function renderGroupPage(c, groupId){
 window.joinGroup = async id => { const { error } = await supabase.from('user_groups').insert([{ user_id: STATE.profile.id, group_id: id }]); if(error) return toast('Erro: '+error.message,'err'); toast('Você entrou no grupo.'); reloadSessionGroups(); };
 window.leaveGroup = async id => { await supabase.from('user_groups').delete().eq('user_id', STATE.profile.id).eq('group_id', id); toast('Você saiu do grupo.'); reloadSessionGroups(); };
 
+/* ══════════ CARREGAR GRUPOS DA SESSÃO (RPC primeiro, fallback SELECT) ══════════ */
 async function loadSessionGroups(userId){
   try{
     const { data, error } = await supabase.rpc('famr_get_my_groups');
@@ -427,36 +450,32 @@ async function loadSessionGroups(userId){
 async function reloadSessionGroups(){
   STATE.groups = await loadSessionGroups(STATE.profile.id);
   await loadPerms();
+  invalidate('perms:'); invalidate('home:');
   updateUserChip(); route();
 }
 
-/* ══ v26/v27: loadPerms em UMA query, derivando perms do usuário + permAll ("Todos") ══ */
+/* ══════════ v28: LOADPERMS EM UMA QUERY + RULE INDEX ══════════ */
 async function loadPerms(){
   const gids = new Set(STATE.groups.map(g=>g.id));
-  const { data: rows, error } = await supabase.from('group_permissions').select('*');
-  if(error){
-    console.error('[FAMR] loadPerms:', error);
-    STATE.perms={}; STATE.permAll={}; STATE.restrictedSubs=new Set(); STATE.restrictedSecs=new Set(); STATE.modGroups=new Set();
-    return;
-  }
-  const all = rows||[];
-  STATE.restrictedSubs = new Set(all.filter(p=>p.target_type==='subtopic').map(p=>p.target_id));
-  STATE.restrictedSecs = new Set(all.filter(p=>p.target_type==='section').map(p=>p.target_id));
-  const merged = {};
+  const rows = await cachedQuery('perms:all', ()=> supabase.from('group_permissions').select('*'), 120_000);
+  const all = rows.data||rows||[];
+  STATE.ruleIndex = new Set(all.map(p=>p.target_type+':'+p.target_id));
+  const merged={};
   all.forEach(p=>{
-    if(p.group_id===null) return;            /* "Todos" tratado à parte */
-    if(!gids.has(p.group_id)) return;        /* só grupos do usuário */
-    const k = p.target_type+':'+p.target_id;
-    const m = merged[k] || (merged[k]={view:false,create:false,edit:false,del:false,mod:false});
-    m.view=m.view||p.can_view; m.create=m.create||p.can_create; m.edit=m.edit||p.can_edit; m.del=m.del||p.can_delete; m.mod=m.mod||p.is_moderator;
+    if(p.group_id===null) return;
+    if(!gids.has(p.group_id)) return;
+    const k=p.target_type+':'+p.target_id;
+    const m=merged[k]||(merged[k]={view:false,create:false,edit:false,del:false,mod:false});
+    m.view=m.view||p.can_view;m.create=m.create||p.can_create;m.edit=m.edit||p.can_edit;m.del=m.del||p.can_delete;m.mod=m.mod||p.is_moderator;
   });
-  STATE.perms = merged;
-  const pa = {};
+  STATE.perms=merged;
+  const pa={};
   all.forEach(p=>{ if(p.group_id===null) pa[p.target_type+':'+p.target_id]={view:!!p.can_view,create:!!p.can_create,edit:!!p.can_edit,del:!!p.can_delete,mod:false}; });
-  STATE.permAll = pa;
-  STATE.modGroups = new Set(all.filter(p=>p.is_moderator && p.group_id!==null && gids.has(p.group_id)).map(p=>p.group_id));
+  STATE.permAll=pa;
+  STATE.modGroups=new Set(all.filter(p=>p.is_moderator&&p.group_id!==null&&gids.has(p.group_id)).map(p=>p.group_id));
 }
 
+/* ══════════ RENDER SECTION (roteador de setores especiais) ══════════ */
 async function renderSection(c, slug){
   const { data: sec } = await supabase.from('sections').select('*').eq('slug', slug).single();
   if(!sec){ c.innerHTML = '<div class="card card-body text-sm text-muted">Seção não encontrada.</div>'; return; }
@@ -481,6 +500,7 @@ const secHead = sec => `<div class="flex flex-wrap items-center justify-between 
   <h1 class="font-display text-2xl md:text-3xl font-extrabold text-famr-900"><i class="fas ${esc(sec.icon)} text-gold-500 mr-2"></i>${esc(sec.name)}</h1>
   <p class="text-sm text-muted mt-1">${esc(sec.description||'')}</p></div><div class="star-row text-sm">★★★★</div></div>`;
 
+/* ══════════ COMPANHIAS (vitrine de grupos, exige pertencer a algum) ══════════ */
 async function renderCompanhias(c, sec){
   if(!isAdmin() && (STATE.groups||[]).length===0){
     c.innerHTML = secHead(sec) + `<div class="card card-body text-center py-14 fade-up"><i class="fas fa-user-shield text-4xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2><p class="text-sm text-muted mt-1">Você ainda não pertence a nenhuma companhia. Aguarde o alistamento em um grupo pelo Alto Comando.</p></div>`;
@@ -488,7 +508,7 @@ async function renderCompanhias(c, sec){
   }
   const [{ data: groups }, { data: allUG }] = await Promise.all([
     supabase.from('groups').select('id,name,color,icon,group_type,order_index,parent_id').neq('group_type','invisible').order('order_index'),
-    supabase.from('user_groups').select('group_id').limit(5000)
+    supabase.from('user_groups').select('group_id').limit(10000)
   ]);
   const cnt = {}; (allUG||[]).forEach(m => cnt[m.group_id] = (cnt[m.group_id]||0)+1);
   const myIds = new Set((STATE.groups||[]).map(g=>g.id));
@@ -507,13 +527,18 @@ async function renderCompanhias(c, sec){
   </div>`;
 }
 
-async function renderSubtopic(c, id){
+/* ══════════ SUBTÓPICO (lista de tópicos com paginação) ══════════ */
+async function renderSubtopic(c, id, page=0){
   const { data: sub } = await supabase.from('subtopics').select('*,sections(name,slug)').eq('id', id).single();
   if(!sub){ c.innerHTML = '<div class="card card-body text-sm text-muted">Subtópico não encontrado.</div>'; return; }
   if(!canViewSub(sub)){ c.innerHTML = `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2><p class="text-sm text-muted mt-1">Conteúdo exclusivo de grupo específico.</p></div>`; return; }
   window._curSub = sub;
-  const { data: posts } = await supabase.from('posts').select('*,profiles_view(nickname)').eq('subtopic_id', id).order('created_at',{ascending:false}).limit(50);
+  const offset = page*PAGE_SIZE;
+  const { data: posts, count } = await supabase.from('posts')
+    .select('*,profiles_view(nickname)', { count:'exact' })
+    .eq('subtopic_id', id).order('created_at',{ascending:false}).range(offset, offset+PAGE_SIZE-1);
   window._postsCache = Object.fromEntries((posts||[]).map(p => [p.id, p]));
+  const totalPages = Math.ceil((count||0)/PAGE_SIZE);
   c.innerHTML = `
   <div class="fade-up">
     <p class="text-xs text-muted mb-2"><a href="#/section/${sub.sections?.slug}" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>${esc(sub.sections?.name||'')}</a> / <b>${esc(sub.name)}</b></p>
@@ -529,13 +554,18 @@ async function renderSubtopic(c, id){
       <input name="link" class="input" placeholder="Link de anexo (Google Drive) — opcional">
       <button class="btn btn-gold btn-sm justify-self-start"><i class="fas fa-paper-plane"></i> Publicar tópico</button></form>` : ''}
   <section class="card overflow-hidden fade-up">
-    <div class="cat-head"><i class="fas fa-inbox"></i> Tópicos de ${esc(sub.name)}</div>
+    <div class="cat-head"><i class="fas fa-inbox"></i> Tópicos de ${esc(sub.name)} <span class="ml-auto text-[10px] normal-case tracking-normal text-gold-300">${count||0} no total</span></div>
     <div class="divide-y divide-line">
       ${(posts||[]).map(p => `<div class="topic-row" onclick="openTopic('${p.id}')">
         <span class="forum-ico ${p.pinned?'new':''}"><i class="fas ${p.pinned?'fa-thumbtack':'fa-comment'}"></i></span>
         <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(p.title)}</b><p class="text-[11px] text-muted">por <b class="text-famr-700">${esc(p.profiles_view?.nickname||'—')}</b> • ${fmtDate(p.created_at)}</p></div>
         <i class="fas fa-chevron-right text-xs text-muted"></i></div>`).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhum tópico publicado ainda.</p>'}
     </div>
+    ${totalPages>1 ? `<div class="p-3 flex justify-center gap-2 items-center border-t border-line">
+      ${page>0?`<button class="btn btn-outline btn-sm" onclick="renderSubtopic(document.getElementById('content'),'${id}',${page-1})">← Anterior</button>`:''}
+      <span class="text-xs text-muted">Página ${page+1}/${totalPages}</span>
+      ${page<totalPages-1?`<button class="btn btn-outline btn-sm" onclick="renderSubtopic(document.getElementById('content'),'${id}',${page+1})">Próxima →</button>`:''}
+    </div>` : ''}
   </section>`;
 }
 window.openTopic = id => {
@@ -561,6 +591,8 @@ window.saveEditPost = async id => {
   const content = document.getElementById('edit-content').value;
   const { error } = await supabase.from('posts').update({ content }).eq('id', id);
   if(error) return toast('Erro: '+error.message,'err');
+  try{ await supabase.rpc('log_action', { action:'POST_EDITADO', details:{ id } }); }catch(e){}
+  invalidate('posts:'); invalidate('home:');
   closeModal(); toast('Publicação atualizada.'); route();
 };
 window.newPost = async function(e, subtopicId){
@@ -568,15 +600,18 @@ window.newPost = async function(e, subtopicId){
   const { error } = await supabase.from('posts').insert([{ subtopic_id: subtopicId, title: f.title.value, content: f.content.value, link: f.link.value||null, author_id: STATE.profile.id }]);
   if(error){ toast('Erro: '+error.message,'err'); return false; }
   try{ await supabase.rpc('log_action', { action:'POST_CRIADO', details:{ subtopicId } }); }catch(e){}
+  invalidate('posts:'); invalidate('home:');
   toast('Tópico publicado!'); route(); return false;
 };
 window.delPost = async function(id){
   if(!await confirmDlg('Excluir esta publicação?')) return;
   await supabase.from('posts').delete().eq('id', id);
   try{ await supabase.rpc('log_action', { action:'POST_EXCLUIDO', details:{ id } }); }catch(e){}
+  invalidate('posts:'); invalidate('home:');
   closeModal(); toast('Publicação excluída.'); route();
 };
 
+/* ══════════ LISTAGEM ══════════ */
 async function renderListagem(c, sec){
   const { data: entries } = await supabase.from('listagem_entries').select('*').order('created_at',{ascending:false}).limit(100);
   const cats = [...new Set((entries||[]).map(e => e.category))];
@@ -591,6 +626,8 @@ async function renderListagem(c, sec){
       <td class="text-xs text-muted">${fmtDate(e.created_at)}</td></tr>`).join('') || '<tr><td colspan="5" class="text-center text-muted py-8">Nenhum registro publicado ainda.</td></tr>'}</tbody></table></div>
   </div>`;
 }
+
+/* ══════════ REQUERIMENTOS ══════════ */
 async function renderRequerimentos(c, sec){
   const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id).order('order_index');
   const { data: mine } = await supabase.from('requests').select('*,subtopics(name)').eq('author_id', STATE.profile.id).order('created_at',{ascending:false}).limit(30);
@@ -630,20 +667,224 @@ window.submitRequest = async function(subtopicId){
   if(error){ toast('Erro ao enviar: '+error.message, 'err'); return; }
   closeModal(); toast('Protocolo enviado! Aguarde a análise do CRH/RH.'); route();
 };
+
+/* ══════════ DOCUMENTOS PRINCIPAIS (v28: editor TipTap + docx) ══════════ */
+let _docEditor=null, _currentDocId=null;
+
 async function renderDocumentos(c, sec){
-  const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id);
-  const ids = (subs||[]).map(s => s.id);
-  const { data: docs } = ids.length ? await supabase.from('posts').select('*,subtopics(name,required_group_id)').in('subtopic_id', ids).order('created_at',{ascending:false}).limit(60) : { data: [] };
-  c.innerHTML = secHead(sec) + `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up">
-    ${(docs||[]).filter(d => { const s = (subs||[]).find(x=>x.id===d.subtopic_id); return s ? canViewSub(s) : true; }).map(d => `
-      <div class="card card-hover p-5">
-        <div class="flex items-center justify-between"><span class="forum-ico"><i class="fas fa-file-lines"></i></span><span class="chip chip-neutral">${esc(d.subtopics?.name||'')}</span></div>
-        <h3 class="font-bold mt-3">${esc(d.title)}</h3><p class="text-xs text-muted mt-1 line-clamp-3">${esc(d.content)}</p>
-        ${d.link ? `<a href="${esc(d.link)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm mt-3"><i class="fab fa-google-drive"></i> Abrir documento</a>` : ''}
-      </div>`).join('') || '<div class="card card-body text-sm text-muted sm:col-span-2 lg:col-span-3 text-center py-10">Nenhum documento publicado.</div>'}
+  if(!canViewSection(sec)){ c.innerHTML = secHead(sec)+lockCard('documentos'); return; }
+  const canManage = isAdmin() || canCreateIn({section_id:sec.id, allow_posts:true}) || (STATE.perms?.['section:'+sec.id]?.create);
+  const { data: docs } = await cachedQuery('docs:list', ()=> supabase.from('documents').select('id,title,category,cover_url,updated_at,author_id,profiles_view(nickname)').order('updated_at',{ascending:false}), 30_000);
+  const cats = [...new Set((docs||[]).map(d=>d.category).filter(Boolean))];
+  c.innerHTML = secHead(sec) + `
+  <div class="flex flex-wrap items-center gap-2 mb-4 fade-up">
+    ${canManage?`<button class="btn btn-primary btn-sm" onclick="openDocEditor(null)"><i class="fas fa-plus"></i> Novo tópico</button>`:''}
+    <input id="doc-q" class="input !py-1.5 w-56 ml-auto" placeholder="Buscar documento..." oninput="filterDocs(this.value)">
+  </div>
+  <div id="doc-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up">
+    ${(docs||[]).map(d=>docCard(d, canManage)).join('') || '<div class="card card-body text-sm text-muted sm:col-span-2 lg:col-span-3 text-center py-10">Nenhum documento publicado.</div>'}
+  </div>`;
+  window._docsCache = docs||[];
+}
+function lockCard(t){ return `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2><p class="text-sm text-muted mt-1">Conteúdo exclusivo (${t}).</p></div>`; }
+function docCard(d, canManage){
+  return `<div class="card card-hover overflow-hidden doc-item" data-title="${esc((d.title||'').toLowerCase())}" data-cat="${esc((d.category||'').toLowerCase())}">
+    ${d.cover_url?`<img src="${esc(d.cover_url)}" class="w-full h-32 object-cover" alt="" loading="lazy">`:''}
+    <div class="p-4">
+      <div class="flex items-start justify-between gap-2">
+        <h3 class="font-bold text-famr-800 leading-snug">${esc(d.title)}</h3>
+        ${d.category?`<span class="chip chip-neutral shrink-0">${esc(d.category)}</span>`:''}
+      </div>
+      <p class="text-[11px] text-muted mt-1">por <b>${esc(d.profiles_view?.nickname||'—')}</b> • ${fmtDate(d.updated_at)}</p>
+      <div class="flex gap-1 mt-3">
+        <button class="btn btn-outline btn-sm" onclick="viewDoc('${d.id}')"><i class="fas fa-book-open"></i> Ler</button>
+        ${canManage?`<button class="btn btn-outline btn-sm" onclick="openDocEditor('${d.id}')"><i class="fas fa-pen"></i></button>
+        <button class="btn btn-danger btn-sm" onclick="delDoc('${d.id}')"><i class="fas fa-trash"></i></button>`:''}
+      </div>
+    </div>
   </div>`;
 }
+window.filterDocs = q => {
+  q=q.toLowerCase().trim();
+  document.querySelectorAll('.doc-item').forEach(el=>{
+    const ok=!q || el.dataset.title.includes(q) || (el.dataset.cat||'').includes(q);
+    el.style.display = ok?'':'none';
+  });
+};
+window.viewDoc = async id => {
+  const { data:d } = await supabase.from('documents').select('*,profiles_view(nickname)').eq('id',id).single();
+  if(!d) return toast('Documento não encontrado.','err');
+  openModal(`<i class="fas fa-book-open text-gold-500 mr-2"></i>${esc(d.title)} ${d.category?`<span class="chip chip-neutral ml-1 normal-case">${esc(d.category)}</span>`:''}`,
+    `<div class="text-[11px] text-muted mb-3">por <b>${esc(d.profiles_view?.nickname||'—')}</b> • atualizado ${fmtDate(d.updated_at)}</div>
+     <article class="te-prose !max-h-none !overflow-visible bg-transparent border-0 p-0">${sanitizeHtml(d.body_html||'')}</article>`,
+    `<button class="btn btn-outline btn-sm mr-auto" onclick="downloadDoc('${id}')"><i class="fas fa-download"></i> Baixar .docx</button>
+     <button class="btn btn-outline btn-sm" onclick="closeModal()">Fechar</button>`);
+};
+window.downloadDoc = async id => {
+  const { data:d } = await supabase.from('documents').select('title,body_html').eq('id',id).single();
+  if(!d) return;
+  try{
+    const blob = window.HTMLDocx.asBlob('<html><body>'+d.body_html+'</body></html>');
+    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=(d.title||'documento').replace(/[^\w\-]+/g,'_')+'.docx'; a.click(); URL.revokeObjectURL(url);
+  }catch(e){ toast('Falha ao gerar .docx: '+e.message,'err'); }
+};
+window.delDoc = async id => {
+  if(!await confirmDlg('Excluir este documento permanentemente?')) return;
+  await supabase.from('documents').delete().eq('id',id);
+  try{ await supabase.rpc('log_action',{action:'DOC_DEL',details:{id}}); }catch(e){}
+  invalidate('docs:'); closeModal(); toast('Documento excluído.'); route();
+};
 
+/* ── ABRE O EDITOR (criar/editar) ── */
+window.openDocEditor = async id => {
+  _currentDocId = id||null;
+  let d = { title:'', category:'', body_html:'', cover_url:null };
+  if(id){ const r=await supabase.from('documents').select('*').eq('id',id).single(); if(r.data)d=r.data; }
+  openModal(`<i class="fas fa-${id?'pen-to-square':'file-circle-plus'} text-gold-500 mr-2"></i>${id?'Editar':'Novo'} documento`,
+    `<div class="grid gap-3">
+       <div class="grid sm:grid-cols-2 gap-3">
+         <label class="field"><span>Título do tópico *</span><input id="dc-title" class="input !pl-3" value="${esc(d.title)}" required></label>
+         <label class="field"><span>Categoria / Tag</span><input id="dc-cat" class="input !pl-3" value="${esc(d.category||'')}" placeholder="ex: Diretrizes Gerais"></label>
+       </div>
+       <label class="field"><span>Capa (imagem, opcional)</span>
+         <div class="flex items-center gap-2">
+           <input type="file" id="dc-cover" accept="image/*" class="text-xs">
+           <span id="dc-cover-prev" class="text-xs text-muted">${d.cover_url?'capa atual definida':'sem capa'}</span>
+         </div></label>
+       <div class="doc-editor">
+         <div class="te-toolbar" id="dc-toolbar"></div>
+         <div class="te-prose" id="dc-prose"></div>
+         <div class="te-status"><span id="dc-count">0 palavras</span>
+           <span class="flex gap-1">
+             <button type="button" class="btn btn-outline btn-sm" onclick="importDocx()"><i class="fas fa-file-import"></i> Importar .docx</button>
+             <input type="file" id="dc-docx-in" accept=".docx" class="hidden">
+           </span></div>
+       </div>
+     </div>`,
+    `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
+     <button class="btn btn-primary btn-sm" onclick="saveDoc()"><i class="fas fa-floppy-disk"></i> Salvar documento</button>`);
+  initTipTap(d.body_html||'<p></p>');
+};
+
+/* ── INICIALIZA O TIPTAP COM TODAS AS FERRAMENTAS DO WORD ── */
+function initTipTap(initialHtml){
+  const EditorClass = window.Editor || (window.TiptapCore && window.TiptapCore.Editor);
+  if(!EditorClass){ console.error('[FAMR] TipTap Editor não carregou'); document.getElementById('dc-prose').innerHTML='<p class="text-red-600 text-sm">Editor indisponível. Recarregue a página (Ctrl+F5).</p>'; return; }
+  const exts=[];
+  if(window.StarterKit) exts.push(window.StarterKit.configure?.()||window.StarterKit);
+  ['Link','Image','TextAlign','Subscript','Superscript','Highlight','Typography','Placeholder','CharacterCount','Underline','Table','TableRow','TableCell','TableHeader'].forEach(n=>{
+    const pkg = window[n+'Extension'] || window[n];
+    if(pkg) exts.push(typeof pkg==='function'?pkg():pkg);
+  });
+  try{
+    _docEditor = new EditorClass({
+      element: document.getElementById('dc-prose'),
+      content: initialHtml,
+      extensions: exts,
+      editorProps:{ attributes:{ class:'te-prose-inner focus:outline-none' } }
+    });
+  }catch(e){ console.error('[FAMR] TipTap init falhou:', e); document.getElementById('dc-prose').innerHTML = '<p class="text-red-600 text-sm">Falha ao iniciar editor. Recarregue a página.</p>'; return; }
+  buildToolbar();
+  _docEditor.on('update', ()=>{ 
+    const wc=_docEditor.storage.characterCount?.words?.() || (_docEditor.getText()||'').split(/\s+/).filter(Boolean).length;
+    document.getElementById('dc-count').textContent = wc+' palavra'+(wc!==1?'s':''); 
+  });
+}
+function tb(label, icon, fn, isActive){
+  const b=document.createElement('button'); b.type='button'; b.className='te-btn'; b.title=label;
+  b.innerHTML=`<i class="fas ${icon}"></i>`;
+  b.onclick=fn;
+  if(isActive){ const upd=()=>b.classList.toggle('is-active', !!isActive()); upd(); _docEditor.on('transaction',upd); }
+  document.getElementById('dc-toolbar').appendChild(b);
+}
+function sep(){ const s=document.createElement('span'); s.className='te-sep'; document.getElementById('dc-toolbar').appendChild(s); }
+function buildToolbar(){
+  const bar=document.getElementById('dc-toolbar'); bar.innerHTML='';
+  const E=_docEditor;
+  tb('Negrito','fa-bold',()=>E.chain().focus().toggleBold().run(),()=>E.isActive('bold'));
+  tb('Itálico','fa-italic',()=>E.chain().focus().toggleItalic().run(),()=>E.isActive('italic'));
+  tb('Sublinhado','fa-underline',()=>E.chain().focus().toggleUnderline().run(),()=>E.isActive('underline'));
+  tb('Tachado','fa-strikethrough',()=>E.chain().focus().toggleStrike().run(),()=>E.isActive('strike'));
+  sep();
+  tb('Título 1','fa-heading',[1],()=>E.chain().focus().toggleHeading({level:1}).run(),()=>E.isActive('heading',{level:1}));
+  tb('Título 2','fa-heading',[2],()=>E.chain().focus().toggleHeading({level:2}).run(),()=>E.isActive('heading',{level:2}));
+  tb('Título 3','fa-heading',[3],()=>E.chain().focus().toggleHeading({level:3}).run(),()=>E.isActive('heading',{level:3}));
+  tb('Citação','fa-quote-left',()=>E.chain().focus().toggleBlockquote().run(),()=>E.isActive('blockquote'));
+  sep();
+  tb('Alinhar esq.','fa-align-left',()=>E.chain().focus().setTextAlign('left').run(),()=>E.isActive({textAlign:'left'}));
+  tb('Centralizar','fa-align-center',()=>E.chain().focus().setTextAlign('center').run(),()=>E.isActive({textAlign:'center'}));
+  tb('Alinhar dir.','fa-align-right',()=>E.chain().focus().setTextAlign('right').run(),()=>E.isActive({textAlign:'right'}));
+  tb('Justificar','fa-align-justify',()=>E.chain().focus().setTextAlign('justify').run(),()=>E.isActive({textAlign:'justify'}));
+  sep();
+  tb('Lista','fa-list-ul',()=>E.chain().focus().toggleBulletList().run(),()=>E.isActive('bulletList'));
+  tb('Numeração','fa-list-ol',()=>E.chain().focus().toggleOrderedList().run(),()=>E.isActive('orderedList'));
+  sep();
+  tb('Subscrito','fa-subscript',()=>E.chain().focus().toggleSubscript().run(),()=>E.isActive('subscript'));
+  tb('Superscrito','fa-superscript',()=>E.chain().focus().toggleSuperscript().run(),()=>E.isActive('superscript'));
+  tb('Marca-texto','fa-highlighter',()=>E.chain().focus().toggleHighlight().run(),()=>E.isActive('highlight'));
+  sep();
+  tb('Link','fa-link',()=>{ const u=prompt('URL do link:'); if(u) E.chain().focus().extendMarkRange('link').setLink({href:u}).run(); },()=>E.isActive('link'));
+  tb('Remover link','fa-link-slash',()=>E.chain().focus().unsetLink().run());
+  tb('Imagem','fa-image',()=>pickAndInsertImage());
+  tb('Emoji','fa-face-smile',()=>insertEmojiPicker());
+  sep();
+  tb('Réguas horizontal','fa-minus',()=>E.chain().focus().setHorizontalRule().run());
+  tb('Limpar formato','fa-eraser',()=>E.chain().focus().unsetAllMarks().clearNodes().run());
+}
+function pickAndInsertImage(){
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
+  inp.onchange=async()=>{
+    const f=inp.files[0]; if(!f)return;
+    const path=`${Date.now()}_${f.name.replace(/\s+/g,'_')}`;
+    const { error } = await supabase.storage.from('docs-media').upload(path, f, {contentType:f.type});
+    if(error) return toast('Upload falhou: '+error.message,'err');
+    const { data:{ publicUrl } } = supabase.storage.from('docs-media').getPublicUrl(path);
+    _docEditor.chain().focus().setImage({src:publicUrl, alt:f.name}).run();
+  };
+  inp.click();
+}
+function insertEmojiPicker(){
+  const pops=['😀','😁','️','⭐','✅','❌','️','📌','💼','❤️','🔥','✨'];
+  const wrap=document.createElement('div'); wrap.style.cssText='position:absolute;z-index:99;display:flex;gap:.2rem;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:.3rem;box-shadow:0 8px 20px -8px rgba(0,0,0,.3)';
+  pops.forEach(em=>{ const b=document.createElement('button'); b.type='button'; b.textContent=em; b.style.cssText='border:none;background:none;cursor:pointer;font-size:1.1rem'; b.onclick=()=>{_docEditor.chain().focus().insertContent(em).run(); wrap.remove();}; wrap.appendChild(b); });
+  document.body.appendChild(wrap);
+  setTimeout(()=>document.addEventListener('click',()=>wrap.remove(),{once:true}),10);
+}
+window.importDocx = () => document.getElementById('dc-docx-in').click();
+document.addEventListener('change', async ev=>{
+  if(ev.target.id!=='dc-docx-in'||!ev.target.files[0]) return;
+  const file=ev.target.files[0];
+  try{
+    const buf=await file.arrayBuffer();
+    const res=await window.mammoth.convertToHtml({arrayBuffer:buf});
+    _docEditor.commands.setContent(res.value);
+    toast('Documento .docx importado.');
+  }catch(e){ toast('Falha ao ler .docx: '+e.message,'err'); }
+  ev.target.value='';
+});
+window.saveDoc = async () => {
+  const title=document.getElementById('dc-title').value.trim();
+  if(!title) return toast('Informe o título.','warn');
+  const category=document.getElementById('dc-cat').value.trim()||null;
+  const body_html=_docEditor?_docEditor.getHTML():'';
+  let cover_url=null;
+  const covFile=document.getElementById('dc-cover').files[0];
+  if(covFile){
+    const p=`covers/${Date.now()}_${covFile.name.replace(/\s+/g,'_')}`;
+    const up=await supabase.storage.from('docs-media').upload(p,covFile,{contentType:covFile.type});
+    if(!up.error) cover_url=supabase.storage.from('docs-media').getPublicUrl(p).data.publicUrl;
+  }
+  const payload={ title, category, body_html, ...(cover_url?{cover_url}:{}) };
+  let error;
+  if(_currentDocId){ ({error}=await supabase.from('documents').update(payload).eq('id',_currentDocId)); }
+  else { payload.author_id=STATE.profile.id; ({error}=await supabase.from('documents').insert([payload])); }
+  if(error) return toast('Erro ao salvar: '+error.message,'err');
+  try{ await supabase.rpc('log_action',{action:_currentDocId?'DOC_UPDATE':'DOC_CREATE',details:{title,category}}); }catch(e){}
+  invalidate('docs:'); closeModal(); toast('Documento salvo com sucesso.'); route();
+};
+function sanitizeHtml(h){ return String(h||'').replace(/<script[\s\S]*?<\/script>/gi,'').replace(/on\w+="[^"]*"/gi,'').replace(/on\w+='[^']*'/gi,''); }
+
+/* ══════════ PERFIL ══════════ */
 async function renderProfile(c, param){
   const me = (!param || param === 'me');
   const id = me ? STATE.profile.id : param;
@@ -690,6 +931,7 @@ async function renderProfile(c, param){
   </div>`;
 }
 
+/* ══════════ SEARCH BAR ══════════ */
 document.addEventListener('DOMContentLoaded', () => {
   applyThemeIcon();
   const bt = document.getElementById('btn-theme');
@@ -782,11 +1024,12 @@ window.saveGroups = async userId => {
   await supabase.from('user_groups').delete().eq('user_id', userId);
   if(ids.length) await supabase.from('user_groups').insert(ids.map(g => ({ user_id: userId, group_id: g })));
   try{ await supabase.rpc('log_action', { action:'USER_GROUPS', details:{ userId, ids } }); }catch(e){}
+  invalidate('perms:'); invalidate('home:');
   closeModal(); toast('Grupos atualizados.');
 };
 async function tabGrupos(b){
   const { data } = await supabase.from('groups').select('*, groups(name)').order('order_index');
-  const { data: ug } = await supabase.from('user_groups').select('group_id').limit(5000);
+  const { data: ug } = await supabase.from('user_groups').select('group_id').limit(10000);
   const cnt = {}; (ug||[]).forEach(m => cnt[m.group_id] = (cnt[m.group_id]||0)+1);
   b.innerHTML = `<div class="card fade-up">
     <div class="card-head justify-between"><h2 class="font-display font-bold text-sm">Grupos e subgrupos <span class="chip chip-neutral ml-2 normal-case">ordem = prioridade de cor/ícone</span></h2>
@@ -814,6 +1057,7 @@ window.moveGroup = async (id, dir) => {
   const a = data[i], b2 = data[j];
   await supabase.from('groups').update({ order_index: b2.order_index }).eq('id', a.id);
   await supabase.from('groups').update({ order_index: a.order_index }).eq('id', b2.id);
+  invalidate('home:');
   tabGrupos(document.getElementById('admin-body'));
 };
 window.groupForm = async id => {
@@ -867,12 +1111,14 @@ window.saveGroup = async id => {
   }
   if(error) return toast('Erro: '+error.message,'err');
   try{ await supabase.rpc('log_action', { action:'GROUP_SAVE', details: row }); }catch(e){}
+  invalidate('home:'); invalidate('groups:');
   closeModal(); toast('Grupo salvo.'); tabGrupos(document.getElementById('admin-body'));
 };
 window.delGroup = async id => {
   if(!await confirmDlg('Excluir grupo? Membros perdem o vínculo e as permissões dele.')) return;
   await supabase.from('groups').delete().eq('id', id);
   try{ await supabase.rpc('log_action', { action:'GROUP_DEL', details:{ id } }); }catch(e){}
+  invalidate('home:'); invalidate('groups:'); invalidate('perms:');
   tabGrupos(document.getElementById('admin-body'));
 };
 window.groupPermissions = async gid => {
@@ -914,16 +1160,17 @@ window.savePermissions = async gid => {
   });
   if(up.length){ const { error } = await supabase.from('group_permissions').upsert(up, { onConflict:'group_id,target_type,target_id' }); if(error) return toast('Erro: '+error.message,'err'); }
   for(const r of del){ await supabase.from('group_permissions').delete().eq('group_id', gid).eq('target_type', r.target_type).eq('target_id', r.target_id); }
+  invalidate('perms:'); invalidate('home:');
   closeModal(); toast('Permissões salvas.');
 };
 
-/* ══ v26/v27: matriz por TÓPICO com a linha "Todos" no topo (group_id = NULL) ══ */
+/* ══ v28: matriz por TÓPICO com a linha "Todos" no topo (group_id = NULL) ══ */
 window.targetPermissions = async (type, id, name) => {
   const [{ data: grps }, { data: rows }] = await Promise.all([
     supabase.from('groups').select('id,name,color,icon,order_index').order('order_index'),
     supabase.from('group_permissions').select('*').eq('target_type',type).eq('target_id',id)
   ]);
-  const cur = {}; (rows||[]).forEach(r => cur[r.group_id] = r);   /* cur[null] = linha "Todos" */
+  const cur = {}; (rows||[]).forEach(r => cur[r.group_id] = r);
   const cb = (gid, field, label) => `<td title="${label}"><input type="checkbox" data-g="${gid}" data-f="${field}" ${cur[gid]?.[field]?'checked':''}></td>`;
   const cbAll = (field, label, dis) => `<td title="${label}"><input type="checkbox" data-g="__ALL__" data-f="${field}" ${dis?'disabled':''} ${(!dis&&cur[null]?.[field])?'checked':''}></td>`;
   openModal(`<i class="fas fa-key text-gold-500 mr-2"></i>Permissões: ${esc(name)} <span class="chip chip-neutral ml-1 normal-case">${type==='section'?'setor':'subtópico'}</span>`,
@@ -942,13 +1189,11 @@ window.targetPermissions = async (type, id, name) => {
 };
 window.saveTargetPermissions = async (type, id) => {
   const boxes = [...document.querySelectorAll('#modal-body .perm-matrix input[type=checkbox]:not([disabled])')];
-  /* linha "Todos" (group_id = NULL) */
   const allRow = { can_view:false, can_create:false, can_edit:false, can_delete:false, is_moderator:false };
   boxes.filter(b=>b.dataset.g==='__ALL__').forEach(b=> allRow[b.dataset.f]=b.checked);
   const anyAll = allRow.can_view||allRow.can_create||allRow.can_edit||allRow.can_delete;
   await supabase.from('group_permissions').delete().eq('target_type',type).eq('target_id',id).is('group_id',null);
   if(anyAll){ const { error } = await supabase.from('group_permissions').insert([{ group_id:null, target_type:type, target_id:id, ...allRow }]); if(error) return toast('Erro: '+error.message,'err'); }
-  /* linhas dos grupos */
   const map = {};
   boxes.filter(b=>b.dataset.g!=='__ALL__').forEach(bx => {
     const gid = bx.dataset.g;
@@ -962,6 +1207,7 @@ window.saveTargetPermissions = async (type, id) => {
   });
   if(up.length){ const { error } = await supabase.from('group_permissions').upsert(up, { onConflict:'group_id,target_type,target_id' }); if(error) return toast('Erro: '+error.message,'err'); }
   for(const r of del){ await supabase.from('group_permissions').delete().eq('group_id', r.group_id).eq('target_type', type).eq('target_id', id); }
+  invalidate('perms:'); invalidate('home:');
   closeModal(); toast('Permissões salvas.');
 };
 
@@ -995,10 +1241,12 @@ window.gmSearch = async q => {
 window.gmAdd = async (gid, uid) => {
   const { error } = await supabase.from('user_groups').insert([{ user_id: uid, group_id: gid }]);
   if(error) return toast('Erro: '+error.message,'err');
+  invalidate('home:');
   toast('Membro adicionado.'); groupMembers(gid);
 };
 window.gmRemove = async (gid, uid) => {
   await supabase.from('user_groups').delete().eq('user_id', uid).eq('group_id', gid);
+  invalidate('home:');
   toast('Membro removido.'); groupMembers(gid);
 };
 
@@ -1048,6 +1296,7 @@ window.moveSection = async (id, dir) => {
   const a = data[i], b2 = data[j];
   await supabase.from('sections').update({ order_index: b2.order_index }).eq('id', a.id);
   await supabase.from('sections').update({ order_index: a.order_index }).eq('id', b2.id);
+  invalidate('home:'); invalidate('sections:');
   tabTopicos(document.getElementById('admin-body'));
 };
 window.sectionForm = async id => {
@@ -1073,10 +1322,11 @@ window.saveSection = async id => {
   }
   if(error) return toast('Erro: '+error.message,'err');
   try{ await supabase.rpc('log_action', { action:'SECTION_SAVE', details: row }); }catch(e){}
+  invalidate('home:'); invalidate('sections:');
   closeModal(); toast('Setor salvo.'); buildSidebar(); tabTopicos(document.getElementById('admin-body'));
 };
-window.delSection = async id => { if(await confirmDlg('Excluir setor e todos os subtópicos?')) { await supabase.from('sections').delete().eq('id', id); buildSidebar(); tabTopicos(document.getElementById('admin-body')); } };
-window.delSubtopic = async id => { if(await confirmDlg('Excluir subtópico?')) { await supabase.from('subtopics').delete().eq('id', id); tabTopicos(document.getElementById('admin-body')); } };
+window.delSection = async id => { if(await confirmDlg('Excluir setor e todos os subtópicos?')) { await supabase.from('sections').delete().eq('id', id); invalidate('home:'); invalidate('sections:'); buildSidebar(); tabTopicos(document.getElementById('admin-body')); } };
+window.delSubtopic = async id => { if(await confirmDlg('Excluir subtópico?')) { await supabase.from('subtopics').delete().eq('id', id); invalidate('home:'); tabTopicos(document.getElementById('admin-body')); } };
 window.subtopicForm = async (sid, tid) => {
   let t = { name:'', description:'', required_group_id:null, allow_posts:true, is_request_form:false, form_fields:[], auto_listagem_category:null };
   if(tid){ const r = await supabase.from('subtopics').select('*').eq('id', tid).single(); if(r.data) t = r.data; }
@@ -1102,6 +1352,8 @@ window.saveSubtopic = async () => {
   if(tid){ ({ error } = await supabase.from('subtopics').update(row).eq('id', tid)); }
   else { ({ error } = await supabase.from('subtopics').insert([row])); }
   if(error) return toast('Erro: '+error.message,'err');
+  try{ await supabase.rpc('log_action', { action:'SUBTOPIC_SAVE', details: row }); }catch(e){}
+  invalidate('home:'); invalidate('subs:');
   closeModal(); toast('Subtópico salvo.'); tabTopicos(document.getElementById('admin-body'));
 };
 async function tabProtocolos(b){
@@ -1115,12 +1367,11 @@ async function tabProtocolos(b){
     <div class="mt-3 grid sm:grid-cols-2 gap-2 text-xs bg-famr-50 rounded-lg p-3">${Object.entries(r.form_data||{}).map(([k,v])=>`<p><b class="text-famr-700">${esc(k)}:</b> ${esc(v)}</p>`).join('')}</div></div>`).join('') || '<p class="p-8 text-center text-sm text-muted">Nenhum protocolo pendente. ✦</p>'}</div></div>`;
 }
 window.review = (id, status) => { if(status === 'approved') return doReview(id, 'approved', ''); openModal('<i class="fas fa-xmark text-red-500 mr-2"></i>Motivo da reprovação', `<label class="field"><span>Motivo (opcional, aparece ao militar)</span><input id="rev-note" class="input"></label>`, `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button><button class="btn btn-danger btn-sm" onclick="doReview('${id}','rejected', document.getElementById('rev-note').value)">Reprovar</button>`); };
-window.doReview = async (id, status, note) => { const { error } = await supabase.rpc('review_request', { req_id: id, new_status: status, note: note || null }); if(error) return toast('Erro: '+error.message,'err'); closeModal(); toast(status==='approved' ? 'Aprovado! Registro publicado na Listagem automaticamente.' : 'Protocolo reprovado.'); tabProtocolos(document.getElementById('admin-body')); };
+window.doReview = async (id, status, note) => { const { error } = await supabase.rpc('review_request', { req_id: id, new_status: status, note: note || null }); if(error) return toast('Erro: '+error.message,'err'); invalidate('home:'); closeModal(); toast(status==='approved' ? 'Aprovado! Registro publicado na Listagem automaticamente.' : 'Protocolo reprovado.'); tabProtocolos(document.getElementById('admin-body')); };
 
-/* v27: Logs com Tradução PT e Coluna IP */
+/* ══════════ v28: LOGS COM TRADUÇÃO PT E COLUNA IP ══════════ */
 async function tabLogs(b){
   const from = A.page*30; 
-  /* Seleciona apenas o necessário para performance */
   const { data } = await supabase.from('logs').select('created_at,action,actor_name,details,ip').order('created_at',{ascending:false}).range(from, from+29);
   b.innerHTML = `<div class="card fade-up"><div class="cat-head"><i class="fas fa-scroll"></i> Logs de ações e logins</div>
   <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Data</th><th>Ação</th><th>Autor</th><th>Detalhes</th><th>IP</th></tr></thead><tbody>
@@ -1148,14 +1399,13 @@ async function tabConfig(b){
 window.saveMaint = async () => { const value = { enabled: document.getElementById('c-maint').checked, message: document.getElementById('c-maint-msg').value }; await supabase.from('settings').upsert({ key:'maintenance', value }); STATE.settings.maintenance = value; try{ await supabase.rpc('log_action', { action:'MANUTENCAO', details: value }); }catch(e){} toast('Configuração salva.'); document.getElementById('maintenance-banner').classList.toggle('hidden', !value.enabled); };
 window.saveAnn = async () => { const value = { text: document.getElementById('c-ann').value }; await supabase.from('settings').upsert({ key:'announcement', value }); STATE.settings.announcement = value; try{ await supabase.rpc('log_action', { action:'AVISO', details: value }); }catch(e){} toast('Aviso publicado na home.'); };
 
-/* v27: ENTER SYSTEM PARALELIZADO (Melhor Performance) */
+/* ══════════ v28: ENTER SYSTEM PARALELIZADO MÁXIMO ══════════ */
 async function enterSystem(userId){
   if(window._famrRecovery){ showScreen('screen-reset'); return; }
   
-  /* Dispara tudo em paralelo */
   const [profRes, groups, setsRes] = await Promise.all([
     supabase.from('profiles_view').select('*').eq('id', userId).single(),
-    loadSessionGroups(userId),                         /* Já usa RPC internamente */
+    loadSessionGroups(userId),
     supabase.from('settings').select('*').in('key',['maintenance','announcement'])
   ]);
 
@@ -1169,7 +1419,7 @@ async function enterSystem(userId){
   STATE.groups  = groups;
   (setsRes.data||[]).forEach(s => STATE.settings[s.key] = s.value);
 
-  await loadPerms();                                   /* Depende dos grupos prontos */
+  await loadPerms();
 
   if(STATE.settings.maintenance?.enabled && !isAdmin()){
     document.getElementById('maintenance-msg').textContent = STATE.settings.maintenance.message || '';
