@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v28 (Perf Cache+Paginação | Permissão Estrita | Docs TipTap) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v28.1 (Editor Nativo | Perf Cache | Permissão Estrita | Logs PT/IP) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -8,7 +8,7 @@ const ICON_OPTIONS = ['fa-shield-halved','fa-crown','fa-star','fa-bolt','fa-gave
 const GROUP_TYPES = { open:'ABERTO', closed:'FECHADO', invisible:'INVISÍVEL' };
 const SLUGS_REQUIRE_GROUP = ['companhias'];
 
-/* ══════════ v28: TRADUÇÃO DE LOGS PARA PORTUGUÊS ══════════ */
+/* ══════════ TRADUÇÃO DE LOGS PARA PORTUGUÊS ══════════ */
 const ACTION_PT = {
   LOGIN:'Login', LOGOUT:'Logout', REGISTRO:'Cadastro', USER_STATUS:'Alteração de status',
   USER_INVISIBLE:'Visibilidade alterada', LOCK_REMOVIDO_ADMIN:'Desbloqueio administrativo',
@@ -48,7 +48,7 @@ function ptDetails(d, action){
   return out.join(' · ') || '—';
 }
 
-/* ══════════ v28: CACHE GLOBAL COM INVALIDAÇÃO POR EVENTO ══════════ */
+/* ══════════ CACHE GLOBAL COM INVALIDAÇÃO POR EVENTO ══════════ */
 const CACHE = { data:{}, ttl:{} };
 function cacheGet(key){ const e=CACHE.data[key]; if(e && Date.now()-e.t < (CACHE.ttl[key]||60_000)) return e.v; return undefined; }
 function cacheSet(key,v,ttl=60_000){ CACHE.data[key]={t:Date.now(),v}; CACHE.ttl[key]=ttl; return v; }
@@ -73,17 +73,17 @@ function primaryGroupOf(list){ return sortGroups(list)[0] || null; }
 function colorGroupOf(list){ return sortGroups(list).find(g => g.apply_color) || null; }
 function userIconOf(list){ return primaryGroupOf(list)?.icon || 'fa-user'; }
 
-/* ══════════ v28: RESOLUÇÃO ÚNICA E ESTRITA DE PERMISSÃO ══════════ */
+/* ══════════ RESOLUÇÃO ÚNICA E ESTRITA DE PERMISSÃO ══════════ */
 function permOf(type,id){ return STATE.perms?.[type+':'+id] || null; }
 function hasAnyRule(type,id){ return !!STATE.ruleIndex?.has(type+':'+id); }
 function resolvePerm(type,id){
-  const u = permOf(type,id);                 /* regra dos grupos do usuário */
+  const u = permOf(type,id);
   if(u) return u;
-  const a = STATE.permAll?.[type+':'+id];    /* linha "Todos" (group_id=NULL) */
+  const a = STATE.permAll?.[type+':'+id];
   if(a) return a;
-  if(hasAnyRule(type,id))                    /* existe regra mas ninguém aplicável pegou → negado total */
+  if(hasAnyRule(type,id))
     return {view:false,create:false,edit:false,del:false,mod:false};
-  return null;                               /* nenhuma regra registrada → público */
+  return null;
 }
 function canViewSection(sec){
   if(isAdmin()) return true;
@@ -424,7 +424,7 @@ async function renderGroupPage(c, groupId){
 window.joinGroup = async id => { const { error } = await supabase.from('user_groups').insert([{ user_id: STATE.profile.id, group_id: id }]); if(error) return toast('Erro: '+error.message,'err'); toast('Você entrou no grupo.'); reloadSessionGroups(); };
 window.leaveGroup = async id => { await supabase.from('user_groups').delete().eq('user_id', STATE.profile.id).eq('group_id', id); toast('Você saiu do grupo.'); reloadSessionGroups(); };
 
-/* ══════════ CARREGAR GRUPOS DA SESSÃO (RPC primeiro, fallback SELECT) ══════════ */
+/* ══════════ CARREGAR GRUPOS DA SESSÃO ══════════ */
 async function loadSessionGroups(userId){
   try{
     const { data, error } = await supabase.rpc('famr_get_my_groups');
@@ -454,7 +454,7 @@ async function reloadSessionGroups(){
   updateUserChip(); route();
 }
 
-/* ══════════ v28: LOADPERMS EM UMA QUERY + RULE INDEX ══════════ */
+/* ══════════ LOADPERMS EM UMA QUERY + RULE INDEX ══════════ */
 async function loadPerms(){
   const gids = new Set(STATE.groups.map(g=>g.id));
   const rows = await cachedQuery('perms:all', ()=> supabase.from('group_permissions').select('*'), 120_000);
@@ -475,7 +475,7 @@ async function loadPerms(){
   STATE.modGroups=new Set(all.filter(p=>p.is_moderator&&p.group_id!==null&&gids.has(p.group_id)).map(p=>p.group_id));
 }
 
-/* ══════════ RENDER SECTION (roteador de setores especiais) ══════════ */
+/* ══════════ RENDER SECTION ══════════ */
 async function renderSection(c, slug){
   const { data: sec } = await supabase.from('sections').select('*').eq('slug', slug).single();
   if(!sec){ c.innerHTML = '<div class="card card-body text-sm text-muted">Seção não encontrada.</div>'; return; }
@@ -500,7 +500,7 @@ const secHead = sec => `<div class="flex flex-wrap items-center justify-between 
   <h1 class="font-display text-2xl md:text-3xl font-extrabold text-famr-900"><i class="fas ${esc(sec.icon)} text-gold-500 mr-2"></i>${esc(sec.name)}</h1>
   <p class="text-sm text-muted mt-1">${esc(sec.description||'')}</p></div><div class="star-row text-sm">★★★★</div></div>`;
 
-/* ══════════ COMPANHIAS (vitrine de grupos, exige pertencer a algum) ══════════ */
+/* ══════════ COMPANHIAS ══════════ */
 async function renderCompanhias(c, sec){
   if(!isAdmin() && (STATE.groups||[]).length===0){
     c.innerHTML = secHead(sec) + `<div class="card card-body text-center py-14 fade-up"><i class="fas fa-user-shield text-4xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2><p class="text-sm text-muted mt-1">Você ainda não pertence a nenhuma companhia. Aguarde o alistamento em um grupo pelo Alto Comando.</p></div>`;
@@ -668,7 +668,7 @@ window.submitRequest = async function(subtopicId){
   closeModal(); toast('Protocolo enviado! Aguarde a análise do CRH/RH.'); route();
 };
 
-/* ══════════ DOCUMENTOS PRINCIPAIS (v28: editor TipTap + docx) ══════════ */
+/* ══════════ DOCUMENTOS PRINCIPAIS (v28.1: Editor Nativo contenteditable) ══════════ */
 let _docEditor=null, _currentDocId=null;
 
 async function renderDocumentos(c, sec){
@@ -717,16 +717,17 @@ window.viewDoc = async id => {
   openModal(`<i class="fas fa-book-open text-gold-500 mr-2"></i>${esc(d.title)} ${d.category?`<span class="chip chip-neutral ml-1 normal-case">${esc(d.category)}</span>`:''}`,
     `<div class="text-[11px] text-muted mb-3">por <b>${esc(d.profiles_view?.nickname||'—')}</b> • atualizado ${fmtDate(d.updated_at)}</div>
      <article class="te-prose !max-h-none !overflow-visible bg-transparent border-0 p-0">${sanitizeHtml(d.body_html||'')}</article>`,
-    `<button class="btn btn-outline btn-sm mr-auto" onclick="downloadDoc('${id}')"><i class="fas fa-download"></i> Baixar .docx</button>
+    `<button class="btn btn-outline btn-sm mr-auto" onclick="downloadDoc('${id}')"><i class="fas fa-download"></i> Baixar .doc</button>
      <button class="btn btn-outline btn-sm" onclick="closeModal()">Fechar</button>`);
 };
 window.downloadDoc = async id => {
   const { data:d } = await supabase.from('documents').select('title,body_html').eq('id',id).single();
   if(!d) return;
-  try{
-    const blob = window.HTMLDocx.asBlob('<html><body>'+d.body_html+'</body></html>');
-    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=(d.title||'documento').replace(/[^\w\-]+/g,'_')+'.docx'; a.click(); URL.revokeObjectURL(url);
-  }catch(e){ toast('Falha ao gerar .docx: '+e.message,'err'); }
+  /* Gera um arquivo .doc simples (HTML com extensão .doc abre no Word) */
+  const fullHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>${esc(d.title)}</title></head><body>${d.body_html}</body></html>`;
+  const blob = new Blob(['\ufeff'+fullHtml], {type:'application/msword'});
+  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=(d.title||'documento').replace(/[^\w\-]+/g,'_')+'.doc'; a.click(); URL.revokeObjectURL(url);
 };
 window.delDoc = async id => {
   if(!await confirmDlg('Excluir este documento permanentemente?')) return;
@@ -753,85 +754,81 @@ window.openDocEditor = async id => {
          </div></label>
        <div class="doc-editor">
          <div class="te-toolbar" id="dc-toolbar"></div>
-         <div class="te-prose" id="dc-prose"></div>
-         <div class="te-status"><span id="dc-count">0 palavras</span>
-           <span class="flex gap-1">
-             <button type="button" class="btn btn-outline btn-sm" onclick="importDocx()"><i class="fas fa-file-import"></i> Importar .docx</button>
-             <input type="file" id="dc-docx-in" accept=".docx" class="hidden">
-           </span></div>
+         <div class="te-prose" id="dc-prose" contenteditable="true" spellcheck="false">${d.body_html||'<p>Digite aqui o conteúdo do documento...</p>'}</div>
+         <div class="te-status"><span id="dc-count">0 palavras</span></div>
        </div>
      </div>`,
     `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
      <button class="btn btn-primary btn-sm" onclick="saveDoc()"><i class="fas fa-floppy-disk"></i> Salvar documento</button>`);
-  initTipTap(d.body_html||'<p></p>');
+  initNativeEditor();
 };
 
-/* ── INICIALIZA O TIPTAP COM TODAS AS FERRAMENTAS DO WORD ── */
-function initTipTap(initialHtml){
-  const EditorClass = window.Editor || (window.TiptapCore && window.TiptapCore.Editor);
-  if(!EditorClass){ console.error('[FAMR] TipTap Editor não carregou'); document.getElementById('dc-prose').innerHTML='<p class="text-red-600 text-sm">Editor indisponível. Recarregue a página (Ctrl+F5).</p>'; return; }
-  const exts=[];
-  if(window.StarterKit) exts.push(window.StarterKit.configure?.()||window.StarterKit);
-  ['Link','Image','TextAlign','Subscript','Superscript','Highlight','Typography','Placeholder','CharacterCount','Underline','Table','TableRow','TableCell','TableHeader'].forEach(n=>{
-    const pkg = window[n+'Extension'] || window[n];
-    if(pkg) exts.push(typeof pkg==='function'?pkg():pkg);
-  });
-  try{
-    _docEditor = new EditorClass({
-      element: document.getElementById('dc-prose'),
-      content: initialHtml,
-      extensions: exts,
-      editorProps:{ attributes:{ class:'te-prose-inner focus:outline-none' } }
+/* ── EDITOR NATIVO (contenteditable + execCommand) ── */
+function initNativeEditor(){
+  const prose = document.getElementById('dc-prose');
+  const bar = document.getElementById('dc-toolbar');
+  bar.innerHTML = '';
+  
+  const mkBtn = (label, icon, cmd, val=null) => {
+    const b=document.createElement('button'); b.type='button'; b.className='te-btn'; b.title=label;
+    b.innerHTML=`<i class="fas ${icon}"></i>`;
+    b.onclick=()=>{ prose.focus(); document.execCommand(cmd,false,val); refreshToolbar(); };
+    b.dataset.cmd=cmd; b.dataset.val=val;
+    bar.appendChild(b); return b;
+  };
+  const mkSep = () => { const s=document.createElement('span'); s.className='te-sep'; bar.appendChild(s); };
+
+  mkBtn('Negrito','fa-bold','bold');
+  mkBtn('Itálico','fa-italic','italic');
+  mkBtn('Sublinhado','fa-underline','underline');
+  mkBtn('Tachado','fa-strikethrough','strikeThrough');
+  mkSep();
+  mkBtn('Título 1','fa-heading',[1],'formatBlock','<h1>');
+  mkBtn('Título 2','fa-heading',[2],'formatBlock','<h2>');
+  mkBtn('Título 3','fa-heading',[3],'formatBlock','<h3>');
+  mkBtn('Parágrafo','fa-paragraph','','formatBlock','<p>');
+  mkBtn('Citação','fa-quote-left','','formatBlock','<blockquote>');
+  mkSep();
+  mkBtn('Alinhar esq.','fa-align-left','justifyLeft');
+  mkBtn('Centralizar','fa-align-center','justifyCenter');
+  mkBtn('Alinhar dir.','fa-align-right','justifyRight');
+  mkBtn('Justificar','fa-align-justify','justifyFull');
+  mkSep();
+  mkBtn('Lista','fa-list-ul','insertUnorderedList');
+  mkBtn('Numeração','fa-list-ol','insertOrderedList');
+  mkSep();
+  mkBtn('Subscrito','fa-subscript','subscript');
+  mkBtn('Superscrito','fa-superscript','superscript');
+  mkSep();
+  mkBtn('Link','fa-link','',()=>{ const u=prompt('URL do link:'); if(u) document.execCommand('createLink',false,u); });
+  mkBtn('Remover link','fa-link-slash','unlink');
+  mkBtn('Imagem','fa-image','',()=>pickAndInsertImage(prose));
+  mkBtn('Emoji','fa-face-smile','',()=>insertEmojiPicker(prose));
+  mkSep();
+  mkBtn('Réguas horizontal','fa-minus','insertHorizontalRule');
+  mkBtn('Limpar formato','fa-eraser','removeFormat');
+  mkBtn('Desfazer','fa-undo','undo');
+  mkBtn('Refazer','fa-repeat','redo');
+
+  prose.addEventListener('keyup', refreshToolbar);
+  prose.addEventListener('mouseup', refreshToolbar);
+  prose.addEventListener('input', updateWordCount);
+  updateWordCount();
+
+  function refreshToolbar(){
+    bar.querySelectorAll('.te-btn').forEach(b=>{
+      const cmd=b.dataset.cmd;
+      if(!cmd) return;
+      try{ b.classList.toggle('is-active', document.queryCommandState(cmd)); }catch(e){}
     });
-  }catch(e){ console.error('[FAMR] TipTap init falhou:', e); document.getElementById('dc-prose').innerHTML = '<p class="text-red-600 text-sm">Falha ao iniciar editor. Recarregue a página.</p>'; return; }
-  buildToolbar();
-  _docEditor.on('update', ()=>{ 
-    const wc=_docEditor.storage.characterCount?.words?.() || (_docEditor.getText()||'').split(/\s+/).filter(Boolean).length;
-    document.getElementById('dc-count').textContent = wc+' palavra'+(wc!==1?'s':''); 
-  });
+  }
+  function updateWordCount(){
+    const txt = prose.innerText.trim();
+    const wc = txt ? txt.split(/\s+/).filter(Boolean).length : 0;
+    document.getElementById('dc-count').textContent = wc+' palavra'+(wc!==1?'s':'');
+  }
 }
-function tb(label, icon, fn, isActive){
-  const b=document.createElement('button'); b.type='button'; b.className='te-btn'; b.title=label;
-  b.innerHTML=`<i class="fas ${icon}"></i>`;
-  b.onclick=fn;
-  if(isActive){ const upd=()=>b.classList.toggle('is-active', !!isActive()); upd(); _docEditor.on('transaction',upd); }
-  document.getElementById('dc-toolbar').appendChild(b);
-}
-function sep(){ const s=document.createElement('span'); s.className='te-sep'; document.getElementById('dc-toolbar').appendChild(s); }
-function buildToolbar(){
-  const bar=document.getElementById('dc-toolbar'); bar.innerHTML='';
-  const E=_docEditor;
-  tb('Negrito','fa-bold',()=>E.chain().focus().toggleBold().run(),()=>E.isActive('bold'));
-  tb('Itálico','fa-italic',()=>E.chain().focus().toggleItalic().run(),()=>E.isActive('italic'));
-  tb('Sublinhado','fa-underline',()=>E.chain().focus().toggleUnderline().run(),()=>E.isActive('underline'));
-  tb('Tachado','fa-strikethrough',()=>E.chain().focus().toggleStrike().run(),()=>E.isActive('strike'));
-  sep();
-  tb('Título 1','fa-heading',[1],()=>E.chain().focus().toggleHeading({level:1}).run(),()=>E.isActive('heading',{level:1}));
-  tb('Título 2','fa-heading',[2],()=>E.chain().focus().toggleHeading({level:2}).run(),()=>E.isActive('heading',{level:2}));
-  tb('Título 3','fa-heading',[3],()=>E.chain().focus().toggleHeading({level:3}).run(),()=>E.isActive('heading',{level:3}));
-  tb('Citação','fa-quote-left',()=>E.chain().focus().toggleBlockquote().run(),()=>E.isActive('blockquote'));
-  sep();
-  tb('Alinhar esq.','fa-align-left',()=>E.chain().focus().setTextAlign('left').run(),()=>E.isActive({textAlign:'left'}));
-  tb('Centralizar','fa-align-center',()=>E.chain().focus().setTextAlign('center').run(),()=>E.isActive({textAlign:'center'}));
-  tb('Alinhar dir.','fa-align-right',()=>E.chain().focus().setTextAlign('right').run(),()=>E.isActive({textAlign:'right'}));
-  tb('Justificar','fa-align-justify',()=>E.chain().focus().setTextAlign('justify').run(),()=>E.isActive({textAlign:'justify'}));
-  sep();
-  tb('Lista','fa-list-ul',()=>E.chain().focus().toggleBulletList().run(),()=>E.isActive('bulletList'));
-  tb('Numeração','fa-list-ol',()=>E.chain().focus().toggleOrderedList().run(),()=>E.isActive('orderedList'));
-  sep();
-  tb('Subscrito','fa-subscript',()=>E.chain().focus().toggleSubscript().run(),()=>E.isActive('subscript'));
-  tb('Superscrito','fa-superscript',()=>E.chain().focus().toggleSuperscript().run(),()=>E.isActive('superscript'));
-  tb('Marca-texto','fa-highlighter',()=>E.chain().focus().toggleHighlight().run(),()=>E.isActive('highlight'));
-  sep();
-  tb('Link','fa-link',()=>{ const u=prompt('URL do link:'); if(u) E.chain().focus().extendMarkRange('link').setLink({href:u}).run(); },()=>E.isActive('link'));
-  tb('Remover link','fa-link-slash',()=>E.chain().focus().unsetLink().run());
-  tb('Imagem','fa-image',()=>pickAndInsertImage());
-  tb('Emoji','fa-face-smile',()=>insertEmojiPicker());
-  sep();
-  tb('Réguas horizontal','fa-minus',()=>E.chain().focus().setHorizontalRule().run());
-  tb('Limpar formato','fa-eraser',()=>E.chain().focus().unsetAllMarks().clearNodes().run());
-}
-function pickAndInsertImage(){
+function pickAndInsertImage(prose){
   const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
   inp.onchange=async()=>{
     const f=inp.files[0]; if(!f)return;
@@ -839,34 +836,23 @@ function pickAndInsertImage(){
     const { error } = await supabase.storage.from('docs-media').upload(path, f, {contentType:f.type});
     if(error) return toast('Upload falhou: '+error.message,'err');
     const { data:{ publicUrl } } = supabase.storage.from('docs-media').getPublicUrl(path);
-    _docEditor.chain().focus().setImage({src:publicUrl, alt:f.name}).run();
+    prose.focus();
+    document.execCommand('insertImage', false, publicUrl);
   };
   inp.click();
 }
-function insertEmojiPicker(){
+function insertEmojiPicker(prose){
   const pops=['😀','😁','️','⭐','✅','❌','️','📌','💼','❤️','🔥','✨'];
   const wrap=document.createElement('div'); wrap.style.cssText='position:absolute;z-index:99;display:flex;gap:.2rem;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:.3rem;box-shadow:0 8px 20px -8px rgba(0,0,0,.3)';
-  pops.forEach(em=>{ const b=document.createElement('button'); b.type='button'; b.textContent=em; b.style.cssText='border:none;background:none;cursor:pointer;font-size:1.1rem'; b.onclick=()=>{_docEditor.chain().focus().insertContent(em).run(); wrap.remove();}; wrap.appendChild(b); });
+  pops.forEach(em=>{ const b=document.createElement('button'); b.type='button'; b.textContent=em; b.style.cssText='border:none;background:none;cursor:pointer;font-size:1.1rem'; b.onclick=()=>{ prose.focus(); document.execCommand('insertText',false,em); wrap.remove(); }; wrap.appendChild(b); });
   document.body.appendChild(wrap);
   setTimeout(()=>document.addEventListener('click',()=>wrap.remove(),{once:true}),10);
 }
-window.importDocx = () => document.getElementById('dc-docx-in').click();
-document.addEventListener('change', async ev=>{
-  if(ev.target.id!=='dc-docx-in'||!ev.target.files[0]) return;
-  const file=ev.target.files[0];
-  try{
-    const buf=await file.arrayBuffer();
-    const res=await window.mammoth.convertToHtml({arrayBuffer:buf});
-    _docEditor.commands.setContent(res.value);
-    toast('Documento .docx importado.');
-  }catch(e){ toast('Falha ao ler .docx: '+e.message,'err'); }
-  ev.target.value='';
-});
 window.saveDoc = async () => {
   const title=document.getElementById('dc-title').value.trim();
   if(!title) return toast('Informe o título.','warn');
   const category=document.getElementById('dc-cat').value.trim()||null;
-  const body_html=_docEditor?_docEditor.getHTML():'';
+  const body_html=document.getElementById('dc-prose').innerHTML;
   let cover_url=null;
   const covFile=document.getElementById('dc-cover').files[0];
   if(covFile){
@@ -1164,7 +1150,7 @@ window.savePermissions = async gid => {
   closeModal(); toast('Permissões salvas.');
 };
 
-/* ══ v28: matriz por TÓPICO com a linha "Todos" no topo (group_id = NULL) ══ */
+/* ══ MATRIZ POR TÓPICO com linha "Todos" no topo ══ */
 window.targetPermissions = async (type, id, name) => {
   const [{ data: grps }, { data: rows }] = await Promise.all([
     supabase.from('groups').select('id,name,color,icon,order_index').order('order_index'),
@@ -1369,7 +1355,7 @@ async function tabProtocolos(b){
 window.review = (id, status) => { if(status === 'approved') return doReview(id, 'approved', ''); openModal('<i class="fas fa-xmark text-red-500 mr-2"></i>Motivo da reprovação', `<label class="field"><span>Motivo (opcional, aparece ao militar)</span><input id="rev-note" class="input"></label>`, `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button><button class="btn btn-danger btn-sm" onclick="doReview('${id}','rejected', document.getElementById('rev-note').value)">Reprovar</button>`); };
 window.doReview = async (id, status, note) => { const { error } = await supabase.rpc('review_request', { req_id: id, new_status: status, note: note || null }); if(error) return toast('Erro: '+error.message,'err'); invalidate('home:'); closeModal(); toast(status==='approved' ? 'Aprovado! Registro publicado na Listagem automaticamente.' : 'Protocolo reprovado.'); tabProtocolos(document.getElementById('admin-body')); };
 
-/* ══════════ v28: LOGS COM TRADUÇÃO PT E COLUNA IP ══════════ */
+/* ══════════ LOGS COM TRADUÇÃO PT E COLUNA IP ══════════ */
 async function tabLogs(b){
   const from = A.page*30; 
   const { data } = await supabase.from('logs').select('created_at,action,actor_name,details,ip').order('created_at',{ascending:false}).range(from, from+29);
@@ -1399,7 +1385,7 @@ async function tabConfig(b){
 window.saveMaint = async () => { const value = { enabled: document.getElementById('c-maint').checked, message: document.getElementById('c-maint-msg').value }; await supabase.from('settings').upsert({ key:'maintenance', value }); STATE.settings.maintenance = value; try{ await supabase.rpc('log_action', { action:'MANUTENCAO', details: value }); }catch(e){} toast('Configuração salva.'); document.getElementById('maintenance-banner').classList.toggle('hidden', !value.enabled); };
 window.saveAnn = async () => { const value = { text: document.getElementById('c-ann').value }; await supabase.from('settings').upsert({ key:'announcement', value }); STATE.settings.announcement = value; try{ await supabase.rpc('log_action', { action:'AVISO', details: value }); }catch(e){} toast('Aviso publicado na home.'); };
 
-/* ══════════ v28: ENTER SYSTEM PARALELIZADO MÁXIMO ══════════ */
+/* ══════════ ENTER SYSTEM PARALELIZADO MÁXIMO ══════════ */
 async function enterSystem(userId){
   if(window._famrRecovery){ showScreen('screen-reset'); return; }
   
