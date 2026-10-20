@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v26 (permissão "Todos" nos tópicos) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v27 (Perf Login/Home + Logs PT/IP) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -8,6 +8,40 @@ const ICON_OPTIONS = ['fa-shield-halved','fa-crown','fa-star','fa-bolt','fa-gave
 const GROUP_TYPES = { open:'ABERTO', closed:'FECHADO', invisible:'INVISÍVEL' };
 const SLUGS_REQUIRE_GROUP = ['companhias'];
 
+/* v27: Mapas de tradução para Logs */
+const ACTION_PT = {
+  LOGIN:'Login', LOGOUT:'Logout', REGISTRO:'Cadastro', USER_STATUS:'Alteração de status',
+  USER_INVISIBLE:'Visibilidade alterada', LOCK_REMOVIDO_ADMIN:'Desbloqueio administrativo',
+  SENHA_LINK_ENVIADO:'Link de senha enviado', SENHA_REDEFINIDA:'Senha redefinida',
+  POST_CRIADO:'Publicação criada', POST_EDITADO:'Publicação editada', POST_EXCLUIDO:'Publicação excluída',
+  SECTION_SAVE:'Setor salvo', SECTION_CRIADA:'Setor criado', SUBTOPIC_SAVE:'Subtópico salvo',
+  GROUP_SAVE:'Grupo salvo', GROUP_DEL:'Grupo excluído', USER_GROUPS:'Grupos de usuário alterados',
+  MANUTENCAO:'Modo manutenção', AVISO:'Aviso publicado', REVIEW_REQUEST:'Análise de protocolo'
+};
+function ptAction(a){ return ACTION_PT[a] || a; }
+function shortId(s){ return String(s||'').slice(0,8)+'…'; }
+function truncate(s,n){ return s.length>n ? s.slice(0,n)+'…' : s; }
+function statusLabel(s){ return ({active:'ativo', pending:'pendente', banned:'banido', approved:'aprovado', rejected:'reprovado'})[s] || s; }
+function ptDetails(d, action){
+  if(!d) return '—';
+  const out = [];
+  if(action==='USER_STATUS' && d.id)   out.push(`usuário ${shortId(d.id)} → ${statusLabel(d.status)}`);
+  else if(action==='USER_INVISIBLE')  out.push(`usuário ${shortId(d.id)} ficou ${d.v?'oculto':'visível'}`);
+  else if(action==='LOCK_REMOVIDO_ADMIN') out.push(`conta ${shortId(d.id)} destravada`);
+  else if(action==='POST_CRIADO')     out.push(`subtópico ${shortId(d.subtopicId||d.id)}`);
+  else if(action==='POST_EXCLUIDO')   out.push(`publicação ${shortId(d.id)}`);
+  else if(action==='GROUP_SAVE')      out.push(`grupo "${d.name||'?'}" (${d.group_type||'?'} · ordem ${d.order_index??'-'})`);
+  else if(action==='GROUP_DEL')       out.push(`grupo ${shortId(d.id)}`);
+  else if(action==='USER_GROUPS')     out.push(`usuário ${shortId(d.userId)} recebeu ${Array.isArray(d.ids)?d.ids.length+' grupo(s)':d.ids}`);
+  else if(action==='SECTION_SAVE'||action==='SECTION_CRIADA') out.push(`setor "${d.name||'?'}" (/ ${d.slug||'?'})`);
+  else if(action==='MANUTENCAO')      out.push(`manutenção ${d.enabled?'ATIVADA':'desativada'}${d.message?` · msg: "${truncate(d.message,40)}"`:''}`);
+  else if(action==='AVISO')           out.push(d.text ? `aviso: "${truncate(d.text,60)}"` : 'aviso removido');
+  else if(action==='SENHA_LINK_ENVIADO') out.push(`nickname: ${d.nick||'?'}`);
+  else if(action==='REVIEW_REQUEST')  out.push(`protocolo ${shortId(d.req_id)} → ${statusLabel(d.new_status)}${d.note?` · motivo: "${truncate(d.note,40)}"`:''}`);
+  else { Object.entries(d).forEach(([k,v])=>out.push(`${k}: ${typeof v==='object'?JSON.stringify(v):v}`)); }
+  return out.join(' · ') || '—';
+}
+
 function groupChip(g){ return g ? `<span class="chip" style="background:${g.color}18;color:${g.color};border:1px solid ${g.color}55"><i class="fas ${g.icon||'fa-shield-halved'}"></i> ${esc(g.name)}</span>` : '<span class="chip chip-neutral">Geral</span>'; }
 
 function sortGroups(list){ return [...(list||[])].sort((a,b)=>(a.order_index||0)-(b.order_index||0)); }
@@ -15,7 +49,7 @@ function primaryGroupOf(list){ return sortGroups(list)[0] || null; }
 function colorGroupOf(list){ return sortGroups(list).find(g => g.apply_color) || null; }
 function userIconOf(list){ return primaryGroupOf(list)?.icon || 'fa-user'; }
 
-/* ══ v26: permissões com fallback "Todos" (group_id = NULL) ══ */
+/* ══ v26/v27: permissões com fallback "Todos" (group_id = NULL) ══ */
 function permOf(type,id){ return STATE.perms?.[type+':'+id] || null; }
 function effectivePerm(type,id){
   const u = permOf(type,id);                 /* regra dos grupos do usuário (OR) */
@@ -171,6 +205,12 @@ async function buildSidebar(){
 }
 
 async function renderHome(c){
+  /* v27: Cache Local de 30 segundos para evitar requisições repetidas ao voltar pra Home */
+  if(window._homeCache && Date.now()-window._homeCache.t < 30_000){
+    c.innerHTML = window._homeCache.html;
+    bindHomeTabs(); startQsClock(); return;
+  }
+
   const [{ data: sections }, { data: subs }, { data: posts }, { count: nMembers },
          { data: newest }, { data: groups }] = await Promise.all([
     supabase.from('sections').select('*').order('order_index'),
@@ -292,7 +332,14 @@ async function renderHome(c){
     </div>
   </section>`;
 
+  /* Salva no cache */
+  window._homeCache = { t: Date.now(), html: c.innerHTML };
+  
   startQsClock();
+  bindHomeTabs();
+}
+
+function bindHomeTabs(){
   document.querySelectorAll('.st-tab').forEach(btn => btn.addEventListener('click', () => {
     document.querySelectorAll('.st-tab').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.stab-panel').forEach(p => p.classList.add('hidden'));
@@ -383,7 +430,7 @@ async function reloadSessionGroups(){
   updateUserChip(); route();
 }
 
-/* ══ v26: loadPerms em UMA query, derivando perms do usuário + permAll ("Todos") ══ */
+/* ══ v26/v27: loadPerms em UMA query, derivando perms do usuário + permAll ("Todos") ══ */
 async function loadPerms(){
   const gids = new Set(STATE.groups.map(g=>g.id));
   const { data: rows, error } = await supabase.from('group_permissions').select('*');
@@ -870,7 +917,7 @@ window.savePermissions = async gid => {
   closeModal(); toast('Permissões salvas.');
 };
 
-/* ══ v26: matriz por TÓPICO com a linha "Todos" no topo (group_id = NULL) ══ */
+/* ══ v26/v27: matriz por TÓPICO com a linha "Todos" no topo (group_id = NULL) ══ */
 window.targetPermissions = async (type, id, name) => {
   const [{ data: grps }, { data: rows }] = await Promise.all([
     supabase.from('groups').select('id,name,color,icon,order_index').order('order_index'),
@@ -1069,11 +1116,21 @@ async function tabProtocolos(b){
 }
 window.review = (id, status) => { if(status === 'approved') return doReview(id, 'approved', ''); openModal('<i class="fas fa-xmark text-red-500 mr-2"></i>Motivo da reprovação', `<label class="field"><span>Motivo (opcional, aparece ao militar)</span><input id="rev-note" class="input"></label>`, `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button><button class="btn btn-danger btn-sm" onclick="doReview('${id}','rejected', document.getElementById('rev-note').value)">Reprovar</button>`); };
 window.doReview = async (id, status, note) => { const { error } = await supabase.rpc('review_request', { req_id: id, new_status: status, note: note || null }); if(error) return toast('Erro: '+error.message,'err'); closeModal(); toast(status==='approved' ? 'Aprovado! Registro publicado na Listagem automaticamente.' : 'Protocolo reprovado.'); tabProtocolos(document.getElementById('admin-body')); };
+
+/* v27: Logs com Tradução PT e Coluna IP */
 async function tabLogs(b){
-  const from = A.page*30; const { data } = await supabase.from('logs').select('*').order('created_at',{ascending:false}).range(from, from+29);
+  const from = A.page*30; 
+  /* Seleciona apenas o necessário para performance */
+  const { data } = await supabase.from('logs').select('created_at,action,actor_name,details,ip').order('created_at',{ascending:false}).range(from, from+29);
   b.innerHTML = `<div class="card fade-up"><div class="cat-head"><i class="fas fa-scroll"></i> Logs de ações e logins</div>
-  <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Data</th><th>Ação</th><th>Autor</th><th>Detalhes</th></tr></thead><tbody>
-  ${(data||[]).map(l => `<tr><td class="text-xs text-muted whitespace-nowrap">${fmtDate(l.created_at)}</td><td><span class="chip ${l.action==='LOGIN'?'chip-ok':(l.action.includes('DEL')||l.action.includes('BAN')||l.action.includes('BLOQ'))?'chip-no':'chip-wait'}">${esc(l.action)}</span></td><td class="text-xs font-bold">${esc(l.actor_name||'sistema')}</td><td class="text-[11px] text-muted max-w-md truncate" title="${esc(JSON.stringify(l.details))}">${esc(JSON.stringify(l.details))}</td></tr>`).join('')}
+  <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Data</th><th>Ação</th><th>Autor</th><th>Detalhes</th><th>IP</th></tr></thead><tbody>
+  ${(data||[]).map(l => `<tr>
+    <td class="text-xs text-muted whitespace-nowrap">${fmtDate(l.created_at)}</td>
+    <td><span class="chip ${l.action==='LOGIN'?'chip-ok':(l.action.includes('DEL')||l.action.includes('BAN')||l.action.includes('BLOQ'))?'chip-no':'chip-wait'}">${esc(ptAction(l.action))}</span></td>
+    <td class="text-xs font-bold">${esc(l.actor_name||'sistema')}</td>
+    <td class="text-[11px] text-muted max-w-md truncate" title="${esc(JSON.stringify(l.details))}">${esc(ptDetails(l.details, l.action))}</td>
+    <td class="text-xs font-mono text-muted">${esc(l.ip || '—')}</td>
+  </tr>`).join('')}
   </tbody></table></div><div class="p-3 flex justify-center gap-2">${A.page>0?`<button class="btn btn-outline btn-sm" onclick="A.page--;tabLogs(document.getElementById('admin-body'))">←</button>`:''}${(data||[]).length===30?`<button class="btn btn-outline btn-sm" onclick="A.page++;tabLogs(document.getElementById('admin-body'))">→</button>`:''}</div></div>`;
 }
 async function tabConfig(b){
@@ -1091,26 +1148,36 @@ async function tabConfig(b){
 window.saveMaint = async () => { const value = { enabled: document.getElementById('c-maint').checked, message: document.getElementById('c-maint-msg').value }; await supabase.from('settings').upsert({ key:'maintenance', value }); STATE.settings.maintenance = value; try{ await supabase.rpc('log_action', { action:'MANUTENCAO', details: value }); }catch(e){} toast('Configuração salva.'); document.getElementById('maintenance-banner').classList.toggle('hidden', !value.enabled); };
 window.saveAnn = async () => { const value = { text: document.getElementById('c-ann').value }; await supabase.from('settings').upsert({ key:'announcement', value }); STATE.settings.announcement = value; try{ await supabase.rpc('log_action', { action:'AVISO', details: value }); }catch(e){} toast('Aviso publicado na home.'); };
 
+/* v27: ENTER SYSTEM PARALELIZADO (Melhor Performance) */
 async function enterSystem(userId){
   if(window._famrRecovery){ showScreen('screen-reset'); return; }
-  const { data: profile, error } = await supabase.from('profiles_view').select('*').eq('id', userId).single();
-  if(error || !profile){ console.error('[FAMR] perfil:', error); await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Perfil não encontrado. Procure um administrador da FAMR.', 'err'); return; }
-  if(profile.status === 'banned'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta BANIDA do sistema.', 'err'); return; }
-  if(profile.status === 'pending'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta ainda não ativada. Procure um administrador.', 'warn'); return; }
-  if(profile.login_locked){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('<i class="fas fa-lock mr-1"></i> Conta BLOQUEADA. Use "Esqueci a senha" ou procure um administrador.', 'err'); return; }
+  
+  /* Dispara tudo em paralelo */
+  const [profRes, groups, setsRes] = await Promise.all([
+    supabase.from('profiles_view').select('*').eq('id', userId).single(),
+    loadSessionGroups(userId),                         /* Já usa RPC internamente */
+    supabase.from('settings').select('*').in('key',['maintenance','announcement'])
+  ]);
+
+  const profile = profRes.data;
+  if(profRes.error || !profile){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Perfil não encontrado.', 'err'); return; }
+  if(profile.status==='banned'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta BANIDA.', 'err'); return; }
+  if(profile.status==='pending'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta ainda não ativada.', 'warn'); return; }
+  if(profile.login_locked){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('<i class="fas fa-lock mr-1"></i> Conta BLOQUEADA.', 'err'); return; }
 
   STATE.profile = profile;
-  STATE.groups = await loadSessionGroups(userId);
-  await loadPerms();
+  STATE.groups  = groups;
+  (setsRes.data||[]).forEach(s => STATE.settings[s.key] = s.value);
+
+  await loadPerms();                                   /* Depende dos grupos prontos */
 
   if(STATE.settings.maintenance?.enabled && !isAdmin()){
-    document.getElementById('maintenance-msg').textContent = STATE.settings.maintenance.message || document.getElementById('maintenance-msg').textContent;
+    document.getElementById('maintenance-msg').textContent = STATE.settings.maintenance.message || '';
     showScreen('screen-maintenance'); return;
   }
 
-  startWatchdog();
-  showScreen('shell');
-  try{ await buildSidebar(); }catch(err){ console.error('[FAMR] sidebar:', err); }
-  if(!location.hash || location.hash === '#') location.hash = '#/home';
-  try{ await route(); }catch(err){ console.error('[FAMR] route:', err); }
+  startWatchdog(); showScreen('shell');
+  try{ await buildSidebar(); }catch(e){ console.error('[FAMR] sidebar:', e); }
+  if(!location.hash || location.hash==='#') location.hash='#/home';
+  try{ await route(); }catch(e){ console.error('[FAMR] route:', e); }
 }
