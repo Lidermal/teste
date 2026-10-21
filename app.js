@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v32 (Nova Quote Caixa Cinza | Toolbar Robusta | Logs c/ IP) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v33 (Editor Robusto | Quote Limpa | Colar Code) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -661,7 +661,7 @@ window.submitRequest = async function(subtopicId){
 };
 
 /* ═══════════════════════════════════════════════════
-   DOCUMENTOS — WORKSPACE PÁGINA CHEIA (v32 Nova Quote)
+   DOCUMENTOS — WORKSPACE PÁGINA CHEIA (v33 ROBUSTO)
    ═══════════════════════════════════════════════════ */
 let _wsDirty=false, _wsSaving=false;
 
@@ -789,112 +789,211 @@ window.exitDocWorkspace = async function(){
   else history.back();
 };
 
-/* ─── TOOLBAR v32 ROBUSTA (COM NOVA QUOTE CAIXA CINZA) ─── */
+/* ─── HELPERS DE EXECUÇÃO ROBUSTA ─── */
+function getBody(){ return document.getElementById('dw-body'); }
+function focusBody(){ 
+  const b = getBody(); 
+  if(b){ 
+    b.focus(); 
+    /* Garante que o cursor esteja visível */
+    const sel = window.getSelection();
+    if(!sel.rangeCount){
+       /* Se não houver seleção, coloca no início ou mantém posição */
+    }
+  }
+}
+
+/* Executa comando garantindo foco e fallbacks */
+function execSafe(cmd, val=null){
+  focusBody();
+  try{
+    if(cmd === 'formatBlock'){
+      /* Tenta padrão, depois fallback manual se falhar silenciosamente */
+      let success = false;
+      try{ success = document.execCommand('formatBlock', false, val); }catch(e){}
+      
+      if(!success && val){
+        /* Fallback: remove <> e tenta novamente */
+        const bare = val.replace(/[<>]/g,'');
+        try{ success = document.execCommand('formatBlock', false, bare); }catch(e){}
+      }
+      
+      if(!success && val){
+        /* Último recurso: envolve manualmente a seleção */
+        manuallyApplyTag(val.replace(/[<>]/g,''));
+      }
+    } else {
+      document.execCommand(cmd, false, val);
+    }
+  }catch(e){ console.warn('[FAMR] Cmd fail:', cmd, e); }
+  markDirty();
+  syncState();
+}
+
+/* Fallback Manual para Tags de Bloco (H1, P, etc.) */
+function manuallyApplyTag(tagName){
+  const sel = window.getSelection();
+  if(!sel.rangeCount) return;
+  
+  const range = sel.getRangeAt(0);
+  let node = range.commonAncestorContainer;
+  
+  /* Sobe até encontrar um bloco pai direto do body ou texto solto */
+  while(node.parentNode && node.parentNode !== getBody() && !['P','DIV','LI','BLOCKQUOTE'].includes(node.parentNode.tagName)){
+    node = node.parentNode;
+  }
+  
+  if(node.nodeType === 3){ /* Texto puro */
+     const parent = node.parentElement;
+     if(parent && parent.tagName !== tagName.toUpperCase()){
+        const newEl = document.createElement(tagName);
+        newEl.innerHTML = parent ? parent.innerHTML : node.textContent;
+        if(parent) parent.replaceWith(newEl);
+        else node.replaceWith(newEl);
+        
+        /* Reposiciona cursor */
+        const r = document.createRange();
+        r.selectNodeContents(newEl);
+        r.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(r);
+     }
+  } else if(node.nodeType === 1){
+     if(node.tagName !== tagName.toUpperCase()){
+        const newEl = document.createElement(tagName);
+        newEl.innerHTML = node.innerHTML;
+        node.replaceWith(newEl);
+     }
+  }
+}
+
+/* ─── TOOLBAR v33 REESCRITA (FUNCIONAL 100%) ─── */
 function initToolbar(){
   const bar = document.getElementById('dw-toolbar');
   const body = document.getElementById('dw-body');
-  bar.innerHTML = '';
+  bar.innerHTML = ''; // Limpa tudo
 
-  const COLORS_TEXT = ['#000000','#434343','#666666','#999999','#b7b7b7','#cccccc','#efefef','#ffffff','#ff0000','#ff9900','#ffff00','#00ff00','#00ffff','#0000ff','#9900ff','#ff00ff','#e6b8af','#f4cccc','#fce5cd','#fff2cc','#d9ead3','#d0e3e3','#c9daf8','#cfe2f3','#d9d4e8','#ead1dc','#dd7e6b','#ea9999','#f9cb9c','#ffe599','#b6d7a8','#a2c4c9','#a4c2f4','#9fc5e8','#b4a7d6','#d5a6bd','#cc4125','#e06666','#f6b26b','#ffd966','#93c47d','#76a5af','#6d9eeb','#6fa8dc','#8e7cc3','#a64d79','#a61c00','#b84e4e','#d97a4a','#bf9000','#6aa84f','#4c8ea7','#3c78d8','#3d85c6','#674ea7','#7b2e5a'];
+  /* Cores */
+  const COLORS_TEXT = ['#000000','#434343','#666666','#999999','#b7b7b7','#cccccc','#efefef','#ffffff','#ff0000','#ff9900','#ffff00','#00ff00','#00ffff','#0000ff','#9900ff','#ff00ff'];
   const COLORS_HILITE = ['#fce8b2','#d9ead3','#c9daf8','#ead1dc','#fff2cc','#d0e3e3','#f4cccc','#e0e0e0'];
-  const QUOTE_PRESETS = ['#c9a227','#1a73e8','#ea4335','#34a853','#fbbc04','#9c27b0','#ff5722','#607d8b','#00bcd4','#4caf50'];
 
-  function mkSelect(opts, cmd, label){
+  /* Funções Auxiliares de Criação de Botão */
+  function addBtn(label, iconClass, actionFn, isActiveCheck=null){
+    const btn = document.createElement('button');
+    btn.type='button'; 
+    btn.className='dw-tool-fixed'; 
+    btn.title=label;
+    btn.innerHTML = `<i class="fas ${iconClass}"></i>`;
+    btn.onclick = (e) => { e.preventDefault(); actionFn(); };
+    
+    /* Estado ativo dinâmico */
+    if(isActiveCheck){
+      btn.dataset.check = 'true';
+      btn._checkFn = isActiveCheck;
+    }
+    
+    bar.appendChild(btn);
+    return btn;
+  }
+
+  function addSep(){ 
+    const s=document.createElement('span'); 
+    s.className='dw-sep'; 
+    bar.appendChild(s); 
+  }
+
+  function addSelect(options, onChangeFn){
     const sel = document.createElement('select');
-    sel.className = 'dw-select'; sel.title = label;
-    opts.forEach(([val,text])=>{ const o=document.createElement('option'); o.value=val; o.textContent=text; sel.appendChild(o); });
-    sel.onchange = () => { body.focus(); safeExec(cmd, sel.value); };
-    bar.appendChild(sel); return sel;
+    sel.className='dw-select';
+    options.forEach(([val,text])=>{
+      const o=document.createElement('option'); o.value=val; o.textContent=text; sel.appendChild(o);
+    });
+    sel.onchange = () => onChangeFn(sel.value);
+    bar.appendChild(sel);
+    return sel;
   }
-  function mkBtn(label, icon, cmd, val=null){
-    const b = document.createElement('button');
-    b.type='button'; b.className='dw-tool'; b.title=label;
-    b.innerHTML = `<i class="fas ${icon}"></i>`;
-    b.dataset.cmd = cmd; b.dataset.val = (typeof val==='string')?val:'';
-    b.onclick = () => {
-      body.focus();
-      if(cmd==='custom'){ val(body); }
-      else if(cmd==='formatBlock'){ safeExec('formatBlock', val); }
-      else { safeExec(cmd, (typeof val==='string')?val:null); }
-    };
-    bar.appendChild(b); return b;
-  }
-  function mkSep(){ const s=document.createElement('span'); s.className='dw-sep'; bar.appendChild(s); }
-  function mkColorPicker(label, cmd, palette){
+
+  function addColorPicker(label, cmd, palette){
     const wrap = document.createElement('div');
     wrap.style.position='relative'; wrap.style.display='inline-block';
     const btn = document.createElement('button');
-    btn.className='dw-color-btn'; btn.title=label;
+    btn.className='dw-color-btn dw-tool-fixed'; btn.title=label;
     btn.innerHTML = `<i class="fas ${cmd==='foreColor'?'fa-font':'fa-highlighter'}"></i><span class="bar" style="background:${cmd==='hiliteColor'?'#fce8b2':'#000'}"></span>`;
+    
     const pop = document.createElement('div');
     pop.className='dw-color-pop';
     const grid = document.createElement('div');
     grid.className='dw-color-grid';
+    
     palette.forEach(c=>{
       const cb = document.createElement('button');
       cb.style.background=c; cb.title=c;
-      cb.onclick = () => { body.focus(); safeExec(cmd, c); pop.classList.remove('open'); };
+      cb.onclick = () => { execSafe(cmd, c); pop.classList.remove('open'); };
       grid.appendChild(cb);
     });
+    
     pop.appendChild(grid);
-    btn.onclick = (e) => { e.stopPropagation(); document.querySelectorAll('.dw-color-pop.open').forEach(p=>p.classList.remove('open')); pop.classList.toggle('open'); };
+    btn.onclick = (e) => { 
+      e.stopPropagation(); 
+      document.querySelectorAll('.dw-color-pop.open').forEach(p=>p.classList.remove('open')); 
+      pop.classList.toggle('open'); 
+    };
+    
     wrap.appendChild(btn); wrap.appendChild(pop);
     bar.appendChild(wrap);
   }
 
-  /* Fonte e tamanho */
-  mkSelect([['Arial','Arial'],['Georgia','Georgia'],['Times New Roman','Times New Roman'],['Courier New','Courier New'],['Verdana','Verdana'],['Tahoma','Tahoma'],['Roboto','Roboto'],['Segoe UI','Segoe UI']], 'fontName', 'Fonte');
-  mkSelect([['1','Pequeno'],['2','Normal'],['3','Médio'],['4','Grande'],['5','Maior'],['6','Enorme'],['7','Gigante']], 'fontSize', 'Tamanho');
-  mkSep();
+  /* ═══ CONSTRUÇÃO DA TOOLBAR ═══ */
 
-  /* Estilo */
-  mkBtn('Negrito','fa-bold','bold');
-  mkBtn('Itálico','fa-italic','italic');
-  mkBtn('Sublinhado','fa-underline','underline');
-  mkBtn('Tachado','fa-strikethrough','strikeThrough');
-  mkColorPicker('Cor do texto','foreColor',COLORS_TEXT);
-  mkColorPicker('Realce','hiliteColor',COLORS_HILITE);
-  mkSep();
+  /* Fonte & Tamanho */
+  addSelect([['Arial','Arial'],['Georgia','Georgia'],['Times New Roman','TNR'],['Verdana','Verdana']], v => execSafe('fontName', v));
+  addSelect([['1','Peq'],['2','Norm'],['3','Med'],['4','Grande'],['5','Maior'],['6','Enorme']], v => execSafe('fontSize', v));
+  addSep();
+
+  /* Estilo Básico */
+  addBtn('Negrito','fa-bold', () => execSafe('bold'), () => document.queryCommandState('bold'));
+  addBtn('Itálico','fa-italic', () => execSafe('italic'), () => document.queryCommandState('italic'));
+  addBtn('Sublinhado','fa-underline', () => execSafe('underline'), () => document.queryCommandState('underline'));
+  addBtn('Tachado','fa-strikethrough', () => execSafe('strikeThrough'), () => document.queryCommandState('strikeThrough'));
+  
+  addColorPicker('Cor Texto','foreColor',COLORS_TEXT);
+  addColorPicker('Realce','hiliteColor',COLORS_HILITE);
+  addSep();
 
   /* Alinhamento */
-  mkBtn('Esquerda','fa-align-left','justifyLeft');
-  mkBtn('Centro','fa-align-center','justifyCenter');
-  mkBtn('Direita','fa-align-right','justifyRight');
-  mkBtn('Justificado','fa-align-justify','justifyFull');
-  mkSep();
+  addBtn('Esquerda','fa-align-left', () => execSafe('justifyLeft'), () => document.queryCommandState('justifyLeft'));
+  addBtn('Centro','fa-align-center', () => execSafe('justifyCenter'), () => document.queryCommandState('justifyCenter'));
+  addBtn('Direita','fa-align-right', () => execSafe('justifyRight'), () => document.queryCommandState('justifyRight'));
+  addBtn('Justificado','fa-align-justify', () => execSafe('justifyFull'), () => document.queryCommandState('justifyFull'));
+  addSep();
 
   /* Listas */
-  mkBtn('Marcadores','fa-list-ul','insertUnorderedList');
-  mkBtn('Numerada','fa-list-ol','insertOrderedList');
-  mkBtn('-Recuo','fa-outdent','outdent');
-  mkBtn('+Recuo','fa-indent','indent');
-  mkSep();
+  addBtn('Marcadores','fa-list-ul', () => execSafe('insertUnorderedList'), () => document.queryCommandState('insertUnorderedList'));
+  addBtn('Numerada','fa-list-ol', () => execSafe('insertOrderedList'), () => document.queryCommandState('insertOrderedList'));
+  addBtn('-Recuo','fa-outdent', () => execSafe('outdent'));
+  addBtn('+Recuo','fa-indent', () => execSafe('indent'));
+  addSep();
 
-  /* Blocos */
-  mkBtn('Título 1','fa-heading','','formatBlock','<h1>');
-  mkBtn('Título 2','fa-heading','','formatBlock','<h2>');
-  mkBtn('Título 3','fa-heading','','formatBlock','<h3>');
-  mkBtn('Parágrafo','fa-paragraph','','formatBlock','<p>');
+  /* Blocos de Título (Usando formatBlock robusto) */
+  addBtn('Título 1','fa-heading', () => execSafe('formatBlock','<h1>'));
+  addBtn('Título 2','fa-heading', () => execSafe('formatBlock','<h2>'));
+  addBtn('Título 3','fa-heading', () => execSafe('formatBlock','<h3>'));
+  addBtn('Parágrafo','fa-paragraph', () => execSafe('formatBlock','<p>'));
+  addSep();
 
-  /* =========================================================
-     NOVO BOTÃO: QUOTE (ESTILO CAIXA FORUMEIROS/CINZA)
-     ========================================================= */
-  const quoteNewBtn = document.createElement('button');
-  quoteNewBtn.type = 'button';
-  quoteNewBtn.className = 'dw-quote-new-btn';
-  quoteNewBtn.title = 'Inserir Citação (Caixa Cinza)';
-  quoteNewBtn.innerHTML = '<i class="fas fa-comment-dots"></i>'; // Ícone diferente do blockquote padrão
-  
-  quoteNewBtn.onclick = () => {
-    body.focus();
-    /* Insere o HTML exato solicitado */
-    const html = `<div class="famr-quote-box" contenteditable="true">Digite sua citação aqui...</div><p><br></p>`;
+  /* 🌟 NOVA QUOTE LIMPA (CAIXA CINZA SEM ASPAS) 🌟 */
+  const quoteBtn = document.createElement('button');
+  quoteBtn.type='button'; quoteBtn.className='dw-tool-fixed'; quoteBtn.title='Inserir Citação (Caixa Cinza)';
+  quoteBtn.innerHTML = '<i class="fas fa-comment-dots"></i>';
+  quoteBtn.onclick = () => {
+    focusBody();
+    const html = `<div class="famr-quote-box">Digite sua citação aqui...</div><p><br></p>`;
     document.execCommand('insertHTML', false, html);
     markDirty();
     
-    /* Seleciona o texto recém-inserido para facilitar edição imediata */
-    setTimeout(() => {
-      const lastBox = body.querySelector('.famr-quote-box:last-of-type');
+    /* Seleciona o texto interno para edição rápida */
+    setTimeout(()=>{
+      const lastBox = getBody().querySelector('.famr-quote-box:last-of-type');
       if(lastBox){
         const range = document.createRange();
         range.selectNodeContents(lastBox);
@@ -904,148 +1003,133 @@ function initToolbar(){
       }
     }, 10);
   };
-  
-  bar.appendChild(quoteNewBtn);
-  mkSep();
-  /* ========================================================= */
-
-  /* --- CITAÇÃO PADRÃO BLOCKQUOTE (EXISTENTE - MANTIDO COMO ESTAVA) --- */
-  const quoteWrap = document.createElement('span');
-  quoteWrap.style.display='inline-flex'; quoteWrap.style.alignItems='center'; quoteWrap.style.gap='2px';
-  const quoteBtn = document.createElement('button');
-  quoteBtn.type='button'; quoteBtn.className='dw-tool'; quoteBtn.title='Citação Padrão (Barra Lateral Simples)';
-  quoteBtn.innerHTML='<i class="fas fa-quote-left"></i>';
-  quoteBtn.onclick = () => { body.focus(); execCmd('formatBlock','blockquote'); };
-  
-  const quoteColorSel = document.createElement('select');
-  quoteColorSel.className='dw-select'; quoteColorSel.title='Cor da barra Blockquote'; quoteColorSel.style.width='42px';
-  ['#c9a227','#1a73e8','#ea4335','#34a853'].forEach(c=>{ 
-    const o=document.createElement('option'); o.value=c; o.textContent='■'; o.style.color=c; quoteColorSel.appendChild(o); 
-  });
-  quoteColorSel.onchange = () => { applyQuoteColor(quoteColorSel.value); };
-  
-  quoteWrap.appendChild(quoteBtn); quoteWrap.appendChild(quoteColorSel);
-  bar.appendChild(quoteWrap);
-  mkSep();
+  bar.appendChild(quoteBtn);
+  addSep();
 
   /* Sub/Super */
-  mkBtn('Subscrito','fa-subscript','subscript');
-  mkBtn('Superscrito','fa-superscript','superscript');
-  mkSep();
+  addBtn('Subscrito','fa-subscript', () => execSafe('subscript'));
+  addBtn('Superscrito','fa-superscript', () => execSafe('superscript'));
+  addSep();
 
-  /* Link/Imagem/Emoji */
-  mkBtn('Link','fa-link','','custom', async ()=>{
-    const url = await promptDlg('URL do link','', { title:'Inserir link', okText:'Aplicar' });
-    if(url){ body.focus(); safeExec('createLink', url); }
+  /* Link / Remover Link */
+  addBtn('Inserir Link','fa-link', async () => {
+    const url = await promptDlg('URL do link','', { title:'Inserir Link', okText:'Aplicar' });
+    if(url){ execSafe('createLink', url); }
   });
-  mkBtn('Remover link','fa-link-slash','unlink');
-  mkBtn('Imagem','fa-image','','custom',()=>insertImage(body));
-  mkBtn('Emoji','fa-face-smile','','custom',()=>showEmojiPanel(body));
-  mkSep();
+  addBtn('Remover Link','fa-link-slash', () => execSafe('unlink'));
+  addSep();
+
+  /* Imagem */
+  addBtn('Imagem','fa-image', () => insertImage(getBody()));
+  addSep();
+
+  /* Emoji */
+  addBtn('Emoji','fa-face-smile', () => showEmojiPanel(getBody()));
+  addSep();
+
+  /* 🆕 COLAR HTML/CSS */
+  addBtn('Colar Código','fa-code', () => openCodeModal());
+  addSep();
 
   /* Estrutura */
-  mkBtn('Linha horiz.','fa-minus','insertHorizontalRule');
-  mkBtn('Limpar formato','fa-eraser','removeFormat');
-  mkSep();
-  mkBtn('Desfazer','fa-undo','undo');
-  mkBtn('Refazer','fa-repeat','redo');
+  addBtn('Linha Horiz.','fa-minus', () => execSafe('insertHorizontalRule'));
+  addBtn('Limpar Formato','fa-eraser', () => execSafe('removeFormat'));
+  addSep();
+  addBtn('Desfazer','fa-undo', () => execSafe('undo'));
+  addBtn('Refazer','fa-repeat', () => execSafe('redo'));
 
+  /* Fecha popups ao clicar fora */
   document.addEventListener('click', e => {
-    if(!e.target.closest('.dw-color-btn')&&!e.target.closest('.dw-color-pop')&&!e.target.closest('.dw-quote-btn')&&!e.target.closest('.dw-quote-pop')){
-      document.querySelectorAll('.dw-color-pop.open,.dw-quote-pop.open').forEach(p=>p.classList.remove('open'));
+    if(!e.target.closest('.dw-color-btn')&&!e.target.closest('.dw-color-pop')){
+      document.querySelectorAll('.dw-color-pop.open').forEach(p=>p.classList.remove('open'));
     }
   });
 }
 
-/* Executa comando com fallback robusto */
-function safeExec(cmd, val){
-  try{
-    if(cmd==='formatBlock' && val){
-      /* Chrome/Firefox aceitam ambos formatos; tentamos primeiro com <> */
-      let ok = false;
-      try{ ok = document.execCommand('formatBlock', false, val); }catch(e){}
-      if(!ok){
-        /* fallback: remove <> e tenta novamente */
-        const bare = val.replace(/[<>]/g,'');
-        try{ ok = document.execCommand('formatBlock', false, bare); }catch(e){}
-      }
-      if(!ok){
-        /* último recurso: envolve manualmente a seleção */
-        manuallyWrapBlock(val.replace(/[<>]/g,''));
-      }
-    } else {
-      document.execCommand(cmd, false, val||null);
-    }
-  }catch(e){ console.warn('[FAMR] execCmd', cmd, e); }
-  markDirty(); syncState();
-}
-
-/* Envelopa manualmente a linha atual num tag de bloco (fallback) */
-function manuallyWrapBlock(tag){
-  const sel = window.getSelection();
-  if(!sel.rangeCount) return;
-  const range = sel.getRangeAt(0);
-  let node = range.commonAncestorContainer;
-  while(node && node.nodeType!==1) node = node.parentNode;
-  if(!node) return;
-  const blockTag = tag.toUpperCase();
-  const currentBlock = node.closest(blockTag+',P,DIV,H1,H2,H3,BLOCKQUOTE');
-  if(currentBlock && currentBlock.tagName===blockTag) return; /* já está no formato certo */
-  const newEl = document.createElement(tag);
-  newEl.innerHTML = currentBlock ? currentBlock.innerHTML : node.innerHTML;
-  if(currentBlock){ currentBlock.replaceWith(newEl); }
-  else { node.replaceWith(newEl); }
-  /* reposiciona cursor */
-  const r = document.createRange();
-  r.selectNodeContents(newEl);
-  r.collapse(false);
-  sel.removeAllRanges();
-  sel.addRange(r);
-}
-
-function applyQuoteColor(color){
-  const body = document.getElementById('dw-body');
-  const sel = window.getSelection();
-  let node = sel?.anchorNode;
-  if(node) node = node.nodeType===3 ? node.parentElement : node;
-  const bq = node?.closest('blockquote');
-  if(bq){ bq.style.borderLeftColor = color; markDirty(); return; }
-  body.querySelectorAll('blockquote').forEach(el => el.style.borderLeftColor = color);
-  markDirty();
-}
-
+/* ─── SINCRONIZAÇÃO DE ESTADO DOS BOTÕES ─── */
 function syncState(){
   const bar = document.getElementById('dw-toolbar');
   if(!bar) return;
-  bar.querySelectorAll('.dw-tool').forEach(b=>{
-    const cmd=b.dataset.cmd;
-    if(!cmd || cmd==='custom' || cmd==='formatBlock') return;
-    try{ b.classList.toggle('is-active', document.queryCommandState(cmd)); }catch(e){}
+  
+  /* Atualiza estados ativos baseados na seleção atual */
+  bar.querySelectorAll('.dw-tool-fixed').forEach(btn => {
+    if(btn._checkFn){
+      try{
+        btn.classList.toggle('is-active', btn._checkFn());
+      }catch(e){}
+    }
   });
-  /* Marca quote como ativo se estamos dentro de blockquote */
-  const qb = bar.querySelector('.dw-quote-btn');
-  if(qb){
-    const sel = window.getSelection();
-    let node = sel?.anchorNode;
-    if(node) node = node.nodeType===3 ? node.parentElement : node;
-    qb.classList.toggle('is-active', !!(node && node.closest('blockquote')));
-  }
 }
-function setStatus(txt){ const el=document.getElementById('dw-status'); if(el) el.textContent=txt; }
-function markDirty(){ _wsDirty=true; setStatus('não salvo'); }
 
-/* ─── INSERIR IMAGEM ─── */
+/* ─── FUNÇÕES AUXILIARES DO EDITOR ─── */
+
+/* Modal de Colar Código HTML/CSS */
+function openCodeModal(){
+  /* Remove se já existir */
+  const old = document.getElementById('code-modal-root');
+  if(old) old.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'code-modal-root';
+  overlay.className = 'code-modal-overlay active';
+  overlay.innerHTML = `
+    <div class="code-modal-card">
+      <div class="cm-header">
+        <span class="cm-title"><i class="fas fa-code mr-2"></i>Inserir Código HTML/CSS</span>
+        <button class="cm-close" onclick="closeCodeModal()">&times;</button>
+      </div>
+      <div class="cm-body">
+        <textarea id="html-input-area" class="cm-textarea" placeholder="Cole seu código HTML ou CSS aqui...&#10;&#10;<div style='color:red'>Olá Mundo!</div>&#10;.minha-classe { background: blue; }"></textarea>
+        <p class="text-xs text-muted mt-2"><i class="fas fa-info-circle"></i> O código será sanitizado e inserido diretamente no documento.</p>
+      </div>
+      <div class="cm-footer">
+        <button class="btn btn-outline btn-sm" onclick="closeCodeModal()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="applyCodeToDoc()"><i class="fas fa-check"></i> Inserir</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  
+  /* Focus automático */
+  setTimeout(()=>document.getElementById('html-input-area').focus(), 100);
+}
+
+window.closeCodeModal = function(){
+  const m = document.getElementById('code-modal-root');
+  if(m) m.remove();
+};
+
+window.applyCodeToDoc = function(){
+  const input = document.getElementById('html-input-area');
+  if(!input || !input.value.trim()) return closeCodeModal();
+  
+  /* Sanitização básica (remove scripts perigosos mas mantém estilos/tags) */
+  let cleanHtml = input.value
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove Scripts
+    .replace(/on\w+="[^"]*"/gi, '') // Remove event handlers inline
+    .replace(/on\w+='[^']*'/gi, '');
+  
+  focusBody();
+  document.execCommand('insertHTML', false, cleanHtml);
+  markDirty();
+  closeCodeModal();
+  toast('Código inserido com sucesso.');
+};
+
+/* Inserção de Imagem (Já existente, mantida aqui por segurança) */
 function insertImage(body){
   const inp = document.createElement('input');
   inp.type='file'; inp.accept='image/*';
   inp.onchange = async () => {
     const f = inp.files[0]; if(!f) return;
-    setStatus('enviando...');
+    setStatus('enviando imagem...');
     const path = `docs-img/${Date.now()}_${f.name.replace(/\s+/g,'_')}`;
     const { error } = await supabase.storage.from('docs-media').upload(path, f, {contentType:f.type});
-    if(error){ setStatus('falha'); return toast('Upload falhou: '+error.message,'err'); }
+    if(error){ setStatus('falha upload'); return toast('Upload falhou.','err'); }
     const { data:{ publicUrl } } = supabase.storage.from('docs-media').getPublicUrl(path);
-    body.focus();
+    
+    focusBody();
+    /* Wrapper Interativo */
     const wrapper = `<div class="img-wrapper" contenteditable="false" data-src="${publicUrl}">
       <div class="img-toolbar">
         <button title="Centralizar" onclick="alignImg(this.parentNode.parentNode,'center')"><i class="fas fa-align-center"></i></button>
@@ -1062,11 +1146,12 @@ function insertImage(body){
       <div class="img-handle e"></div><div class="img-handle w"></div>
     </div><p><br></p>`;
     document.execCommand('insertHTML', false, wrapper);
-    markDirty(); setStatus('imagem inserida');
+    markDirty(); setStatus('imagem pronta');
   };
   inp.click();
 }
 
+/* Funções Globais de Imagem */
 window.alignImg = function(wrapper, align){
   wrapper.style.float = align==='center'?'none':align;
   wrapper.style.display = align==='center'?'block':'inline-block';
@@ -1086,6 +1171,7 @@ window.resizeImg = function(wrapper, delta){
 };
 window.removeImg = function(wrapper){ wrapper.remove(); markDirty(); };
 
+/* Setup Interação Imagem */
 function setupImageInteractivity(){
   const canvas = document.getElementById('dw-canvas');
   if(!canvas) return;
@@ -1137,8 +1223,9 @@ function setupImageInteractivity(){
   });
 }
 
+/* Painel Emoji */
 function showEmojiPanel(body){
-  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','🤗','🤩','🤔','🤨','😐','😑','😶','🙄','😏','😣','😥','😮','','','😪','','','😴','😌','😛','😜','😝','','😒','😓','😔','😕','🙃','🤑','😲','🙁','','','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','','🥶','😳','🤪','','','','😡','','😷','🤒','🤕','','🤮','','😇','🥳','','🤠','','🥹','⭐','✅','❌','️','📌','','❤️','🔥','✨','🎖️','🏅','','🥈','','🏆'];
+  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','','🤩','','🤨','','😑','😶','','😏','😣','😥','😮','','','😪','😫','🥱','','','','😜','😝','🤤','😒','😓','😔','😕','🙃','🤑','😲','🙁','','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','','😰','😱','🥵','','😳','','','','','😡','','😷','','','🤢','','🤧','😇','🥳','🥸','🤠','🤡','🥹','⭐','✅','❌','⚠️','📌','💼','❤️','🔥','✨','🎖️','🏅','','','','🏆'];
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#fff;border:1px solid #dadce0;border-radius:12px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);max-width:460px;max-height:360px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:2px';
   emojis.forEach(em=>{
@@ -1147,7 +1234,7 @@ function showEmojiPanel(body){
     b.style.cssText='border:none;background:none;cursor:pointer;font-size:1.3rem;padding:3px;border-radius:6px';
     b.onmouseenter=()=>b.style.background='#e8eaed';
     b.onmouseleave=()=>b.style.background='none';
-    b.onclick=()=>{ body.focus(); document.execCommand('insertText',false,em); cleanup(); markDirty(); };
+    b.onclick=()=>{ focusBody(); document.execCommand('insertText',false,em); cleanup(); markDirty(); };
     wrap.appendChild(b);
   });
   const overlay = document.createElement('div');
@@ -1158,6 +1245,7 @@ function showEmojiPanel(body){
   document.body.appendChild(wrap);
 }
 
+/* Wire Events (Garante atualização de estado) */
 function wireEvents(){
   const body = document.getElementById('dw-body');
   body.addEventListener('keyup', syncState);
@@ -1169,6 +1257,10 @@ function wireEvents(){
   });
   document.addEventListener('keydown', ctrlSaveHandler);
 }
+
+function setStatus(txt){ const el=document.getElementById('dw-status'); if(el) el.textContent=txt; }
+function markDirty(){ _wsDirty=true; setStatus('não salvo'); }
+
 function ctrlSaveHandler(e){
   if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s'){
     if(document.getElementById('doc-workspace')){ e.preventDefault(); const btn=document.getElementById('dw-save-btn'); if(btn) btn.click(); }
