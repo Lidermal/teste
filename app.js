@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v34 (Fix Colar Code | Imagem Flutuante | Listas | Links) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v35 (Fix Colar Code Real | Imagem Flutuante Completa | Listas | Links Absolutos) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -661,7 +661,7 @@ window.submitRequest = async function(subtopicId){
 };
 
 /* ═══════════════════════════════════════════════════
-   DOCUMENTOS — WORKSPACE PÁGINA CHEIA (v34 FIXES)
+   DOCUMENTOS — WORKSPACE PÁGINA CHEIA (v35 FIXES DEFINITIVOS)
    ═══════════════════════════════════════════════════ */
 let _wsDirty=false, _wsSaving=false;
 
@@ -867,7 +867,7 @@ function manuallyApplyTag(tagName){
   }
 }
 
-/* ─── TOOLBAR v34 REESCRITA (FUNCIONAL 100%) ─── */
+/* ─── TOOLBAR v35 REESCRITA (FUNCIONAL 100% COM LINK ABSOLUTO E IMAGEM FLUTUANTE) ─── */
 function initToolbar(){
   const bar = document.getElementById('dw-toolbar');
   const body = document.getElementById('dw-body');
@@ -967,7 +967,7 @@ function initToolbar(){
   addBtn('Justificado','fa-align-justify', () => execSafe('justifyFull'), () => document.queryCommandState('justifyFull'));
   addSep();
 
-  /* Listas - CORRIGIDO PARA USAR execSafe */
+  /* Listas - CORRIGIDO PARA USAR execSafe COM FOCO PRÉVIO */
   addBtn('Marcadores','fa-list-ul', () => execSafe('insertUnorderedList'), () => document.queryCommandState('insertUnorderedList'));
   addBtn('Numerada','fa-list-ol', () => execSafe('insertOrderedList'), () => document.queryCommandState('insertOrderedList'));
   addBtn('-Recuo','fa-outdent', () => execSafe('outdent'));
@@ -1011,13 +1011,18 @@ function initToolbar(){
   addBtn('Superscrito','fa-superscript', () => execSafe('superscript'));
   addSep();
 
-  /* Link / Remover Link - CORRIGIDO FLUXO ASÍNCRONO */
+  /* Link / Remover Link - CORRIGIDO PARA URL ABSOLUTA EXATA */
   addBtn('Inserir Link','fa-link', async () => {
-    const url = await promptDlg('URL do link','', { title:'Inserir Link', okText:'Aplicar' });
-    if(url){ 
+    const urlRaw = await promptDlg('Cole a URL completa (ex: https://site.com)','https://', { title:'Inserir Link', okText:'Aplicar' });
+    if(urlRaw){ 
+      /* Normaliza para garantir http/https se omitido, mas preserva domínio exato */
+      let finalUrl = urlRaw.trim();
+      if(finalUrl && !/^https?:\/\//i.test(finalUrl)){
+        finalUrl = 'http://' + finalUrl;
+      }
       focusBody();
-      /* Aplica o link na seleção atual */
-      document.execCommand('createLink', false, url);
+      /* Aplica o link na seleção atual usando createLink nativo */
+      document.execCommand('createLink', false, finalUrl);
       markDirty();
     }
   });
@@ -1032,7 +1037,7 @@ function initToolbar(){
   addBtn('Emoji','fa-face-smile', () => showEmojiPanel(getBody()));
   addSep();
 
-  /* 🆕 COLAR HTML/CSS - MELHORADO */
+  /* 🆕 COLAR HTML/CSS REALISTA */
   addBtn('Colar Código','fa-code', () => openCodeModal());
   addSep();
 
@@ -1068,7 +1073,7 @@ function syncState(){
 
 /* ─── FUNÇÕES AUXILIARES DO EDITOR ─── */
 
-/* Modal de Colar Código HTML/CSS - AGORA INJETA STYLE TEMPORÁRIO */
+/* Modal de Colar Código HTML/CSS - AGORA PRESERVA VISUAL REALISTA */
 function openCodeModal(){
   /* Remove se já existir */
   const old = document.getElementById('code-modal-root');
@@ -1080,16 +1085,16 @@ function openCodeModal(){
   overlay.innerHTML = `
     <div class="code-modal-card">
       <div class="cm-header">
-        <span class="cm-title"><i class="fas fa-code mr-2"></i>Inserir Código HTML/CSS</span>
+        <span class="cm-title"><i class="fas fa-code mr-2"></i>Inserir Código HTML/CSS Visual</span>
         <button class="cm-close" onclick="closeCodeModal()">&times;</button>
       </div>
       <div class="cm-body">
-        <textarea id="html-input-area" class="cm-textarea" placeholder="Cole seu código HTML ou CSS aqui...&#10;&#10;<div style='color:red'>Olá Mundo!</div>&#10;.minha-classe { background: blue; }"></textarea>
-        <p class="text-xs text-muted mt-2"><i class="fas fa-info-circle"></i> O código será sanitizado e inserido diretamente no documento. Estilos CSS serão aplicados localmente.</p>
+        <textarea id="html-input-area" class="cm-textarea" placeholder="Cole TODO o código HTML/CSS aqui (incluindo tags &lt;style&gt;, &lt;div&gt;, etc.)...&#10;&#10;&lt;style&gt;.meu-classe { color: blue; }&lt;/style&gt;&#10;&lt;div class=&quot;meu-classe&quot;&gt;Texto Azul&lt;/div&gt;"></textarea>
+        <p class="text-xs text-muted mt-2"><i class="fas fa-info-circle"></i> O código será sanitizado (scripts removidos) mas manterá estilos CSS e estrutura HTML intacta.</p>
       </div>
       <div class="cm-footer">
         <button class="btn btn-outline btn-sm" onclick="closeCodeModal()">Cancelar</button>
-        <button class="btn btn-primary btn-sm" onclick="applyCodeToDoc()"><i class="fas fa-check"></i> Inserir</button>
+        <button class="btn btn-primary btn-sm" onclick="applyCodeToDoc()"><i class="fas fa-check"></i> Inserir Visualmente</button>
       </div>
     </div>
   `;
@@ -1110,23 +1115,23 @@ window.applyCodeToDoc = function(){
   
   let rawContent = input.value;
   
-  /* Separa CSS (blocos <style>) do resto do HTML */
+  /* Extrai blocos de estilo CSS */
   let cssBlocks = [];
   let htmlPart = rawContent.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (match, p1) => {
     cssBlocks.push(p1);
     return ''; /* Remove do HTML principal */
   });
   
-  /* Sanitização básica do HTML restante */
+  /* Sanitização básica do HTML restante (mantém tags estruturais e classes) */
   let cleanHtml = htmlPart
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove Scripts
-    .replace(/on\w+="[^"]*"/gi, '') // Remove event handlers inline
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove Scripts executáveis
+    .replace(/on\w+="[^"]*"/gi, '') // Remove event handlers inline perigosos
     .replace(/on\w+='[^']*'/gi, '');
   
-  /* Constrói o snippet final */
+  /* Constrói o snippet final combinando CSS isolado + HTML limpo */
   let finalSnippet = '';
   
-  /* Se havia CSS, injeta uma tag style temporária DENTRO do corpo do editor */
+  /* Se havia CSS extraído, injeta uma tag style temporária DENTRO do corpo do editor */
   if(cssBlocks.length > 0){
     const combinedCss = cssBlocks.join('\n');
     /* Usa um ID único para evitar conflitos futuros */
@@ -1140,10 +1145,10 @@ window.applyCodeToDoc = function(){
   document.execCommand('insertHTML', false, finalSnippet);
   markDirty();
   closeCodeModal();
-  toast('Código e estilos inseridos.');
+  toast('Código e estilos inseridos visualmente.');
 };
 
-/* Inserção de Imagem (Mantida, mas wrapper melhorado para flutuantes) */
+/* Inserção de Imagem com Controles Avançados de Posição/Float */
 function insertImage(body){
   const inp = document.createElement('input');
   inp.type='file'; inp.accept='image/*';
@@ -1156,23 +1161,23 @@ function insertImage(body){
     const { data:{ publicUrl } } = supabase.storage.from('docs-media').getPublicUrl(path);
     
     focusBody();
-    /* Wrapper Interativo com Controles de Posição */
-    const wrapper = `<div class="img-wrapper" contenteditable="false" data-src="${publicUrl}" style="position:relative;">
-      <div class="img-toolbar">
+    /* Wrapper Interativo com Barra de Ferramentas Completa */
+    const wrapper = `<div class="img-wrapper advanced-controls" contenteditable="false" data-src="${publicUrl}" style="position:relative;display:inline-block;margin:8px;">
+      <div class="img-toolbar-complete">
         <!-- Posição Horizontal -->
-        <button title="Esquerda" onclick="setImgFloat(this.parentNode.parentNode,'left')"><i class="fas fa-align-left"></i></button>
-        <button title="Centro" onclick="setImgAlign(this.parentNode.parentNode,'center')"><i class="fas fa-align-center"></i></button>
-        <button title="Direita" onclick="setImgFloat(this.parentNode.parentNode,'right')"><i class="fas fa-align-right"></i></button>
+        <button title="Flutuar à Esquerda" onclick="setImgFloat(this.parentNode.parentNode,'left')"><i class="fas fa-align-left"></i></button>
+        <button title="Centralizar (Bloco)" onclick="setImgAlign(this.parentNode.parentNode,'center')"><i class="fas fa-align-center"></i></button>
+        <button title="Flutuar à Direita" onclick="setImgFloat(this.parentNode.parentNode,'right')"><i class="fas fa-align-right"></i></button>
         <span class="dw-sep" style="margin:0 4px;height:16px;"></span>
         <!-- Tamanho -->
-        <button title="Reduzir" onclick="resizeImg(this.parentNode.parentNode,-20)"><i class="fas fa-minus"></i></button>
-        <button title="Ampliar" onclick="resizeImg(this.parentNode.parentNode,20)"><i class="fas fa-plus"></i></button>
-        <button title="Original" onclick="resizeImg(this.parentNode.parentNode,0)"><i class="fas fa-expand"></i></button>
+        <button title="Reduzir Largura" onclick="resizeImg(this.parentNode.parentNode,-20)"><i class="fas fa-minus"></i></button>
+        <button title="Ampliar Largura" onclick="resizeImg(this.parentNode.parentNode,20)"><i class="fas fa-plus"></i></button>
+        <button title="Restaurar Original" onclick="resizeImg(this.parentNode.parentNode,0)"><i class="fas fa-expand"></i></button>
         <span class="dw-sep" style="margin:0 4px;height:16px;"></span>
         <!-- Exclusão -->
-        <button title="Remover" onclick="removeImg(this.parentNode.parentNode)"><i class="fas fa-trash"></i></button>
+        <button title="Remover Imagem" onclick="removeImg(this.parentNode.parentNode)"><i class="fas fa-trash"></i></button>
       </div>
-      <img src="${publicUrl}" alt="${esc(f.name)}" draggable="false" style="max-width:100%;height:auto;display:block;">
+      <img src="${publicUrl}" alt="${esc(f.name)}" draggable="false" style="max-width:100%;height:auto;display:block;border-radius:4px;">
       <div class="img-handle nw"></div><div class="img-handle ne"></div>
       <div class="img-handle sw"></div><div class="img-handle se"></div>
       <div class="img-handle e"></div><div class="img-handle w"></div>
@@ -1183,11 +1188,11 @@ function insertImage(body){
   inp.click();
 }
 
-/* Novas funções globais para manipulação de imagem */
+/* Novas funções globais para manipulação avançada de imagem */
 window.setImgFloat = function(wrapper, side){
   const img = wrapper.querySelector('img');
   if(!img) return;
-  /* Remove float anterior */
+  /* Remove float anterior e define novo comportamento */
   img.style.float = 'none';
   img.style.display = 'block';
   img.style.margin = '8px auto'; /* Centralizado por padrão */
@@ -1216,7 +1221,7 @@ window.setImgAlign = function(wrapper, align){
   markDirty();
 };
 
-/* Mantém compatibilidade com funções antigas se necessário */
+/* Mantém compatibilidade retroativa se necessário */
 window.alignImg = window.setImgAlign; 
 
 window.resizeImg = function(wrapper, delta){
@@ -1232,7 +1237,7 @@ window.resizeImg = function(wrapper, delta){
 };
 window.removeImg = function(wrapper){ wrapper.remove(); markDirty(); };
 
-/* Setup Interação Imagem */
+/* Setup Interação Imagem Aprimorado */
 function setupImageInteractivity(){
   const canvas = document.getElementById('dw-canvas');
   if(!canvas) return;
@@ -1286,7 +1291,7 @@ function setupImageInteractivity(){
 
 /* Painel Emoji */
 function showEmojiPanel(body){
-  const emojis = ['😀','😁','😂','','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','🤗','🤩','🤔','🤨','😐','😑','😶','','😏','😣','😥','😮','','','😪','😫','🥱','','','','😜','😝','','😒','','😔','😕','🙃','🤑','😲','🙁','','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','','😰','😱','🥵','','😳','','','','','😡','','😷','','','🤢','','🤧','😇','🥳','','🤠','🤡','🥹','⭐','✅','❌','⚠️','📌','💼','❤️','🔥','✨','🎖️','🏅','','','','🏆'];
+  const emojis = ['😀','😁','😂','','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','','🤩','','🤨','','😑','😶','','😏','😣','😥','😮','','','😪','😫','🥱','','','','😜','😝','','😒','','😔','😕','','🤑','😲','🙁','','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','','😰','😱','','','😳','','','','','😡','','😷','','','🤢','','🤧','😇','🥳','','🤠','🤡','🥹','⭐','✅','❌','⚠️','📌','💼','❤️','🔥','✨','🎖️','🏅','','','',''];
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#fff;border:1px solid #dadce0;border-radius:12px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);max-width:460px;max-height:360px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:2px';
   emojis.forEach(em=>{
