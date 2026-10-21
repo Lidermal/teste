@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v37 (Páginas Sub-Doc | Layout Full-Width Fix | Colar Code Real | Imagem Drag | Links Absolutos) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v38 (Fix Layout Encolhido | Isolamento CSS Real | Páginas Doc) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -234,8 +234,10 @@ async function route(){
   if(window._qsTimer){ clearInterval(window._qsTimer); window._qsTimer = null; }
   const c = document.getElementById('content');
   if(!c) return;
-  /* Garante sempre largura total em todas as rotas */
+  
+  /* FIX CRÍTICO: Garante largura total sempre que muda de rota */
   forceFullWidthContent();
+
   if(page==='doc-new'){ renderDocWorkspace(null, subParam); return; }
   if(page==='doc-edit'){ renderDocWorkspace(param, subParam); return; }
   if(page==='doc-page'){ await renderDocPage(c, param); return; }
@@ -257,7 +259,7 @@ async function route(){
 }
 function updateSidebarActive(key){ document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.key === key)); }
 
-/* ══════════ FIX LAYOUT FULL-WIDTH (CORREÇÃO DO BUG ENCOLHIDO) ══════════ */
+/* ══════════ FIX LAYOUT FULL-WIDTH (CORREÇÃO DEFINITIVA DO BUG ENCOLHIDO) ══════════ */
 function forceFullWidthContent(){
   const c = document.getElementById('content');
   if(!c) return;
@@ -699,7 +701,7 @@ window.submitRequest = async function(subtopicId){
 };
 
 /* ═══════════════════════════════════════════════════
-   DOCUMENTOS PRINCIPAIS — COM SISTEMA DE PÁGINAS (v37)
+   DOCUMENTOS PRINCIPAIS — COM SISTEMA DE PÁGINAS E ISOLAMENTO CSS (v38)
    ═══════════════════════════════════════════════════ */
 let _wsDirty=false, _wsSaving=false;
 
@@ -1061,7 +1063,7 @@ function manuallyApplyTag(tagName){
   }
 }
 
-/* ─── TOOLBAR v37 ─── */
+/* ─── TOOLBAR v38 (ISOLAMENTO CSS REAL) ─── */
 function initToolbar(){
   const bar = document.getElementById('dw-toolbar');
   bar.innerHTML = '';
@@ -1226,7 +1228,7 @@ function syncState(){
   });
 }
 
-/* Modal Colar Código */
+/* Modal Colar Código - VERSÃO SEGURA COM ISOLAMENTO TOTAL */
 function openCodeModal(){
   const old = document.getElementById('code-modal-root');
   if(old) old.remove();
@@ -1242,7 +1244,7 @@ function openCodeModal(){
       </div>
       <div class="cm-body">
         <textarea id="html-input-area" class="cm-textarea" placeholder="Cole TODO o código HTML/CSS aqui..."></textarea>
-        <p class="text-xs text-muted mt-2"><i class="fas fa-info-circle"></i> Scripts serão removidos por segurança, mas estilos e estrutura serão preservados.</p>
+        <p class="text-xs text-muted mt-2"><i class="fas fa-info-circle"></i> Scripts serão removidos. Estilos serão isolados para não quebrar o site.</p>
       </div>
       <div class="cm-footer">
         <button class="btn btn-outline btn-sm" onclick="closeCodeModal()">Cancelar</button>
@@ -1265,29 +1267,54 @@ window.applyCodeToDoc = function(){
   
   let rawContent = input.value;
   
+  /* 1. Extrai blocos de estilo CSS */
   let cssBlocks = [];
   let htmlPart = rawContent.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (match, p1) => {
     cssBlocks.push(p1);
-    return '';
+    return ''; /* Remove do HTML principal */
   });
   
+  /* 2. Sanitização agressiva do HTML restante */
+  /* Remove scripts, event handlers e TAGS ESTRUTURAIS QUE QUEBRAM O SITE */
   let cleanHtml = htmlPart
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/on\w+="[^"]*"/gi, '')
-    .replace(/on\w+='[^']*'/gi, '');
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove Scripts
+    .replace(/on\w+="[^"]*"/gi, '') // Remove event handlers inline perigosos
+    .replace(/on\w+='[^']*'/gi, '')
+    .replace(/<\/?(html|head|body|meta|title|link)\b[^>]*>/gi, ''); // Remove tags estruturais
   
+  /* 3. Gera um ID único para isolar o CSS deste snippet específico */
+  const uniqueScopeId = 'scoped-doc-' + Date.now() + '-' + Math.floor(Math.random()*1000);
+  
+  /* 4. Constrói o snippet final combinando CSS isolado + HTML limpo envolvido no scope */
+  let finalSnippet = '';
+  
+  /* Se havia CSS extraído, injeta uma tag style temporária DENTRO do corpo do editor */
   if(cssBlocks.length > 0){
     const combinedCss = cssBlocks.join('\n');
-    const styleTag = document.createElement('style');
-    styleTag.innerHTML = combinedCss;
-    document.head.appendChild(styleTag);
+    /* Prefixa TODAS as regras CSS com o seletor único para isolamento total */
+    const scopedCss = combinedCss.split('}').map(rule => {
+      rule = rule.trim();
+      if(!rule) return '';
+      /* Divide regra em selector { properties } */
+      const match = rule.match(/^([^{}]+)\{(.*)$/s);
+      if(match){
+        const selectors = match[1].split(',').map(s => `#${uniqueScopeId} ${s.trim()}`).join(', ');
+        return `${selectors}{${match[2]}}`;
+      }
+      return rule;
+    }).join('\n');
+    
+    finalSnippet += `<style>\n${scopedCss}\n</style>\n`;
   }
   
+  /* Envolve o HTML limpo numa div com o ID único */
+  finalSnippet += `<div id="${uniqueScopeId}" class="isolated-html-block">\n${cleanHtml}\n</div>`;
+  
   focusBody();
-  document.execCommand('insertHTML', false, cleanHtml);
+  document.execCommand('insertHTML', false, finalSnippet);
   markDirty();
   closeCodeModal();
-  toast('Código inserido visualmente.');
+  toast('Código e estilos inseridos visualmente e isolados.');
 };
 
 function insertImage(body){
@@ -1458,7 +1485,7 @@ function setupImageInteractivity(){
 }
 
 function showEmojiPanel(body){
-  const emojis = ['😀','😁','😂','','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','','🤩','','🤨','','😑','😶','','😏','😣','😥','😮','','','😪','😫','','','','','😜','😝','','😒','','😔','😕','','🤑','😲','🙁','','','😟','😤','😢','😭','😦','😧','😨','😩','🤯','','😰','😱','','','😳','','','','','😡','','😷','','','','','🤧','','🥳','','','🤡','','⭐','✅','❌','⚠️','📌','','❤️','🔥','✨','🎖️','','','','',''];
+  const emojis = ['😀','😁','😂','','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','','🤩','','🤨','','😑','😶','','😏','😣','😥','😮','','','😪','😫','','','','','😜','😝','','😒','','😔','😕','','🤑','😲','🙁','','','😟','😤','😢','😭','😦','😧','😨','😩','🤯','','😰','😱','','','😳','','','','','😡','','😷','','','','','🤧','','🥳','','','🤡','','⭐','✅','❌','⚠️','📌','','❤️','','✨','🎖️','','','','',''];
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#fff;border:1px solid #dadce0;border-radius:12px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);max-width:460px;max-height:360px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:2px';
   emojis.forEach(em=>{
