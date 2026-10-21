@@ -1,10 +1,9 @@
-/* ══════════ FAMR • APP.JS COMPLETO v30.1 (Editor GDocs Real | Alertas Sem Fantasma | Logs c/ IP) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v31 (Quote GDocs | Toolbar Robusta | Logs c/ Filtro + IP Total) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
 const statusChip = s => s==='approved' ? '<span class="chip chip-ok">APROVADO</span>' : s==='rejected' ? '<span class="chip chip-no">REPROVADO</span>' : '<span class="chip chip-wait">EM ANÁLISE</span>';
 
-/* Ícones expandidos (~120 válidos) */
 const ICON_OPTIONS = [
   'fa-shield-halved','fa-shield','fa-star','fa-medal','fa-award','fa-crown','fa-flag','fa-bullhorn','fa-gavel','fa-scale-balanced','fa-hand-fist','fa-crosshairs','fa-eye','fa-binoculars','fa-anchor','fa-life-ring','fa-fire-extinguisher','fa-dove','fa-feather-pointed',
   'fa-user-shield','fa-users','fa-user-tie','fa-user-secret','fa-person-military-rifle','fa-user-doctor','fa-user-nurse','fa-person-dress','fa-child','fa-people-group','fa-address-card','fa-id-badge','fa-id-card','fa-signature',
@@ -57,6 +56,7 @@ function ptDetails(d, action){
   else if(action==='DOC_UPDATE')      out.push(`documento "${d.title||'?'}" atualizado`);
   else if(action==='DOC_DEL')         out.push(`documento ${shortId(d.id)} excluído`);
   else if(action==='LOGIN')           out.push(`autenticação de ${d.nick||STATE.profile?.nickname||'usuário'}`);
+  else if(action==='LOGOUT')          out.push(`saída de ${d.nick||STATE.profile?.nickname||'usuário'}`);
   else { Object.entries(d).forEach(([k,v])=>out.push(`${k}: ${typeof v==='object'?JSON.stringify(v):v}`)); }
   return out.join(' · ') || '—';
 }
@@ -141,7 +141,6 @@ function toast(msg, type='ok'){
   setTimeout(() => el.remove(), 4500);
 }
 
-/* ── ALERTA INLINE PERSONALIZADO ── */
 function showAlert(boxId, kind, html){
   const box = document.getElementById(boxId);
   if(!box) return;
@@ -152,7 +151,6 @@ function showAlert(boxId, kind, html){
 }
 function hideAlert(boxId){ const box=document.getElementById(boxId); if(box){ box.classList.add('hidden'); box.innerHTML=''; } }
 
-/* ── MODAL GENÉRICO ── */
 function openModal(title, bodyHTML, footerHTML=''){
   document.getElementById('modal-title').innerHTML = title;
   document.getElementById('modal-body').innerHTML = bodyHTML;
@@ -161,11 +159,9 @@ function openModal(title, bodyHTML, footerHTML=''){
 }
 function closeModal(){
   document.getElementById('modal-root').classList.add('hidden');
-  /* Garante limpeza total — mata qualquer callback pendente */
   if(window._modalResolve){ window._modalResolve(null); window._modalResolve=null; }
 }
 
-/* ── CONFIRMAÇÃO PERSONALIZADA (sem alerta nativo) ── */
 function confirmDlg(msg, opts={}){
   const { title='Confirmar', okText='Confirmar', cancelText='Cancelar', danger=false } = opts;
   return new Promise(res => {
@@ -178,8 +174,6 @@ function confirmDlg(msg, opts={}){
     document.getElementById('_cf-cancel').onclick = ()=>{ window._modalResolve=null; closeModal(); res(false); };
   });
 }
-
-/* ── PROMPT PERSONALIZADO ── */
 function promptDlg(label, def='', opts={}){
   const { title='Entrada', okText='OK', inputType='text', multiline=false } = opts;
   return new Promise(res => {
@@ -667,7 +661,7 @@ window.submitRequest = async function(subtopicId){
 };
 
 /* ═══════════════════════════════════════════════════
-   DOCUMENTOS — WORKSPACE PÁGINA CHEIA (v30.1 REAL)
+   DOCUMENTOS — WORKSPACE PÁGINA CHEIA (v31 Quote GDocs)
    ═══════════════════════════════════════════════════ */
 let _wsDirty=false, _wsSaving=false;
 
@@ -731,7 +725,6 @@ window.delDoc = async id => {
   invalidate('docs:'); closeModal(); toast('Excluído.'); route();
 };
 
-/* ─── WORKSPACE ─── */
 function closeDocWorkspace(){
   const old = document.getElementById('doc-workspace');
   if(old) old.remove();
@@ -787,8 +780,8 @@ window.exitDocWorkspace = async function(){
     if(choice==='save'){
       const did = location.hash.startsWith('#/doc-edit/')?location.hash.split('/')[2]:'';
       await saveCurrentDoc(did);
-      if(_wsSaving) return; /* salvando ainda, espera */
-      if(_wsDirty) return; /* falhou ao salvar, fica */
+      if(_wsSaving) return;
+      if(_wsDirty) return;
     }
   }
   closeDocWorkspace();
@@ -796,20 +789,21 @@ window.exitDocWorkspace = async function(){
   else history.back();
 };
 
-/* ─── TOOLBAR COMPLETA ─── */
+/* ─── TOOLBAR v31 ROBUSTA ─── */
 function initToolbar(){
   const bar = document.getElementById('dw-toolbar');
   const body = document.getElementById('dw-body');
   bar.innerHTML = '';
 
   const COLORS_TEXT = ['#000000','#434343','#666666','#999999','#b7b7b7','#cccccc','#efefef','#ffffff','#ff0000','#ff9900','#ffff00','#00ff00','#00ffff','#0000ff','#9900ff','#ff00ff','#e6b8af','#f4cccc','#fce5cd','#fff2cc','#d9ead3','#d0e3e3','#c9daf8','#cfe2f3','#d9d4e8','#ead1dc','#dd7e6b','#ea9999','#f9cb9c','#ffe599','#b6d7a8','#a2c4c9','#a4c2f4','#9fc5e8','#b4a7d6','#d5a6bd','#cc4125','#e06666','#f6b26b','#ffd966','#93c47d','#76a5af','#6d9eeb','#6fa8dc','#8e7cc3','#a64d79','#a61c00','#b84e4e','#d97a4a','#bf9000','#6aa84f','#4c8ea7','#3c78d8','#3d85c6','#674ea7','#7b2e5a'];
-  const COLORS_QUOTE = ['#c9a227','#1a73e8','#ea4335','#34a853','#fbbc04','#9c27b0','#ff5722','#607d8b','#00bcd4','#4caf50'];
+  const COLORS_HILITE = ['#fce8b2','#d9ead3','#c9daf8','#ead1dc','#fff2cc','#d0e3e3','#f4cccc','#e0e0e0'];
+  const QUOTE_PRESETS = ['#c9a227','#1a73e8','#ea4335','#34a853','#fbbc04','#9c27b0','#ff5722','#607d8b','#00bcd4','#4caf50'];
 
   function mkSelect(opts, cmd, label){
     const sel = document.createElement('select');
     sel.className = 'dw-select'; sel.title = label;
     opts.forEach(([val,text])=>{ const o=document.createElement('option'); o.value=val; o.textContent=text; sel.appendChild(o); });
-    sel.onchange = () => { body.focus(); execCmd(cmd, sel.value); };
+    sel.onchange = () => { body.focus(); safeExec(cmd, sel.value); };
     bar.appendChild(sel); return sel;
   }
   function mkBtn(label, icon, cmd, val=null){
@@ -820,8 +814,8 @@ function initToolbar(){
     b.onclick = () => {
       body.focus();
       if(cmd==='custom'){ val(body); }
-      else if(cmd==='formatBlock'){ execCmd('formatBlock', val); }
-      else { execCmd(cmd, (typeof val==='string')?val:null); }
+      else if(cmd==='formatBlock'){ safeExec('formatBlock', val); }
+      else { safeExec(cmd, (typeof val==='string')?val:null); }
     };
     bar.appendChild(b); return b;
   }
@@ -839,7 +833,7 @@ function initToolbar(){
     palette.forEach(c=>{
       const cb = document.createElement('button');
       cb.style.background=c; cb.title=c;
-      cb.onclick = () => { body.focus(); execCmd(cmd, c); pop.classList.remove('open'); markDirty(); syncState(); };
+      cb.onclick = () => { body.focus(); safeExec(cmd, c); pop.classList.remove('open'); };
       grid.appendChild(cb);
     });
     pop.appendChild(grid);
@@ -859,7 +853,7 @@ function initToolbar(){
   mkBtn('Sublinhado','fa-underline','underline');
   mkBtn('Tachado','fa-strikethrough','strikeThrough');
   mkColorPicker('Cor do texto','foreColor',COLORS_TEXT);
-  mkColorPicker('Realce','hiliteColor',['#fce8b2','#d9ead3','#c9daf8','#ead1dc','#fff2cc','#d0e3e3','#f4cccc','#e0e0e0']);
+  mkColorPicker('Realce','hiliteColor',COLORS_HILITE);
   mkSep();
 
   /* Alinhamento */
@@ -882,18 +876,50 @@ function initToolbar(){
   mkBtn('Título 3','fa-heading','','formatBlock','<h3>');
   mkBtn('Parágrafo','fa-paragraph','','formatBlock','<p>');
 
-  /* Citação com cor */
-  const quoteWrap = document.createElement('span');
-  quoteWrap.style.display='inline-flex'; quoteWrap.style.alignItems='center'; quoteWrap.style.gap='2px';
+  /* ── BOTÃO QUOTE ESTILO GOOGLE DOCS ── */
+  const quoteWrap = document.createElement('div');
+  quoteWrap.style.position='relative'; quoteWrap.style.display='inline-block';
   const quoteBtn = document.createElement('button');
-  quoteBtn.type='button'; quoteBtn.className='dw-tool'; quoteBtn.title='Citação';
-  quoteBtn.innerHTML='<i class="fas fa-quote-left"></i>';
-  quoteBtn.onclick = () => { body.focus(); execCmd('formatBlock','blockquote'); };
-  const quoteColorSel = document.createElement('select');
-  quoteColorSel.className='dw-select'; quoteColorSel.title='Cor da citação'; quoteColorSel.style.width='42px';
-  COLORS_QUOTE.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent='■'; o.style.color=c; quoteColorSel.appendChild(o); });
-  quoteColorSel.onchange = () => { applyQuoteColor(quoteColorSel.value); };
-  quoteWrap.appendChild(quoteBtn); quoteWrap.appendChild(quoteColorSel);
+  quoteBtn.type='button'; quoteBtn.className='dw-quote-btn'; quoteBtn.title='Citação (bloco com cor)';
+  quoteBtn.innerHTML = '<i class="fas fa-quote-left"></i><i class="fas fa-caret-down" style="font-size:9px;opacity:.6"></i>';
+  
+  const quotePop = document.createElement('div');
+  quotePop.className='dw-quote-pop';
+  const swatchGrid = document.createElement('div');
+  swatchGrid.className='dw-quote-swatches';
+  QUOTE_PRESETS.forEach(c=>{
+    const sw = document.createElement('button');
+    sw.type='button'; sw.className='dw-quote-swatch'; sw.style.background=c; sw.title=c;
+    sw.onclick = () => { 
+      body.focus(); 
+      /* Primeiro aplica formatBlock blockquote */
+      safeExec('formatBlock','<blockquote>');
+      /* Depois colore a barra lateral */
+      setTimeout(()=>applyQuoteColor(c), 10);
+      quotePop.classList.remove('open');
+    };
+    swatchGrid.appendChild(sw);
+  });
+  const customRow = document.createElement('div');
+  customRow.className='dw-quote-custom';
+  customRow.innerHTML = '<span>Personalizada:</span><input type="color" value="#c9a227">';
+  const customInput = customRow.querySelector('input');
+  customInput.onchange = () => {
+    body.focus();
+    safeExec('formatBlock','<blockquote>');
+    setTimeout(()=>applyQuoteColor(customInput.value), 10);
+    quotePop.classList.remove('open');
+  };
+  quotePop.appendChild(swatchGrid);
+  quotePop.appendChild(customRow);
+  
+  quoteBtn.onclick = (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.dw-quote-pop.open,.dw-color-pop.open').forEach(p=>p.classList.remove('open'));
+    quotePop.classList.toggle('open');
+  };
+  quoteWrap.appendChild(quoteBtn);
+  quoteWrap.appendChild(quotePop);
   bar.appendChild(quoteWrap);
   mkSep();
 
@@ -905,7 +931,7 @@ function initToolbar(){
   /* Link/Imagem/Emoji */
   mkBtn('Link','fa-link','','custom', async ()=>{
     const url = await promptDlg('URL do link','', { title:'Inserir link', okText:'Aplicar' });
-    if(url){ body.focus(); execCmd('createLink', url); markDirty(); }
+    if(url){ body.focus(); safeExec('createLink', url); }
   });
   mkBtn('Remover link','fa-link-slash','unlink');
   mkBtn('Imagem','fa-image','','custom',()=>insertImage(body));
@@ -919,26 +945,57 @@ function initToolbar(){
   mkBtn('Desfazer','fa-undo','undo');
   mkBtn('Refazer','fa-repeat','redo');
 
-  /* Fecha popups de cor ao clicar fora */
   document.addEventListener('click', e => {
-    if(!e.target.closest('.dw-color-btn')&&!e.target.closest('.dw-color-pop')){
-      document.querySelectorAll('.dw-color-pop.open').forEach(p=>p.classList.remove('open'));
+    if(!e.target.closest('.dw-color-btn')&&!e.target.closest('.dw-color-pop')&&!e.target.closest('.dw-quote-btn')&&!e.target.closest('.dw-quote-pop')){
+      document.querySelectorAll('.dw-color-pop.open,.dw-quote-pop.open').forEach(p=>p.classList.remove('open'));
     }
   });
 }
 
-/* Executa comando com fallback seguro */
-function execCmd(cmd, val){
+/* Executa comando com fallback robusto */
+function safeExec(cmd, val){
   try{
     if(cmd==='formatBlock' && val){
-      /* Chrome precisa de tags sem <> em alguns casos */
-      const tag = val.replace(/[<>]/g,'');
-      document.execCommand('formatBlock', false, '<'+tag+'>');
+      /* Chrome/Firefox aceitam ambos formatos; tentamos primeiro com <> */
+      let ok = false;
+      try{ ok = document.execCommand('formatBlock', false, val); }catch(e){}
+      if(!ok){
+        /* fallback: remove <> e tenta novamente */
+        const bare = val.replace(/[<>]/g,'');
+        try{ ok = document.execCommand('formatBlock', false, bare); }catch(e){}
+      }
+      if(!ok){
+        /* último recurso: envolve manualmente a seleção */
+        manuallyWrapBlock(val.replace(/[<>]/g,''));
+      }
     } else {
       document.execCommand(cmd, false, val||null);
     }
   }catch(e){ console.warn('[FAMR] execCmd', cmd, e); }
   markDirty(); syncState();
+}
+
+/* Envelopa manualmente a linha atual num tag de bloco (fallback) */
+function manuallyWrapBlock(tag){
+  const sel = window.getSelection();
+  if(!sel.rangeCount) return;
+  const range = sel.getRangeAt(0);
+  let node = range.commonAncestorContainer;
+  while(node && node.nodeType!==1) node = node.parentNode;
+  if(!node) return;
+  const blockTag = tag.toUpperCase();
+  const currentBlock = node.closest(blockTag+',P,DIV,H1,H2,H3,BLOCKQUOTE');
+  if(currentBlock && currentBlock.tagName===blockTag) return; /* já está no formato certo */
+  const newEl = document.createElement(tag);
+  newEl.innerHTML = currentBlock ? currentBlock.innerHTML : node.innerHTML;
+  if(currentBlock){ currentBlock.replaceWith(newEl); }
+  else { node.replaceWith(newEl); }
+  /* reposiciona cursor */
+  const r = document.createRange();
+  r.selectNodeContents(newEl);
+  r.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(r);
 }
 
 function applyQuoteColor(color){
@@ -948,7 +1005,6 @@ function applyQuoteColor(color){
   if(node) node = node.nodeType===3 ? node.parentElement : node;
   const bq = node?.closest('blockquote');
   if(bq){ bq.style.borderLeftColor = color; markDirty(); return; }
-  /* Sem citação ativa → aplica em todas */
   body.querySelectorAll('blockquote').forEach(el => el.style.borderLeftColor = color);
   markDirty();
 }
@@ -961,11 +1017,19 @@ function syncState(){
     if(!cmd || cmd==='custom' || cmd==='formatBlock') return;
     try{ b.classList.toggle('is-active', document.queryCommandState(cmd)); }catch(e){}
   });
+  /* Marca quote como ativo se estamos dentro de blockquote */
+  const qb = bar.querySelector('.dw-quote-btn');
+  if(qb){
+    const sel = window.getSelection();
+    let node = sel?.anchorNode;
+    if(node) node = node.nodeType===3 ? node.parentElement : node;
+    qb.classList.toggle('is-active', !!(node && node.closest('blockquote')));
+  }
 }
 function setStatus(txt){ const el=document.getElementById('dw-status'); if(el) el.textContent=txt; }
 function markDirty(){ _wsDirty=true; setStatus('não salvo'); }
 
-/* ─── INSERIR IMAGEM (upload + wrapper interativo) ─── */
+/* ─── INSERIR IMAGEM ─── */
 function insertImage(body){
   const inp = document.createElement('input');
   inp.type='file'; inp.accept='image/*';
@@ -977,7 +1041,6 @@ function insertImage(body){
     if(error){ setStatus('falha'); return toast('Upload falhou: '+error.message,'err'); }
     const { data:{ publicUrl } } = supabase.storage.from('docs-media').getPublicUrl(path);
     body.focus();
-    /* Insere HTML com wrapper */
     const wrapper = `<div class="img-wrapper" contenteditable="false" data-src="${publicUrl}">
       <div class="img-toolbar">
         <button title="Centralizar" onclick="alignImg(this.parentNode.parentNode,'center')"><i class="fas fa-align-center"></i></button>
@@ -999,7 +1062,6 @@ function insertImage(body){
   inp.click();
 }
 
-/* Funções globais para os botões do wrapper de imagem */
 window.alignImg = function(wrapper, align){
   wrapper.style.float = align==='center'?'none':align;
   wrapper.style.display = align==='center'?'block':'inline-block';
@@ -1017,16 +1079,13 @@ window.resizeImg = function(wrapper, delta){
   }
   markDirty();
 };
-window.removeImg = function(wrapper){
-  wrapper.remove(); markDirty();
-};
+window.removeImg = function(wrapper){ wrapper.remove(); markDirty(); };
 
-/* ─── INTERATIVIDADE DAS IMAGENS (selecionar, redimensionar, mover) ─── */
 function setupImageInteractivity(){
   const canvas = document.getElementById('dw-canvas');
   if(!canvas) return;
   let selectedWrapper = null;
-  let dragHandle = null, startX=0, startY=0, startW=0, startH=0;
+  let dragHandle = null, startX=0, startY=0, startW=0;
 
   canvas.addEventListener('mousedown', e => {
     const handle = e.target.closest('.img-handle');
@@ -1036,15 +1095,11 @@ function setupImageInteractivity(){
       dragHandle = handle.className.replace('img-handle ','').trim();
       startX = e.clientX; startY = e.clientY;
       const img = wrapper.querySelector('img');
-      startW = img.offsetWidth; startH = img.offsetHeight;
+      startW = img.offsetWidth;
       selectWrapper(wrapper);
       return;
     }
-    if(wrapper){
-      e.preventDefault();
-      selectWrapper(wrapper);
-      return;
-    }
+    if(wrapper){ e.preventDefault(); selectWrapper(wrapper); return; }
     deselectAll();
   });
 
@@ -1052,7 +1107,6 @@ function setupImageInteractivity(){
     if(!dragHandle || !selectedWrapper) return;
     const img = selectedWrapper.querySelector('img');
     const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
     if(dragHandle.includes('e') || dragHandle==='se' || dragHandle==='ne'){
       img.style.width = Math.max(40, startW+dx)+'px';
       img.style.height = 'auto';
@@ -1061,27 +1115,13 @@ function setupImageInteractivity(){
       img.style.width = Math.max(40, startW-dx)+'px';
       img.style.height = 'auto';
     }
-    if(dragHandle==='se' || dragHandle==='sw'){
-      /* proporção livre apenas largura */
-    }
   });
 
-  document.addEventListener('mouseup', () => {
-    if(dragHandle){ markDirty(); }
-    dragHandle = null;
-  });
+  document.addEventListener('mouseup', () => { if(dragHandle){ markDirty(); } dragHandle = null; });
 
-  function selectWrapper(w){
-    deselectAll();
-    selectedWrapper = w;
-    w.classList.add('selected');
-  }
-  function deselectAll(){
-    if(selectedWrapper) selectedWrapper.classList.remove('selected');
-    selectedWrapper = null;
-  }
+  function selectWrapper(w){ deselectAll(); selectedWrapper = w; w.classList.add('selected'); }
+  function deselectAll(){ if(selectedWrapper) selectedWrapper.classList.remove('selected'); selectedWrapper = null; }
 
-  /* Delete remove imagem selecionada */
   document.addEventListener('keydown', e => {
     if((e.key==='Delete'||e.key==='Backspace') && selectedWrapper){
       e.preventDefault();
@@ -1092,9 +1132,8 @@ function setupImageInteractivity(){
   });
 }
 
-/* ─── EMOJI PANEL ─── */
 function showEmojiPanel(body){
-  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','🤗','🤩','🤔','🤨','😐','😑','😶','🙄','😏','😣','😥','😮','🤐','','😪','','🥱','😴','😌','😛','😜','😝','🤤','😒','😓','😔','😕','🙃','🤑','😲','🙁','','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','🥵','🥶','😳','🤪','','🥴','','😡','🤬','😷','🤒','🤕','🤢','🤮','🤧','😇','🥳','🥸','🤠','🤡','🥹','⭐','✅','❌','️','📌','💼','❤️','🔥','✨','🎖️','🏅','','🥈','','🏆','⚽','🏀','🏈','⚾','','🏐','🎱','','🏸','','🎯','🎮','🎲','♟️','','🎬','🎤','🎧','🎼','🎹','🥁','','🎺','','🪕','','📚','','📝','✏️','','📌','📍','📒','🗂️','','📂','📅','📆','📇','📈','📉','📊','📋','📌','📍','📎','📏','📐','📑','📒','📓','📔','📕','📖','','📘','','📚','','📜','','📞','','📠','📡','🔋','','💡','','🕯️','🗑️','🛢️','','💵','💴','💶','💷','💰','💳','💎','⚖️','🔧','','⚒️','🛠️','⛏️','🔩','️','🧱','⛓️','🧲','🔫','💣','🧨','🪓','','🗡️','⚔️','🛡️','🚬','⚰️','🪦','️','','🔮','','🧿','','⚗️','🔭','🔬','🕳️','🩹','🩺','💊','💉','🩸','🧬','🦠','🧫','🧪','🌡️','🧹','🪠','🧺','🧻','🚽','','🚿','','🛀','','🪥','🪒','🧽','🪣','','🛎️','','🗝️','🚪','','🛋️','️','🛌','🧸','','🖼️','','🪟','🛍️','🛒','','🎈','','🎀','🪄','🪅','🎊','🎉','🎎','🏆','🎖️','🏅','','🥈','','⚽','','🏈','','🥎','🎾','🏐','🏉','🥏','🎱','🪀','','🏸','🏒','🏑','🥍','','🪃','🥅','','🪁','🏹','🎣','','🥊','🥋','🎽','🛹','🛼','🛷','⛸️','🥌','🎿','⛷️','🏂','🪂','🏋️','🤼','🤸','⛹️','','🤾','🏌️','🏇','🧘','🏄','🏊','🤽','🚣','🧗','🚵','🚴','🏆'];
+  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','🤗','🤩','🤔','🤨','😐','😑','😶','🙄','😏','😣','😥','😮','','','😪','','','😴','😌','😛','😜','😝','','😒','😓','😔','😕','🙃','🤑','😲','🙁','','','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','🥵','🥶','😳','🤪','','','','😡','','😷','🤒','🤕','','🤮','','😇','🥳','🥸','🤠','🤡','🥹','⭐','✅','❌','️','📌','','❤️','🔥','✨','🎖️','🏅','','🥈','','🏆'];
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#fff;border:1px solid #dadce0;border-radius:12px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);max-width:460px;max-height:360px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:2px';
   emojis.forEach(em=>{
@@ -1114,7 +1153,6 @@ function showEmojiPanel(body){
   document.body.appendChild(wrap);
 }
 
-/* ─── EVENTOS ─── */
 function wireEvents(){
   const body = document.getElementById('dw-body');
   body.addEventListener('keyup', syncState);
@@ -1231,7 +1269,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ══════════════════ PAINEL ADMIN ══════════════════ */
-const A = { tab:'usuarios', page:0, q:'' };
+const A = { tab:'usuarios', page:0, q:'', logFilters:{ user:'', action:'', ip:'', dateFrom:'', dateTo:'', search:'' } };
 const ADMIN_TABS = [['usuarios','fa-users','Usuários'],['grupos','fa-layer-group','Grupos'],['topicos','fa-sitemap','Tópicos'],['protocolos','fa-inbox','Protocolos'],['logs','fa-scroll','Logs'],['config','fa-sliders','Config']];
 async function renderAdmin(c){
   if(!isAdmin()){ c.innerHTML = `<div class="card card-body text-center py-16"><i class="fas fa-lock text-3xl text-red-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso negado</h2></div>`; return; }
@@ -1591,19 +1629,49 @@ window.review = async (id, status) => {
 };
 window.doReview = async (id, status, note) => { const { error } = await supabase.rpc('review_request', { req_id: id, new_status: status, note: note || null }); if(error) return toast('Erro: '+error.message,'err'); await famrLog('REVIEW_REQUEST', { req_id:id, new_status:status, note }); invalidate('home:'); closeModal(); toast(status==='approved'?'Aprovado!':'Reprovado.'); tabProtocolos(document.getElementById('admin-body')); };
 
+/* ══════════ LOGS COM FILTROS AVANÇADOS (v31) ══════════ */
 async function tabLogs(b){
+  const f = A.logFilters;
   const from = A.page*30;
-  const { data } = await supabase.from('logs').select('created_at,action,actor_name,details,ip').order('created_at',{ascending:false}).range(from, from+29);
-  b.innerHTML = `<div class="card fade-up"><div class="cat-head"><i class="fas fa-scroll"></i> Logs</div>
-  <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Data</th><th>Ação</th><th>Autor</th><th>Detalhes</th><th>IP</th></tr></thead><tbody>
-  ${(data||[]).map(l => `<tr>
-    <td class="text-xs text-muted whitespace-nowrap">${fmtDate(l.created_at)}</td>
-    <td><span class="chip ${l.action==='LOGIN'?'chip-ok':(l.action.includes('DEL')||l.action.includes('BAN'))?'chip-no':'chip-wait'}">${esc(ptAction(l.action))}</span></td>
-    <td class="text-xs font-bold">${esc(l.actor_name||'sistema')}</td>
-    <td class="text-[11px] text-muted max-w-md truncate" title="${esc(JSON.stringify(l.details))}">${esc(ptDetails(l.details, l.action))}</td>
-    <td class="text-xs font-mono text-muted">${esc(l.ip || '—')}</td>
-  </tr>`).join('')}
-  </tbody></table></div><div class="p-3 flex justify-center gap-2">${A.page>0?`<button class="btn btn-outline btn-sm" onclick="A.page--;tabLogs(document.getElementById('admin-body'))">←</button>`:''}${(data||[]).length===30?`<button class="btn btn-outline btn-sm" onclick="A.page++;tabLogs(document.getElementById('admin-body'))">→</button>`:''}</div></div>`;
+  let query = supabase.from('logs').select('created_at,action,actor_name,details,ip', { count:'exact' }).order('created_at',{ascending:false}).range(from, from+29);
+  if(f.search) query = query.or(`actor_name.ilike.%${f.search}%,details->>title.ilike.%${f.search}%,details->>nick.ilike.%${f.search}%`);
+  if(f.user) query = query.ilike('actor_name', `%${f.user}%`);
+  if(f.action) query = query.eq('action', f.action);
+  if(f.ip) query = query.ilike('ip', `%${f.ip}%`);
+  if(f.dateFrom) query = query.gte('created_at', f.dateFrom+'T00:00:00');
+  if(f.dateTo) query = query.lte('created_at', f.dateTo+'T23:59:59');
+  const { data, count } = await query;
+  const totalPages = Math.ceil((count||0)/30);
+  const actions = Object.keys(ACTION_PT);
+  b.innerHTML = `<div class="card fade-up">
+    <div class="cat-head"><i class="fas fa-scroll"></i> Logs de ações <span class="chip chip-neutral ml-2 normal-case">${count??0} registros</span></div>
+    <div class="log-filters">
+      <input placeholder="Busca livre (nome/título/nick)" value="${esc(f.search)}" onchange="A.logFilters.search=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
+      <input placeholder="Usuário" value="${esc(f.user)}" onchange="A.logFilters.user=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
+      <select onchange="A.logFilters.action=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
+        <option value="">Todas ações</option>
+        ${actions.map(a=>`<option value="${a}" ${f.action===a?'selected':''}>${ACTION_PT[a]}</option>`).join('')}
+      </select>
+      <input placeholder="IP parcial" value="${esc(f.ip)}" onchange="A.logFilters.ip=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
+      <input type="date" value="${esc(f.dateFrom)}" onchange="A.logFilters.dateFrom=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
+      <input type="date" value="${esc(f.dateTo)}" onchange="A.logFilters.dateTo=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
+      <button class="log-clear-btn" onclick="A.logFilters={user:'',action:'',ip:'',dateFrom:'',dateTo:'',search:''};A.page=0;tabLogs(document.getElementById('admin-body'))"><i class="fas fa-xmark mr-1"></i>Limpar</button>
+    </div>
+    <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Data/Hora</th><th>Ação</th><th>Autor</th><th>Detalhes</th><th>IP</th></tr></thead><tbody>
+    ${(data||[]).map(l => `<tr>
+      <td class="text-xs text-muted whitespace-nowrap">${fmtDate(l.created_at)}</td>
+      <td><span class="chip ${l.action==='LOGIN'?'chip-ok':(l.action.includes('DEL')||l.action.includes('BAN'))?'chip-no':'chip-wait'}">${esc(ptAction(l.action))}</span></td>
+      <td class="text-xs font-bold">${esc(l.actor_name||'sistema')}</td>
+      <td class="text-[11px] text-muted max-w-md truncate" title="${esc(JSON.stringify(l.details))}">${esc(ptDetails(l.details, l.action))}</td>
+      <td class="text-xs font-mono text-muted">${esc(l.ip || '—')}</td>
+    </tr>`).join('') || '<tr><td colspan="5" class="text-center text-muted py-8">Nenhum log encontrado com esses filtros.</td></tr>'}
+    </tbody></table></div>
+    <div class="p-3 flex justify-center gap-2 items-center">
+      ${A.page>0?`<button class="btn btn-outline btn-sm" onclick="A.page--;tabLogs(document.getElementById('admin-body'))">← Anterior</button>`:''}
+      <span class="text-xs text-muted">Página ${A.page+1}${totalPages>1?` de ${totalPages}`:''}</span>
+      ${(data||[]).length===30?`<button class="btn btn-outline btn-sm" onclick="A.page++;tabLogs(document.getElementById('admin-body'))">Próxima →</button>`:''}
+    </div>
+  </div>`;
 }
 async function tabConfig(b){
   const m = STATE.settings.maintenance || { enabled:false, message:'' }; const a = STATE.settings.announcement || { text:'' };
@@ -1622,18 +1690,24 @@ window.saveAnn = async () => { const value = { text: document.getElementById('c-
 
 function sanitizeHtml(h){ return String(h||'').replace(/<script[\s\S]*?<\/script>/gi,'').replace(/on\w+="[^"]*"/gi,'').replace(/on\w+='[^']*'/gi,''); }
 
-/* ══════════ famrLog: Edge Function com fallback ══════════ */
+/* ══════════ famrLog SEMPRE ENVIA NICK (garante IP em login/logout) ══════════ */
 async function famrLog(action, details={}){
+  /* Anexa nick automaticamente se disponível */
+  const enriched = { ...details };
+  if(!enriched.nick){
+    enriched.nick = STATE.profile?.nickname || details.nick || null;
+  }
   try{
     const fnUrl = CONFIG.supabaseUrl + '/functions/v1/log-action';
     const { data:{ session } } = await supabase.auth.getSession();
     const headers = { 'Content-Type':'application/json', 'apikey': CONFIG.supabaseAnonKey };
     if(session?.access_token) headers['Authorization'] = 'Bearer ' + session.access_token;
-    const res = await fetch(fnUrl, { method:'POST', headers, body: JSON.stringify({ action, details }) });
+    const res = await fetch(fnUrl, { method:'POST', headers, body: JSON.stringify({ action, details: enriched, nick: enriched.nick }) });
     if(res.ok) return;
     throw new Error('HTTP '+res.status);
   }catch(e){
-    try{ await supabase.rpc('log_action', { action, details }); }catch(_){}
+    console.warn('[FAMR] log-action falhou, tentando rpc:', e.message);
+    try{ await supabase.rpc('log_action', { action, details: enriched }); }catch(_){}
   }
 }
 
