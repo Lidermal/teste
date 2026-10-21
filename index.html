@@ -9,7 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=28">
+<link rel="stylesheet" href="style.css?v=29">
 <link rel="icon" type="image/png" href="famrlogo.png">
 <script>
 tailwind.config = { theme: { extend: {
@@ -39,7 +39,7 @@ tailwind.config = { theme: { extend: {
       <p class="text-xs font-bold tracking-[0.3em] uppercase text-gold-600">Acesso restrito</p>
       <h2 class="font-display text-3xl font-extrabold mt-2">Entrar no sistema</h2>
       <p class="text-sm text-muted mt-2">Identifique-se com seu nickname Habbo para acessar o quartel.</p>
-      <div id="login-alert" class="hidden mt-4 rounded-lg border px-4 py-3 text-sm font-semibold"></div>
+      <div id="login-alert" class="hidden mt-4 rounded-lg border px-4 py-3 text-sm font-semibold transition-all duration-300"></div>
       <form id="form-login" class="mt-6 space-y-4">
         <label class="field"><span>Nickname Habbo</span>
           <div class="input-wrap"><i class="fas fa-user"></i><input id="login-nick" class="input" placeholder="Ex: Chefia de Polícia" autocomplete="username" required></div>
@@ -47,7 +47,9 @@ tailwind.config = { theme: { extend: {
         <label class="field"><span>Senha</span>
           <div class="input-wrap"><i class="fas fa-lock"></i><input id="login-pass" type="password" class="input" placeholder="••••••••" autocomplete="current-password" required></div>
         </label>
-        <button class="btn btn-primary w-full justify-center" type="submit"><i class="fas fa-right-to-bracket"></i> ACESSAR O QUARTEL</button>
+        <button id="btn-login" class="btn btn-primary w-full justify-center" type="submit">
+          <i id="btn-login-icon" class="fas fa-right-to-bracket"></i> <span id="btn-login-text">ACESSAR O QUARTEL</span>
+        </button>
       </form>
       <div class="flex items-center justify-between mt-6 text-sm font-semibold">
         <a href="#" id="link-forgot" class="text-muted hover:text-famr-700 transition-colors"><i class="fas fa-key mr-1 text-gold-500"></i>Esqueci a senha</a>
@@ -77,7 +79,7 @@ tailwind.config = { theme: { extend: {
         <label class="field"><span>Nickname Habbo</span><div class="input-wrap"><i class="fas fa-user"></i><input id="reg-nick" class="input" required minlength="3"></div></label>
         <label class="field"><span>E-mail</span><div class="input-wrap"><i class="fas fa-envelope"></i><input id="reg-email" type="email" class="input" required></div></label>
         <label class="field"><span>Senha</span><div class="input-wrap"><i class="fas fa-lock"></i><input id="reg-pass" type="password" class="input" required minlength="6"></div></label>
-        <button class="btn btn-gold w-full justify-center" type="submit"><i class="fas fa-file-signature"></i> CONFIRMAR ALISTAMENTO</button>
+        <button id="btn-reg" class="btn btn-gold w-full justify-center" type="submit"><i class="fas fa-file-signature"></i> CONFIRMAR ALISTAMENTO</button>
       </form>
       <div id="register-success" class="hidden mt-4 rounded-xl border border-famr-500/40 bg-famr-100 p-4 text-sm text-famr-800">
         <i class="fas fa-circle-check mr-1"></i> <b>Registro realizado com sucesso!</b><br>
@@ -106,7 +108,7 @@ tailwind.config = { theme: { extend: {
       <p class="text-sm text-muted mt-2">Informe seu nickname. Enviaremos o link de redefinição ao e-mail cadastrado.</p>
       <form id="form-forgot" class="mt-6 space-y-4">
         <label class="field"><span>Nickname Habbo</span><div class="input-wrap"><i class="fas fa-user"></i><input id="forgot-nick" class="input" required></div></label>
-        <button class="btn btn-primary w-full justify-center" type="submit"><i class="fas fa-paper-plane"></i> ENVIAR LINK DE REDEFINIÇÃO</button>
+        <button id="btn-forgot" class="btn btn-primary w-full justify-center" type="submit"><i class="fas fa-paper-plane"></i> ENVIAR LINK DE REDEFINIÇÃO</button>
       </form>
       <div id="forgot-ok" class="hidden mt-4 rounded-xl border border-famr-500/40 bg-famr-100 p-4 text-sm text-famr-800">
         <i class="fas fa-envelope-circle-check mr-1"></i> Link enviado! Verifique sua caixa de entrada (e o spam).
@@ -250,8 +252,7 @@ window.addEventListener('error',function(e){console.error('[FAMR]',e.message);})
 })();
 </script>
 
-<!-- SEM scripts externos de editor agora — o editor é nativo no app.js -->
-<script src="app.js?v=28.1"></script>
+<script src="app.js?v=29"></script>
 <script src="auth.js"></script>
 </body>
 </html>
