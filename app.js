@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v33 (Editor Robusto | Quote Limpa | Colar Code) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v34 (Fix Colar Code | Imagem Flutuante | Listas | Links) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -661,7 +661,7 @@ window.submitRequest = async function(subtopicId){
 };
 
 /* ═══════════════════════════════════════════════════
-   DOCUMENTOS — WORKSPACE PÁGINA CHEIA (v33 ROBUSTO)
+   DOCUMENTOS — WORKSPACE PÁGINA CHEIA (v34 FIXES)
    ═══════════════════════════════════════════════════ */
 let _wsDirty=false, _wsSaving=false;
 
@@ -867,7 +867,7 @@ function manuallyApplyTag(tagName){
   }
 }
 
-/* ─── TOOLBAR v33 REESCRITA (FUNCIONAL 100%) ─── */
+/* ─── TOOLBAR v34 REESCRITA (FUNCIONAL 100%) ─── */
 function initToolbar(){
   const bar = document.getElementById('dw-toolbar');
   const body = document.getElementById('dw-body');
@@ -967,7 +967,7 @@ function initToolbar(){
   addBtn('Justificado','fa-align-justify', () => execSafe('justifyFull'), () => document.queryCommandState('justifyFull'));
   addSep();
 
-  /* Listas */
+  /* Listas - CORRIGIDO PARA USAR execSafe */
   addBtn('Marcadores','fa-list-ul', () => execSafe('insertUnorderedList'), () => document.queryCommandState('insertUnorderedList'));
   addBtn('Numerada','fa-list-ol', () => execSafe('insertOrderedList'), () => document.queryCommandState('insertOrderedList'));
   addBtn('-Recuo','fa-outdent', () => execSafe('outdent'));
@@ -1011,10 +1011,15 @@ function initToolbar(){
   addBtn('Superscrito','fa-superscript', () => execSafe('superscript'));
   addSep();
 
-  /* Link / Remover Link */
+  /* Link / Remover Link - CORRIGIDO FLUXO ASÍNCRONO */
   addBtn('Inserir Link','fa-link', async () => {
     const url = await promptDlg('URL do link','', { title:'Inserir Link', okText:'Aplicar' });
-    if(url){ execSafe('createLink', url); }
+    if(url){ 
+      focusBody();
+      /* Aplica o link na seleção atual */
+      document.execCommand('createLink', false, url);
+      markDirty();
+    }
   });
   addBtn('Remover Link','fa-link-slash', () => execSafe('unlink'));
   addSep();
@@ -1027,7 +1032,7 @@ function initToolbar(){
   addBtn('Emoji','fa-face-smile', () => showEmojiPanel(getBody()));
   addSep();
 
-  /* 🆕 COLAR HTML/CSS */
+  /* 🆕 COLAR HTML/CSS - MELHORADO */
   addBtn('Colar Código','fa-code', () => openCodeModal());
   addSep();
 
@@ -1063,7 +1068,7 @@ function syncState(){
 
 /* ─── FUNÇÕES AUXILIARES DO EDITOR ─── */
 
-/* Modal de Colar Código HTML/CSS */
+/* Modal de Colar Código HTML/CSS - AGORA INJETA STYLE TEMPORÁRIO */
 function openCodeModal(){
   /* Remove se já existir */
   const old = document.getElementById('code-modal-root');
@@ -1080,7 +1085,7 @@ function openCodeModal(){
       </div>
       <div class="cm-body">
         <textarea id="html-input-area" class="cm-textarea" placeholder="Cole seu código HTML ou CSS aqui...&#10;&#10;<div style='color:red'>Olá Mundo!</div>&#10;.minha-classe { background: blue; }"></textarea>
-        <p class="text-xs text-muted mt-2"><i class="fas fa-info-circle"></i> O código será sanitizado e inserido diretamente no documento.</p>
+        <p class="text-xs text-muted mt-2"><i class="fas fa-info-circle"></i> O código será sanitizado e inserido diretamente no documento. Estilos CSS serão aplicados localmente.</p>
       </div>
       <div class="cm-footer">
         <button class="btn btn-outline btn-sm" onclick="closeCodeModal()">Cancelar</button>
@@ -1103,20 +1108,42 @@ window.applyCodeToDoc = function(){
   const input = document.getElementById('html-input-area');
   if(!input || !input.value.trim()) return closeCodeModal();
   
-  /* Sanitização básica (remove scripts perigosos mas mantém estilos/tags) */
-  let cleanHtml = input.value
+  let rawContent = input.value;
+  
+  /* Separa CSS (blocos <style>) do resto do HTML */
+  let cssBlocks = [];
+  let htmlPart = rawContent.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (match, p1) => {
+    cssBlocks.push(p1);
+    return ''; /* Remove do HTML principal */
+  });
+  
+  /* Sanitização básica do HTML restante */
+  let cleanHtml = htmlPart
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove Scripts
     .replace(/on\w+="[^"]*"/gi, '') // Remove event handlers inline
     .replace(/on\w+='[^']*'/gi, '');
   
+  /* Constrói o snippet final */
+  let finalSnippet = '';
+  
+  /* Se havia CSS, injeta uma tag style temporária DENTRO do corpo do editor */
+  if(cssBlocks.length > 0){
+    const combinedCss = cssBlocks.join('\n');
+    /* Usa um ID único para evitar conflitos futuros */
+    const styleId = 'temp-style-' + Date.now();
+    finalSnippet += `<style id="${styleId}">\n${combinedCss}\n</style>\n`;
+  }
+  
+  finalSnippet += cleanHtml;
+  
   focusBody();
-  document.execCommand('insertHTML', false, cleanHtml);
+  document.execCommand('insertHTML', false, finalSnippet);
   markDirty();
   closeCodeModal();
-  toast('Código inserido com sucesso.');
+  toast('Código e estilos inseridos.');
 };
 
-/* Inserção de Imagem (Já existente, mantida aqui por segurança) */
+/* Inserção de Imagem (Mantida, mas wrapper melhorado para flutuantes) */
 function insertImage(body){
   const inp = document.createElement('input');
   inp.type='file'; inp.accept='image/*';
@@ -1129,18 +1156,23 @@ function insertImage(body){
     const { data:{ publicUrl } } = supabase.storage.from('docs-media').getPublicUrl(path);
     
     focusBody();
-    /* Wrapper Interativo */
-    const wrapper = `<div class="img-wrapper" contenteditable="false" data-src="${publicUrl}">
+    /* Wrapper Interativo com Controles de Posição */
+    const wrapper = `<div class="img-wrapper" contenteditable="false" data-src="${publicUrl}" style="position:relative;">
       <div class="img-toolbar">
-        <button title="Centralizar" onclick="alignImg(this.parentNode.parentNode,'center')"><i class="fas fa-align-center"></i></button>
-        <button title="Esquerda" onclick="alignImg(this.parentNode.parentNode,'left')"><i class="fas fa-align-left"></i></button>
-        <button title="Direita" onclick="alignImg(this.parentNode.parentNode,'right')"><i class="fas fa-align-right"></i></button>
+        <!-- Posição Horizontal -->
+        <button title="Esquerda" onclick="setImgFloat(this.parentNode.parentNode,'left')"><i class="fas fa-align-left"></i></button>
+        <button title="Centro" onclick="setImgAlign(this.parentNode.parentNode,'center')"><i class="fas fa-align-center"></i></button>
+        <button title="Direita" onclick="setImgFloat(this.parentNode.parentNode,'right')"><i class="fas fa-align-right"></i></button>
+        <span class="dw-sep" style="margin:0 4px;height:16px;"></span>
+        <!-- Tamanho -->
         <button title="Reduzir" onclick="resizeImg(this.parentNode.parentNode,-20)"><i class="fas fa-minus"></i></button>
         <button title="Ampliar" onclick="resizeImg(this.parentNode.parentNode,20)"><i class="fas fa-plus"></i></button>
         <button title="Original" onclick="resizeImg(this.parentNode.parentNode,0)"><i class="fas fa-expand"></i></button>
+        <span class="dw-sep" style="margin:0 4px;height:16px;"></span>
+        <!-- Exclusão -->
         <button title="Remover" onclick="removeImg(this.parentNode.parentNode)"><i class="fas fa-trash"></i></button>
       </div>
-      <img src="${publicUrl}" alt="${esc(f.name)}" draggable="false">
+      <img src="${publicUrl}" alt="${esc(f.name)}" draggable="false" style="max-width:100%;height:auto;display:block;">
       <div class="img-handle nw"></div><div class="img-handle ne"></div>
       <div class="img-handle sw"></div><div class="img-handle se"></div>
       <div class="img-handle e"></div><div class="img-handle w"></div>
@@ -1151,13 +1183,42 @@ function insertImage(body){
   inp.click();
 }
 
-/* Funções Globais de Imagem */
-window.alignImg = function(wrapper, align){
-  wrapper.style.float = align==='center'?'none':align;
-  wrapper.style.display = align==='center'?'block':'inline-block';
-  wrapper.style.margin = align==='center'?'8px auto':'8px '+(align==='right'?'0 0 8px 12px':'8px 12px 8px 0');
+/* Novas funções globais para manipulação de imagem */
+window.setImgFloat = function(wrapper, side){
+  const img = wrapper.querySelector('img');
+  if(!img) return;
+  /* Remove float anterior */
+  img.style.float = 'none';
+  img.style.display = 'block';
+  img.style.margin = '8px auto'; /* Centralizado por padrão */
+  
+  if(side === 'left'){
+    img.style.float = 'left';
+    img.style.margin = '8px 12px 8px 0';
+    img.style.display = 'inline-block';
+  } else if(side === 'right'){
+    img.style.float = 'right';
+    img.style.margin = '8px 0 8px 12px';
+    img.style.display = 'inline-block';
+  }
+  /* Para 'center', mantemos block/margin auto acima */
   markDirty();
 };
+
+window.setImgAlign = function(wrapper, align){
+  const img = wrapper.querySelector('img');
+  if(!img) return;
+  if(align === 'center'){
+    img.style.float = 'none';
+    img.style.display = 'block';
+    img.style.margin = '8px auto';
+  }
+  markDirty();
+};
+
+/* Mantém compatibilidade com funções antigas se necessário */
+window.alignImg = window.setImgAlign; 
+
 window.resizeImg = function(wrapper, delta){
   const img = wrapper.querySelector('img');
   if(!img) return;
@@ -1225,7 +1286,7 @@ function setupImageInteractivity(){
 
 /* Painel Emoji */
 function showEmojiPanel(body){
-  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','','🤩','','🤨','','😑','😶','','😏','😣','😥','😮','','','😪','😫','🥱','','','','😜','😝','🤤','😒','😓','😔','😕','🙃','🤑','😲','🙁','','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','','😰','😱','🥵','','😳','','','','','😡','','😷','','','🤢','','🤧','😇','🥳','🥸','🤠','🤡','🥹','⭐','✅','❌','⚠️','📌','💼','❤️','🔥','✨','🎖️','🏅','','','','🏆'];
+  const emojis = ['😀','😁','😂','','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','🤗','🤩','🤔','🤨','😐','😑','😶','','😏','😣','😥','😮','','','😪','😫','🥱','','','','😜','😝','','😒','','😔','😕','🙃','🤑','😲','🙁','','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','','😰','😱','🥵','','😳','','','','','😡','','😷','','','🤢','','🤧','😇','🥳','','🤠','🤡','🥹','⭐','✅','❌','⚠️','📌','💼','❤️','🔥','✨','🎖️','🏅','','','','🏆'];
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#fff;border:1px solid #dadce0;border-radius:12px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);max-width:460px;max-height:360px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:2px';
   emojis.forEach(em=>{
