@@ -1,4 +1,4 @@
-/* ══════════ FAMR • TEMA CERIMONIAL v31 (Editor GDocs Real | Logs c/ Filtro | Dark Refinado) ══════════ */
+/* ══════════ FAMR • TEMA CERIMONIAL v33 (Quote Limpa | Colar HTML | Editor Robusto) ══════════ */
 :root{
   --green-900:#0b3d2c; --green-800:#0e4433; --green-700:#14563f; --green-600:#1a6b4f;
   --gold-600:#a8861d; --gold-500:#c9a227; --gold-300:#e6c65c; --gold-100:#faf3dc;
@@ -438,7 +438,7 @@ select.input,textarea.input{padding-left:.9rem}
 :root[data-theme="dark"] .login-alert.err{background:#2a1414;border-color:#4a2020;color:#ff9b9b}
 :root[data-theme="dark"] .login-alert.warn{background:#241f10;border-color:#4a3d18;color:#e6c65c}
 
-/* ══════════ EDITOR DE DOCUMENTOS v31 (estilo GDocs real + Quote Pop-up) ══════════ */
+/* ══════════ EDITOR DE DOCUMENTOS v33 (Robusto + Quote Limpa + Colar Code) ══════════ */
 .doc-workspace{position:fixed;inset:0;z-index:60;background:#f8f9fa;display:flex;flex-direction:column;overflow:hidden}
 :root[data-theme="dark"] .doc-workspace{background:#0d1512}
 
@@ -462,12 +462,25 @@ select.input,textarea.input{padding-left:.9rem}
 /* Toolbar estilo Google Docs REAL */
 .dw-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:6px 12px;background:#fff;border-bottom:1px solid #dadce0;flex-shrink:0;position:sticky;top:0;z-index:5}
 :root[data-theme="dark"] .dw-toolbar{background:#161c22;border-color:#2a3440}
+
+/* Classe base para TODOS os botões da toolbar (fix visual) */
+.dw-tool-fixed{
+  min-width:32px;height:32px;padding:0 6px;border:none;border-radius:6px;background:transparent;color:#444;cursor:pointer;font-size:15px;display:inline-grid;place-items:center;transition:all .1s;position:relative;z-index:10;
+}
+.dw-tool-fixed:hover{background:#e8eaed;color:#202124}
+.dw-tool-fixed.is-active{background:#d3e3fd;color:#1967d2}
+:root[data-theme="dark"] .dw-tool-fixed{color:#aab}
+:root[data-theme="dark"] .dw-tool-fixed:hover{background:#2a3440;color:#e8edf2}
+:root[data-theme="dark"] .dw-tool-fixed.is-active{background:#1a3a5c;color:#8ab4f8}
+
+/* Mantém compatibilidade com classes antigas se necessário */
 .dw-tool{min-width:32px;height:32px;padding:0 6px;border:none;border-radius:6px;background:transparent;color:#444;cursor:pointer;font-size:15px;display:inline-grid;place-items:center;transition:all .1s;position:relative}
 .dw-tool:hover{background:#e8eaed;color:#202124}
 .dw-tool.is-active{background:#d3e3fd;color:#1967d2}
 :root[data-theme="dark"] .dw-tool{color:#aab}
 :root[data-theme="dark"] .dw-tool:hover{background:#2a3440;color:#e8edf2}
 :root[data-theme="dark"] .dw-tool.is-active{background:#1a3a5c;color:#8ab4f8}
+
 .dw-select{height:32px;border:1px solid transparent;border-radius:6px;background:transparent;color:#444;font-size:12px;padding:0 4px;cursor:pointer;outline:none;appearance:auto}
 .dw-select:hover{background:#e8eaed}
 .dw-select:focus{border-color:#1a73e8;background:#fff}
@@ -486,23 +499,6 @@ select.input,textarea.input{padding-left:.9rem}
 .dw-color-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:3px}
 .dw-color-grid button{width:20px;height:20px;border:1px solid #ddd;border-radius:4px;cursor:pointer;padding:0}
 .dw-color-grid button:hover{transform:scale(1.2);box-shadow:0 0 0 2px #1a73e8}
-
-/* ── BOTÃO QUOTE ESTILO GOOGLE DOCS ── */
-.dw-quote-btn{min-width:32px;height:32px;padding:0 8px;border:none;border-radius:6px;background:transparent;cursor:pointer;font-size:15px;color:#444;display:inline-flex;align-items:center;gap:4px;transition:all .1s;position:relative}
-.dw-quote-btn:hover{background:#e8eaed;color:#202124}
-.dw-quote-btn.is-active{background:#d3e3fd;color:#1967d2}
-:root[data-theme="dark"] .dw-quote-btn{color:#aab}
-:root[data-theme="dark"] .dw-quote-btn:hover{background:#2a3440;color:#e8edf2}
-:root[data-theme="dark"] .dw-quote-btn.is-active{background:#1a3a5c;color:#8ab4f8}
-.dw-quote-pop{position:absolute;top:36px;left:50%;transform:translateX(-50%);z-index:99;background:#fff;border:1px solid #dadce0;border-radius:10px;padding:10px;box-shadow:0 4px 16px rgba(0,0,0,.15);display:none;width:200px}
-.dw-quote-pop.open{display:block}
-:root[data-theme="dark"] .dw-quote-pop{background:#1c232b;border-color:#3a4550}
-.dw-quote-swatches{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:8px}
-.dw-quote-swatch{width:28px;height:28px;border:2px solid transparent;border-radius:6px;cursor:pointer;transition:all .1s}
-.dw-quote-swatch:hover{transform:scale(1.15)}
-.dw-quote-swatch.sel{border-color:#1a73e8;box-shadow:0 0 0 2px rgba(26,115,232,.3)}
-.dw-quote-custom{display:flex;align-items:center;gap:6px;font-size:11px;color:#5f6368}
-.dw-quote-custom input[type=color]{width:32px;height:24px;border:1px solid #dadce0;border-radius:4px;cursor:pointer;padding:0}
 
 /* Canvas / Página */
 .dw-canvas{flex:1;overflow:auto;padding:24px 16px;background:#e8eaed}
@@ -524,7 +520,7 @@ select.input,textarea.input{padding-left:.9rem}
 .doc-body mark{background:#fce8b2;padding:1px 2px;border-radius:2px}
 .doc-empty-hint{color:#9aa0a6;font-style:italic}
 
-/* ── CITAÇÃO VISUAL TIPO GOOGLE DOCS (com ícone decorativo) ── */
+/* ── CITAÇÃO PADRÃO BLOCKQUOTE (Mantida para compatibilidade) ── */
 .doc-body blockquote{
   margin:16px 0;
   padding:12px 16px 12px 48px;
@@ -549,6 +545,25 @@ select.input,textarea.input{padding-left:.9rem}
 }
 .doc-body blockquote p{margin:0 0 4px}
 .doc-body blockquote:last-child{margin-bottom:0}
+
+/* ══════════ NOVO ESTILO QUOTE LIMPA (CAIXA CINZA SEM ASPAS) ══════════ */
+.doc-body .famr-quote-box{
+  margin:16px 0;
+  padding:1rem 1.5rem;
+  border-left:4px solid #9ca3af; /* Cinza neutro */
+  background:#f3f4f6; /* Fundo muito suave */
+  color:#374151;
+  font-family:'Inter', system-ui, sans-serif;
+  border-radius:0 8px 8px 0;
+  position:relative;
+}
+:root[data-theme="dark"] .doc-body .famr-quote-box{
+  background:#1f2937;
+  border-left-color:#4b5563;
+  color:#d1d5db;
+}
+/* Remove qualquer pseudo-elemento ::before antigo se existir */
+.doc-body .famr-quote-box::before{ display:none !important; content:none !important; }
 
 /* Imagem interativa */
 .img-wrapper{position:relative;display:inline-block;max-width:100%;margin:8px 0;cursor:default;user-select:none}
@@ -603,45 +618,25 @@ select.input,textarea.input{padding-left:.9rem}
 :root[data-theme="dark"] .log-clear-btn{background:#1c232b;border-color:#3a4550;color:#9db3a7}
 :root[data-theme="dark"] .log-clear-btn:hover{background:#2a3440;color:#e8edf2}
 
-/* ══════════ NOVO ESTILO QUOTE (CAIXA FORUMEIROS) v32 ══════════ */
-.doc-body .famr-quote-box{
-  margin:16px 0;
-  padding:2%;
-  border:1px solid #999999;
-  border-radius:5px;
-  border-left:0.5rem solid #999999; /* A barra grossa lateral */
-  font-family:'Poppins', sans-serif;
-  background:#fafafa;
-  color:#333;
-  position:relative;
+/* ══════════ MODAL COLAR CÓDIGO HTML/CSS ══════════ */
+.code-modal-overlay{
+  position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;
 }
-/* Modo Escuro para a Quote Box */
-:root[data-theme="dark"] .doc-body .famr-quote-box{
-  background:#1c232b;
-  border-color:#4a5568;
-  color:#e2e8f0;
+.code-modal-overlay.active{ opacity:1; pointer-events:auto; }
+.code-modal-card{
+  background:#fff;border-radius:12px;width:90%;max-width:600px;box-shadow:0 20px 40px rgba(0,0,0,.2);overflow:hidden;transform:scale(.95);transition:transform .2s;
 }
-/* Ícone decorativo opcional (aspas) */
-.doc-body .famr-quote-box::before{
-  content:"\201C";
-  position:absolute;
-  top:-10px;
-  left:10px;
-  font-size:40px;
-  line-height:1;
-  color:#ccc;
-  opacity:.5;
-  font-family:Georgia,serif;
-  pointer-events:none;
+.code-modal-overlay.active .code-modal-card{ transform:scale(1); }
+:root[data-theme="dark"] .code-modal-card{ background:#161c22;border:1px solid #2a3440; }
+.cm-header{ padding:1rem 1.5rem;background:#f8f9fa;border-bottom:1px solid #dadce0;display:flex;justify-content:space-between;align-items:center; }
+:root[data-theme="dark"] .cm-header{ background:#1c232b;border-color:#2a3440; }
+.cm-title{ font-weight:700;font-size:1rem;color:#202124; }
+:root[data-theme="dark"] .cm-title{ color:#e8edf2; }
+.cm-close{ cursor:pointer;font-size:1.2rem;color:#5f6368;background:none;border:none;padding:4px; }
+.cm-body{ padding:1.5rem; }
+.cm-textarea{
+  width:100%;height:200px;font-family:'Courier New',monospace;font-size:.9rem;padding:1rem;border:1px solid #dadce0;border-radius:8px;resize:vertical;outline:none;background:#fafafa;color:#202124;
 }
-:root[data-theme="dark"] .doc-body .famr-quote-box::before{ color:#4a5568; }
-
-/* Botão específico na Toolbar */
-.dw-quote-new-btn{
-  min-width:32px;height:32px;padding:0 8px;border:none;border-radius:6px;background:transparent;cursor:pointer;font-size:15px;color:#444;display:inline-flex;align-items:center;gap:4px;transition:all .1s;position:relative;
-}
-.dw-quote-new-btn:hover{background:#e8eaed;color:#202124}
-.dw-quote-new-btn.is-active{background:#d3e3fd;color:#1967d2}
-:root[data-theme="dark"] .dw-quote-new-btn{color:#aab}
-:root[data-theme="dark"] .dw-quote-new-btn:hover{background:#2a3440;color:#e8edf2}
-:root[data-theme="dark"] .dw-quote-new-btn.is-active{background:#1a3a5c;color:#8ab4f8}
+:root[data-theme="dark"] .cm-textarea{ background:#0d1512;border-color:#2a3440;color:#e8edf2; }
+.cm-footer{ padding:1rem 1.5rem;background:#f8f9fa;border-top:1px solid #dadce0;display:flex;justify-content:flex-end;gap:.5rem; }
+:root[data-theme="dark"] .cm-footer{ background:#1c232b;border-color:#2a3440; }
