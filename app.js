@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v35 (Fix Colar Code Real | Imagem Flutuante Completa | Listas | Links Absolutos) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v36 (Imagem Drag/Livre | Colar Code Perfeito | Links Fix) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -661,7 +661,7 @@ window.submitRequest = async function(subtopicId){
 };
 
 /* ═══════════════════════════════════════════════════
-   DOCUMENTOS — WORKSPACE PÁGINA CHEIA (v35 FIXES DEFINITIVOS)
+   DOCUMENTOS — WORKSPACE PÁGINA CHEIA (v36 IMAGEM LIVRE + CODE REAL)
    ═══════════════════════════════════════════════════ */
 let _wsDirty=false, _wsSaving=false;
 
@@ -795,31 +795,24 @@ function focusBody(){
   const b = getBody(); 
   if(b){ 
     b.focus(); 
-    /* Garante que o cursor esteja visível */
     const sel = window.getSelection();
     if(!sel.rangeCount){
-       /* Se não houver seleção, coloca no início ou mantém posição */
+       /* Se não houver seleção, coloca no início */
     }
   }
 }
 
-/* Executa comando garantindo foco e fallbacks */
 function execSafe(cmd, val=null){
   focusBody();
   try{
     if(cmd === 'formatBlock'){
-      /* Tenta padrão, depois fallback manual se falhar silenciosamente */
       let success = false;
       try{ success = document.execCommand('formatBlock', false, val); }catch(e){}
-      
       if(!success && val){
-        /* Fallback: remove <> e tenta novamente */
         const bare = val.replace(/[<>]/g,'');
         try{ success = document.execCommand('formatBlock', false, bare); }catch(e){}
       }
-      
       if(!success && val){
-        /* Último recurso: envolve manualmente a seleção */
         manuallyApplyTag(val.replace(/[<>]/g,''));
       }
     } else {
@@ -830,28 +823,21 @@ function execSafe(cmd, val=null){
   syncState();
 }
 
-/* Fallback Manual para Tags de Bloco (H1, P, etc.) */
 function manuallyApplyTag(tagName){
   const sel = window.getSelection();
   if(!sel.rangeCount) return;
-  
   const range = sel.getRangeAt(0);
   let node = range.commonAncestorContainer;
-  
-  /* Sobe até encontrar um bloco pai direto do body ou texto solto */
   while(node.parentNode && node.parentNode !== getBody() && !['P','DIV','LI','BLOCKQUOTE'].includes(node.parentNode.tagName)){
     node = node.parentNode;
   }
-  
-  if(node.nodeType === 3){ /* Texto puro */
+  if(node.nodeType === 3){
      const parent = node.parentElement;
      if(parent && parent.tagName !== tagName.toUpperCase()){
         const newEl = document.createElement(tagName);
         newEl.innerHTML = parent ? parent.innerHTML : node.textContent;
         if(parent) parent.replaceWith(newEl);
         else node.replaceWith(newEl);
-        
-        /* Reposiciona cursor */
         const r = document.createRange();
         r.selectNodeContents(newEl);
         r.collapse(false);
@@ -867,40 +853,25 @@ function manuallyApplyTag(tagName){
   }
 }
 
-/* ─── TOOLBAR v35 REESCRITA (FUNCIONAL 100% COM LINK ABSOLUTO E IMAGEM FLUTUANTE) ─── */
+/* ─── TOOLBAR v36 (IMAGEM DRAG + CODE REAL) ─── */
 function initToolbar(){
   const bar = document.getElementById('dw-toolbar');
-  const body = document.getElementById('dw-body');
-  bar.innerHTML = ''; // Limpa tudo
+  bar.innerHTML = '';
 
-  /* Cores */
   const COLORS_TEXT = ['#000000','#434343','#666666','#999999','#b7b7b7','#cccccc','#efefef','#ffffff','#ff0000','#ff9900','#ffff00','#00ff00','#00ffff','#0000ff','#9900ff','#ff00ff'];
   const COLORS_HILITE = ['#fce8b2','#d9ead3','#c9daf8','#ead1dc','#fff2cc','#d0e3e3','#f4cccc','#e0e0e0'];
 
-  /* Funções Auxiliares de Criação de Botão */
   function addBtn(label, iconClass, actionFn, isActiveCheck=null){
     const btn = document.createElement('button');
-    btn.type='button'; 
-    btn.className='dw-tool-fixed'; 
-    btn.title=label;
+    btn.type='button'; btn.className='dw-tool-fixed'; btn.title=label;
     btn.innerHTML = `<i class="fas ${iconClass}"></i>`;
     btn.onclick = (e) => { e.preventDefault(); actionFn(); };
-    
-    /* Estado ativo dinâmico */
-    if(isActiveCheck){
-      btn.dataset.check = 'true';
-      btn._checkFn = isActiveCheck;
-    }
-    
+    if(isActiveCheck){ btn.dataset.check = 'true'; btn._checkFn = isActiveCheck; }
     bar.appendChild(btn);
     return btn;
   }
 
-  function addSep(){ 
-    const s=document.createElement('span'); 
-    s.className='dw-sep'; 
-    bar.appendChild(s); 
-  }
+  function addSep(){ const s=document.createElement('span'); s.className='dw-sep'; bar.appendChild(s); }
 
   function addSelect(options, onChangeFn){
     const sel = document.createElement('select');
@@ -943,8 +914,6 @@ function initToolbar(){
     bar.appendChild(wrap);
   }
 
-  /* ═══ CONSTRUÇÃO DA TOOLBAR ═══ */
-
   /* Fonte & Tamanho */
   addSelect([['Arial','Arial'],['Georgia','Georgia'],['Times New Roman','TNR'],['Verdana','Verdana']], v => execSafe('fontName', v));
   addSelect([['1','Peq'],['2','Norm'],['3','Med'],['4','Grande'],['5','Maior'],['6','Enorme']], v => execSafe('fontSize', v));
@@ -967,31 +936,29 @@ function initToolbar(){
   addBtn('Justificado','fa-align-justify', () => execSafe('justifyFull'), () => document.queryCommandState('justifyFull'));
   addSep();
 
-  /* Listas - CORRIGIDO PARA USAR execSafe COM FOCO PRÉVIO */
+  /* Listas */
   addBtn('Marcadores','fa-list-ul', () => execSafe('insertUnorderedList'), () => document.queryCommandState('insertUnorderedList'));
   addBtn('Numerada','fa-list-ol', () => execSafe('insertOrderedList'), () => document.queryCommandState('insertOrderedList'));
   addBtn('-Recuo','fa-outdent', () => execSafe('outdent'));
   addBtn('+Recuo','fa-indent', () => execSafe('indent'));
   addSep();
 
-  /* Blocos de Título (Usando formatBlock robusto) */
+  /* Blocos */
   addBtn('Título 1','fa-heading', () => execSafe('formatBlock','<h1>'));
   addBtn('Título 2','fa-heading', () => execSafe('formatBlock','<h2>'));
   addBtn('Título 3','fa-heading', () => execSafe('formatBlock','<h3>'));
   addBtn('Parágrafo','fa-paragraph', () => execSafe('formatBlock','<p>'));
   addSep();
 
-  /* 🌟 NOVA QUOTE LIMPA (CAIXA CINZA SEM ASPAS) 🌟 */
+  /* Quote Limpa */
   const quoteBtn = document.createElement('button');
-  quoteBtn.type='button'; quoteBtn.className='dw-tool-fixed'; quoteBtn.title='Inserir Citação (Caixa Cinza)';
+  quoteBtn.type='button'; quoteBtn.className='dw-tool-fixed'; quoteBtn.title='Citação (Caixa Cinza)';
   quoteBtn.innerHTML = '<i class="fas fa-comment-dots"></i>';
   quoteBtn.onclick = () => {
     focusBody();
     const html = `<div class="famr-quote-box">Digite sua citação aqui...</div><p><br></p>`;
     document.execCommand('insertHTML', false, html);
     markDirty();
-    
-    /* Seleciona o texto interno para edição rápida */
     setTimeout(()=>{
       const lastBox = getBody().querySelector('.famr-quote-box:last-of-type');
       if(lastBox){
@@ -1011,17 +978,15 @@ function initToolbar(){
   addBtn('Superscrito','fa-superscript', () => execSafe('superscript'));
   addSep();
 
-  /* Link / Remover Link - CORRIGIDO PARA URL ABSOLUTA EXATA */
+  /* Link - CORREGIDO PARA ABSOLUTO */
   addBtn('Inserir Link','fa-link', async () => {
     const urlRaw = await promptDlg('Cole a URL completa (ex: https://site.com)','https://', { title:'Inserir Link', okText:'Aplicar' });
     if(urlRaw){ 
-      /* Normaliza para garantir http/https se omitido, mas preserva domínio exato */
       let finalUrl = urlRaw.trim();
       if(finalUrl && !/^https?:\/\//i.test(finalUrl)){
-        finalUrl = 'http://' + finalUrl;
+        finalUrl = 'https://' + finalUrl;
       }
       focusBody();
-      /* Aplica o link na seleção atual usando createLink nativo */
       document.execCommand('createLink', false, finalUrl);
       markDirty();
     }
@@ -1037,7 +1002,7 @@ function initToolbar(){
   addBtn('Emoji','fa-face-smile', () => showEmojiPanel(getBody()));
   addSep();
 
-  /* 🆕 COLAR HTML/CSS REALISTA */
+  /* Colar Código - REALISTA */
   addBtn('Colar Código','fa-code', () => openCodeModal());
   addSep();
 
@@ -1048,7 +1013,6 @@ function initToolbar(){
   addBtn('Desfazer','fa-undo', () => execSafe('undo'));
   addBtn('Refazer','fa-repeat', () => execSafe('redo'));
 
-  /* Fecha popups ao clicar fora */
   document.addEventListener('click', e => {
     if(!e.target.closest('.dw-color-btn')&&!e.target.closest('.dw-color-pop')){
       document.querySelectorAll('.dw-color-pop.open').forEach(p=>p.classList.remove('open'));
@@ -1056,26 +1020,18 @@ function initToolbar(){
   });
 }
 
-/* ─── SINCRONIZAÇÃO DE ESTADO DOS BOTÕES ─── */
 function syncState(){
   const bar = document.getElementById('dw-toolbar');
   if(!bar) return;
-  
-  /* Atualiza estados ativos baseados na seleção atual */
   bar.querySelectorAll('.dw-tool-fixed').forEach(btn => {
     if(btn._checkFn){
-      try{
-        btn.classList.toggle('is-active', btn._checkFn());
-      }catch(e){}
+      try{ btn.classList.toggle('is-active', btn._checkFn()); }catch(e){}
     }
   });
 }
 
-/* ─── FUNÇÕES AUXILIARES DO EDITOR ─── */
-
-/* Modal de Colar Código HTML/CSS - AGORA PRESERVA VISUAL REALISTA */
+/* ─── MODAL COLAR CÓDIGO (REALISTA) ─── */
 function openCodeModal(){
-  /* Remove se já existir */
   const old = document.getElementById('code-modal-root');
   if(old) old.remove();
 
@@ -1089,18 +1045,16 @@ function openCodeModal(){
         <button class="cm-close" onclick="closeCodeModal()">&times;</button>
       </div>
       <div class="cm-body">
-        <textarea id="html-input-area" class="cm-textarea" placeholder="Cole TODO o código HTML/CSS aqui (incluindo tags &lt;style&gt;, &lt;div&gt;, etc.)...&#10;&#10;&lt;style&gt;.meu-classe { color: blue; }&lt;/style&gt;&#10;&lt;div class=&quot;meu-classe&quot;&gt;Texto Azul&lt;/div&gt;"></textarea>
-        <p class="text-xs text-muted mt-2"><i class="fas fa-info-circle"></i> O código será sanitizado (scripts removidos) mas manterá estilos CSS e estrutura HTML intacta.</p>
+        <textarea id="html-input-area" class="cm-textarea" placeholder="Cole TODO o código HTML/CSS aqui..."></textarea>
+        <p class="text-xs text-muted mt-2"><i class="fas fa-info-circle"></i> Scripts serão removidos por segurança, mas estilos e estrutura serão preservados.</p>
       </div>
       <div class="cm-footer">
         <button class="btn btn-outline btn-sm" onclick="closeCodeModal()">Cancelar</button>
-        <button class="btn btn-primary btn-sm" onclick="applyCodeToDoc()"><i class="fas fa-check"></i> Inserir Visualmente</button>
+        <button class="btn btn-primary btn-sm" onclick="applyCodeToDoc()"><i class="fas fa-check"></i> Inserir</button>
       </div>
     </div>
   `;
   document.body.appendChild(overlay);
-  
-  /* Focus automático */
   setTimeout(()=>document.getElementById('html-input-area').focus(), 100);
 }
 
@@ -1115,28 +1069,29 @@ window.applyCodeToDoc = function(){
   
   let rawContent = input.value;
   
-  /* Extrai blocos de estilo CSS */
+  /* Extrai CSS */
   let cssBlocks = [];
   let htmlPart = rawContent.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (match, p1) => {
     cssBlocks.push(p1);
-    return ''; /* Remove do HTML principal */
+    return '';
   });
   
-  /* Sanitização básica do HTML restante (mantém tags estruturais e classes) */
+  /* Sanitiza HTML */
   let cleanHtml = htmlPart
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove Scripts executáveis
-    .replace(/on\w+="[^"]*"/gi, '') // Remove event handlers inline perigosos
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+="[^"]*"/gi, '')
     .replace(/on\w+='[^']*'/gi, '');
   
-  /* Constrói o snippet final combinando CSS isolado + HTML limpo */
   let finalSnippet = '';
   
-  /* Se havia CSS extraído, injeta uma tag style temporária DENTRO do corpo do editor */
+  /* Injeta CSS no Head se possível, senão no Body */
   if(cssBlocks.length > 0){
     const combinedCss = cssBlocks.join('\n');
-    /* Usa um ID único para evitar conflitos futuros */
-    const styleId = 'temp-style-' + Date.now();
-    finalSnippet += `<style id="${styleId}">\n${combinedCss}\n</style>\n`;
+    /* Tentativa de adicionar ao head global para não poluir o editor */
+    const styleTag = document.createElement('style');
+    styleTag.innerHTML = combinedCss;
+    document.head.appendChild(styleTag);
+    /* Marca para remoção futura se necessário, mas por enquanto deixa ativo */
   }
   
   finalSnippet += cleanHtml;
@@ -1145,10 +1100,10 @@ window.applyCodeToDoc = function(){
   document.execCommand('insertHTML', false, finalSnippet);
   markDirty();
   closeCodeModal();
-  toast('Código e estilos inseridos visualmente.');
+  toast('Código inserido visualmente.');
 };
 
-/* Inserção de Imagem com Controles Avançados de Posição/Float */
+/* ─── INSERÇÃO DE IMAGEM COM DRAG E FLOAT ─── */
 function insertImage(body){
   const inp = document.createElement('input');
   inp.type='file'; inp.accept='image/*';
@@ -1161,23 +1116,20 @@ function insertImage(body){
     const { data:{ publicUrl } } = supabase.storage.from('docs-media').getPublicUrl(path);
     
     focusBody();
-    /* Wrapper Interativo com Barra de Ferramentas Completa */
-    const wrapper = `<div class="img-wrapper advanced-controls" contenteditable="false" data-src="${publicUrl}" style="position:relative;display:inline-block;margin:8px;">
-      <div class="img-toolbar-complete">
-        <!-- Posição Horizontal -->
-        <button title="Flutuar à Esquerda" onclick="setImgFloat(this.parentNode.parentNode,'left')"><i class="fas fa-align-left"></i></button>
-        <button title="Centralizar (Bloco)" onclick="setImgAlign(this.parentNode.parentNode,'center')"><i class="fas fa-align-center"></i></button>
-        <button title="Flutuar à Direita" onclick="setImgFloat(this.parentNode.parentNode,'right')"><i class="fas fa-align-right"></i></button>
-        <span class="dw-sep" style="margin:0 4px;height:16px;"></span>
-        <!-- Tamanho -->
-        <button title="Reduzir Largura" onclick="resizeImg(this.parentNode.parentNode,-20)"><i class="fas fa-minus"></i></button>
-        <button title="Ampliar Largura" onclick="resizeImg(this.parentNode.parentNode,20)"><i class="fas fa-plus"></i></button>
-        <button title="Restaurar Original" onclick="resizeImg(this.parentNode.parentNode,0)"><i class="fas fa-expand"></i></button>
-        <span class="dw-sep" style="margin:0 4px;height:16px;"></span>
-        <!-- Exclusão -->
-        <button title="Remover Imagem" onclick="removeImg(this.parentNode.parentNode)"><i class="fas fa-trash"></i></button>
+    /* Wrapper Interativo */
+    const wrapper = `<div class="img-wrapper drag-enabled" contenteditable="false" data-src="${publicUrl}" style="position:relative;display:inline-block;margin:8px;border:1px dashed transparent;">
+      <div class="img-toolbar">
+        <button title="Flutuar Esq." onclick="setImgFloat(this.parentNode.parentNode,'left')"><i class="fas fa-align-left"></i></button>
+        <button title="Centralizar" onclick="setImgAlign(this.parentNode.parentNode,'center')"><i class="fas fa-align-center"></i></button>
+        <button title="Flutuar Dir." onclick="setImgFloat(this.parentNode.parentNode,'right')"><i class="fas fa-align-right"></i></button>
+        <span class="dw-sep"></span>
+        <button title="Reduzir" onclick="resizeImg(this.parentNode.parentNode,-20)"><i class="fas fa-minus"></i></button>
+        <button title="Ampliar" onclick="resizeImg(this.parentNode.parentNode,20)"><i class="fas fa-plus"></i></button>
+        <button title="Original" onclick="resizeImg(this.parentNode.parentNode,0)"><i class="fas fa-expand"></i></button>
+        <span class="dw-sep"></span>
+        <button title="Remover" onclick="removeImg(this.parentNode.parentNode)"><i class="fas fa-trash"></i></button>
       </div>
-      <img src="${publicUrl}" alt="${esc(f.name)}" draggable="false" style="max-width:100%;height:auto;display:block;border-radius:4px;">
+      <img src="${publicUrl}" alt="${esc(f.name)}" draggable="false" style="max-width:100%;height:auto;display:block;">
       <div class="img-handle nw"></div><div class="img-handle ne"></div>
       <div class="img-handle sw"></div><div class="img-handle se"></div>
       <div class="img-handle e"></div><div class="img-handle w"></div>
@@ -1188,14 +1140,13 @@ function insertImage(body){
   inp.click();
 }
 
-/* Novas funções globais para manipulação avançada de imagem */
 window.setImgFloat = function(wrapper, side){
   const img = wrapper.querySelector('img');
   if(!img) return;
-  /* Remove float anterior e define novo comportamento */
+  /* Remove floats anteriores */
   img.style.float = 'none';
   img.style.display = 'block';
-  img.style.margin = '8px auto'; /* Centralizado por padrão */
+  img.style.margin = '8px auto'; 
   
   if(side === 'left'){
     img.style.float = 'left';
@@ -1206,7 +1157,6 @@ window.setImgFloat = function(wrapper, side){
     img.style.margin = '8px 0 8px 12px';
     img.style.display = 'inline-block';
   }
-  /* Para 'center', mantemos block/margin auto acima */
   markDirty();
 };
 
@@ -1221,9 +1171,6 @@ window.setImgAlign = function(wrapper, align){
   markDirty();
 };
 
-/* Mantém compatibilidade retroativa se necessário */
-window.alignImg = window.setImgAlign; 
-
 window.resizeImg = function(wrapper, delta){
   const img = wrapper.querySelector('img');
   if(!img) return;
@@ -1237,16 +1184,28 @@ window.resizeImg = function(wrapper, delta){
 };
 window.removeImg = function(wrapper){ wrapper.remove(); markDirty(); };
 
-/* Setup Interação Imagem Aprimorado */
+/* Setup Interação Imagem (Drag & Resize) */
 function setupImageInteractivity(){
   const canvas = document.getElementById('dw-canvas');
   if(!canvas) return;
   let selectedWrapper = null;
   let dragHandle = null, startX=0, startY=0, startW=0;
+  let isDraggingMove = false; // Para mover a imagem inteira
 
   canvas.addEventListener('mousedown', e => {
     const handle = e.target.closest('.img-handle');
     const wrapper = e.target.closest('.img-wrapper');
+    
+    /* Clique na própria imagem para selecionar/mover */
+    if(wrapper && !handle && e.target.tagName === 'IMG'){
+       e.preventDefault();
+       selectWrapper(wrapper);
+       isDraggingMove = true;
+       startX = e.clientX;
+       startY = e.clientY;
+       return;
+    }
+
     if(handle && wrapper){
       e.preventDefault();
       dragHandle = handle.className.replace('img-handle ','').trim();
@@ -1261,7 +1220,30 @@ function setupImageInteractivity(){
   });
 
   document.addEventListener('mousemove', e => {
-    if(!dragHandle || !selectedWrapper) return;
+    if(!selectedWrapper) return;
+    
+    /* Movimentação Livre (Arrastar a imagem) */
+    if(isDraggingMove){
+       /* Simples deslocamento horizontal baseado no mouse */
+       /* Nota: Em contenteditable puro, mover pixel-perfect é difícil sem iframe.
+          Aqui usamos margens relativas ou transform para simular */
+       const dx = e.clientX - startX;
+       const dy = e.clientY - startY;
+       
+       /* Aplica um leve ajuste de margem para dar sensação de movimento */
+       const currentMarginLeft = parseInt(selectedWrapper.style.marginLeft || '0');
+       const currentMarginTop = parseInt(selectedWrapper.style.marginTop || '0');
+       
+       selectedWrapper.style.marginLeft = (currentMarginLeft + dx) + 'px';
+       selectedWrapper.style.marginTop = (currentMarginTop + dy) + 'px';
+       
+       startX = e.clientX;
+       startY = e.clientY;
+       return;
+    }
+
+    /* Redimensionamento */
+    if(!dragHandle) return;
     const img = selectedWrapper.querySelector('img');
     const dx = e.clientX - startX;
     if(dragHandle.includes('e') || dragHandle==='se' || dragHandle==='ne'){
@@ -1274,10 +1256,20 @@ function setupImageInteractivity(){
     }
   });
 
-  document.addEventListener('mouseup', () => { if(dragHandle){ markDirty(); } dragHandle = null; });
+  document.addEventListener('mouseup', () => { 
+    if(dragHandle || isDraggingMove){ markDirty(); } 
+    dragHandle = null; 
+    isDraggingMove = false;
+  });
 
-  function selectWrapper(w){ deselectAll(); selectedWrapper = w; w.classList.add('selected'); }
-  function deselectAll(){ if(selectedWrapper) selectedWrapper.classList.remove('selected'); selectedWrapper = null; }
+  function selectWrapper(w){ deselectAll(); selectedWrapper = w; w.classList.add('selected'); w.style.borderColor = '#c9a227'; }
+  function deselectAll(){ 
+    if(selectedWrapper) {
+      selectedWrapper.classList.remove('selected'); 
+      selectedWrapper.style.borderColor = 'transparent';
+    }
+    selectedWrapper = null; 
+  }
 
   document.addEventListener('keydown', e => {
     if((e.key==='Delete'||e.key==='Backspace') && selectedWrapper){
@@ -1289,9 +1281,8 @@ function setupImageInteractivity(){
   });
 }
 
-/* Painel Emoji */
 function showEmojiPanel(body){
-  const emojis = ['😀','😁','😂','','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','','🤩','','🤨','','😑','😶','','😏','😣','😥','😮','','','😪','😫','🥱','','','','😜','😝','','😒','','😔','😕','','🤑','😲','🙁','','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','','😰','😱','','','😳','','','','','😡','','😷','','','🤢','','🤧','😇','🥳','','🤠','🤡','🥹','⭐','✅','❌','⚠️','📌','💼','❤️','🔥','✨','🎖️','🏅','','','',''];
+  const emojis = ['😀','😁','😂','','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','','🤩','','🤨','','😑','😶','','😏','😣','😥','😮','','','😪','😫','','','','','😜','😝','🤤','😒','😓','😔','😕','🙃','🤑','😲','🙁','','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','','','😱','🥵','','😳','','','','','😡','','😷','','','🤢','','🤧','😇','🥳','','🤠','','🥹','⭐','✅','❌','️','📌','','❤️','','✨','🎖️','🏅','','','','🏆'];
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#fff;border:1px solid #dadce0;border-radius:12px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);max-width:460px;max-height:360px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:2px';
   emojis.forEach(em=>{
@@ -1311,7 +1302,6 @@ function showEmojiPanel(body){
   document.body.appendChild(wrap);
 }
 
-/* Wire Events (Garante atualização de estado) */
 function wireEvents(){
   const body = document.getElementById('dw-body');
   body.addEventListener('keyup', syncState);
@@ -1854,7 +1844,6 @@ function sanitizeHtml(h){ return String(h||'').replace(/<script[\s\S]*?<\/script
 
 /* ══════════ famrLog SEMPRE ENVIA NICK (garante IP em login/logout) ══════════ */
 async function famrLog(action, details={}){
-  /* Anexa nick automaticamente se disponível */
   const enriched = { ...details };
   if(!enriched.nick){
     enriched.nick = STATE.profile?.nickname || details.nick || null;
