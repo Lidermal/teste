@@ -602,3 +602,46 @@ select.input,textarea.input{padding-left:.9rem}
 .log-clear-btn:hover{background:#e8eaed;color:#202124}
 :root[data-theme="dark"] .log-clear-btn{background:#1c232b;border-color:#3a4550;color:#9db3a7}
 :root[data-theme="dark"] .log-clear-btn:hover{background:#2a3440;color:#e8edf2}
+
+/* ══════════ NOVO ESTILO QUOTE (CAIXA FORUMEIROS) v32 ══════════ */
+.doc-body .famr-quote-box{
+  margin:16px 0;
+  padding:2%;
+  border:1px solid #999999;
+  border-radius:5px;
+  border-left:0.5rem solid #999999; /* A barra grossa lateral */
+  font-family:'Poppins', sans-serif;
+  background:#fafafa;
+  color:#333;
+  position:relative;
+}
+/* Modo Escuro para a Quote Box */
+:root[data-theme="dark"] .doc-body .famr-quote-box{
+  background:#1c232b;
+  border-color:#4a5568;
+  color:#e2e8f0;
+}
+/* Ícone decorativo opcional (aspas) */
+.doc-body .famr-quote-box::before{
+  content:"\201C";
+  position:absolute;
+  top:-10px;
+  left:10px;
+  font-size:40px;
+  line-height:1;
+  color:#ccc;
+  opacity:.5;
+  font-family:Georgia,serif;
+  pointer-events:none;
+}
+:root[data-theme="dark"] .doc-body .famr-quote-box::before{ color:#4a5568; }
+
+/* Botão específico na Toolbar */
+.dw-quote-new-btn{
+  min-width:32px;height:32px;padding:0 8px;border:none;border-radius:6px;background:transparent;cursor:pointer;font-size:15px;color:#444;display:inline-flex;align-items:center;gap:4px;transition:all .1s;position:relative;
+}
+.dw-quote-new-btn:hover{background:#e8eaed;color:#202124}
+.dw-quote-new-btn.is-active{background:#d3e3fd;color:#1967d2}
+:root[data-theme="dark"] .dw-quote-new-btn{color:#aab}
+:root[data-theme="dark"] .dw-quote-new-btn:hover{background:#2a3440;color:#e8edf2}
+:root[data-theme="dark"] .dw-quote-new-btn.is-active{background:#1a3a5c;color:#8ab4f8}
