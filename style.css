@@ -1,4 +1,4 @@
-/* ══════════ FAMR • TEMA CERIMONIAL v27 (Faixa Cinza + Fix Hash + Dark Refinado) ══════════ */
+/* ══════════ FAMR • TEMA CERIMONIAL v31 (Editor GDocs Real | Logs c/ Filtro | Dark Refinado) ══════════ */
 :root{
   --green-900:#0b3d2c; --green-800:#0e4433; --green-700:#14563f; --green-600:#1a6b4f;
   --gold-600:#a8861d; --gold-500:#c9a227; --gold-300:#e6c65c; --gold-100:#faf3dc;
@@ -438,7 +438,7 @@ select.input,textarea.input{padding-left:.9rem}
 :root[data-theme="dark"] .login-alert.err{background:#2a1414;border-color:#4a2020;color:#ff9b9b}
 :root[data-theme="dark"] .login-alert.warn{background:#241f10;border-color:#4a3d18;color:#e6c65c}
 
-/* ══════════ EDITOR DE DOCUMENTOS v30.1 (estilo GDocs real) ══════════ */
+/* ══════════ EDITOR DE DOCUMENTOS v31 (estilo GDocs real + Quote Pop-up) ══════════ */
 .doc-workspace{position:fixed;inset:0;z-index:60;background:#f8f9fa;display:flex;flex-direction:column;overflow:hidden}
 :root[data-theme="dark"] .doc-workspace{background:#0d1512}
 
@@ -459,7 +459,7 @@ select.input,textarea.input{padding-left:.9rem}
 .dw-status{font-size:.7rem;color:#5f6368;min-width:90px;text-align:right}
 :root[data-theme="dark"] .dw-status{color:#9db3a7}
 
-/* Toolbar estilo Google Docs */
+/* Toolbar estilo Google Docs REAL */
 .dw-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:6px 12px;background:#fff;border-bottom:1px solid #dadce0;flex-shrink:0;position:sticky;top:0;z-index:5}
 :root[data-theme="dark"] .dw-toolbar{background:#161c22;border-color:#2a3440}
 .dw-tool{min-width:32px;height:32px;padding:0 6px;border:none;border-radius:6px;background:transparent;color:#444;cursor:pointer;font-size:15px;display:inline-grid;place-items:center;transition:all .1s;position:relative}
@@ -475,6 +475,8 @@ select.input,textarea.input{padding-left:.9rem}
 :root[data-theme="dark"] .dw-select:hover{background:#2a3440}
 .dw-sep{width:1px;height:20px;background:#dadce0;margin:0 4px}
 :root[data-theme="dark"] .dw-sep{background:#3a4550}
+
+/* Color picker pop-up */
 .dw-color-btn{width:32px;height:32px;border:none;border-radius:6px;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:13px;color:#444;position:relative}
 .dw-color-btn:hover{background:#e8eaed}
 .dw-color-btn .bar{width:18px;height:3px;border-radius:2px;margin-top:-1px}
@@ -484,6 +486,23 @@ select.input,textarea.input{padding-left:.9rem}
 .dw-color-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:3px}
 .dw-color-grid button{width:20px;height:20px;border:1px solid #ddd;border-radius:4px;cursor:pointer;padding:0}
 .dw-color-grid button:hover{transform:scale(1.2);box-shadow:0 0 0 2px #1a73e8}
+
+/* ── BOTÃO QUOTE ESTILO GOOGLE DOCS ── */
+.dw-quote-btn{min-width:32px;height:32px;padding:0 8px;border:none;border-radius:6px;background:transparent;cursor:pointer;font-size:15px;color:#444;display:inline-flex;align-items:center;gap:4px;transition:all .1s;position:relative}
+.dw-quote-btn:hover{background:#e8eaed;color:#202124}
+.dw-quote-btn.is-active{background:#d3e3fd;color:#1967d2}
+:root[data-theme="dark"] .dw-quote-btn{color:#aab}
+:root[data-theme="dark"] .dw-quote-btn:hover{background:#2a3440;color:#e8edf2}
+:root[data-theme="dark"] .dw-quote-btn.is-active{background:#1a3a5c;color:#8ab4f8}
+.dw-quote-pop{position:absolute;top:36px;left:50%;transform:translateX(-50%);z-index:99;background:#fff;border:1px solid #dadce0;border-radius:10px;padding:10px;box-shadow:0 4px 16px rgba(0,0,0,.15);display:none;width:200px}
+.dw-quote-pop.open{display:block}
+:root[data-theme="dark"] .dw-quote-pop{background:#1c232b;border-color:#3a4550}
+.dw-quote-swatches{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:8px}
+.dw-quote-swatch{width:28px;height:28px;border:2px solid transparent;border-radius:6px;cursor:pointer;transition:all .1s}
+.dw-quote-swatch:hover{transform:scale(1.15)}
+.dw-quote-swatch.sel{border-color:#1a73e8;box-shadow:0 0 0 2px rgba(26,115,232,.3)}
+.dw-quote-custom{display:flex;align-items:center;gap:6px;font-size:11px;color:#5f6368}
+.dw-quote-custom input[type=color]{width:32px;height:24px;border:1px solid #dadce0;border-radius:4px;cursor:pointer;padding:0}
 
 /* Canvas / Página */
 .dw-canvas{flex:1;overflow:auto;padding:24px 16px;background:#e8eaed}
@@ -505,17 +524,33 @@ select.input,textarea.input{padding-left:.9rem}
 .doc-body mark{background:#fce8b2;padding:1px 2px;border-radius:2px}
 .doc-empty-hint{color:#9aa0a6;font-style:italic}
 
-/* ── CITAÇÃO ESTILO GOOGLE DOCS ── */
+/* ── CITAÇÃO VISUAL TIPO GOOGLE DOCS (com ícone decorativo) ── */
 .doc-body blockquote{
-  margin:12px 0;padding:8px 0 8px 16px;
+  margin:16px 0;
+  padding:12px 16px 12px 48px;
   border-left:4px solid #c9a227;
-  font-style:normal;color:#3c4043;
+  background:#fefaf0;
+  color:#3c4043;
   position:relative;
+  font-style:normal;
+  border-radius:0 8px 8px 0;
 }
-:root[data-theme="dark"] .doc-body blockquote{color:#c8d6cf}
+:root[data-theme="dark"] .doc-body blockquote{background:#2a2416;color:#d4c89a}
+.doc-body blockquote::before{
+  content:"\201C";
+  position:absolute;
+  left:14px;
+  top:6px;
+  font-size:32px;
+  line-height:1;
+  color:inherit;
+  opacity:.5;
+  font-family:Georgia,serif;
+}
 .doc-body blockquote p{margin:0 0 4px}
+.doc-body blockquote:last-child{margin-bottom:0}
 
-/* ── IMAGEM INTERATIVA (arrastável + redimensionável) ── */
+/* Imagem interativa */
 .img-wrapper{position:relative;display:inline-block;max-width:100%;margin:8px 0;cursor:default;user-select:none}
 .img-wrapper img{display:block;max-width:100%;height:auto;border-radius:2px}
 .img-wrapper.selected{outline:2px solid #1a73e8;outline-offset:2px}
@@ -534,7 +569,6 @@ select.input,textarea.input{padding-left:.9rem}
 .img-toolbar button:hover{background:#e8eaed}
 :root[data-theme="dark"] .img-toolbar button{color:#ccd}
 :root[data-theme="dark"] .img-toolbar button:hover{background:#2a3440}
-.img-caption{font-size:12px;color:#5f6368;text-align:center;margin-top:4px;font-style:italic;outline:none}
 
 @media(max-width:640px){
   .doc-page{padding:48px 32px;min-height:800px}
@@ -558,7 +592,13 @@ select.input,textarea.input{padding-left:.9rem}
 .spin-sm{display:inline-block;width:.95rem;height:.95rem;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* ══════════ CONTROLE DE CITAÇÃO NA TOOLBAR (v30) ══ */
-.dw-quote-wrap{display:inline-flex;align-items:center;gap:.15rem}
-.dw-quote-color{width:1.5rem;height:2rem;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:1px;cursor:pointer}
-.doc-body blockquote{transition:border-color .15s}
+/* ══════════ FILTRO DE LOGS AVANÇADO ══════════ */
+.log-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;padding:12px;background:#f8f9fa;border-bottom:1px solid #dadce0}
+:root[data-theme="dark"] .log-filters{background:#161c22;border-color:#2a3440}
+.log-filters input,.log-filters select{height:32px;border:1px solid #dadce0;border-radius:6px;padding:0 8px;font-size:12px;background:#fff;color:#202124;outline:none}
+:root[data-theme="dark"] .log-filters input,:root[data-theme="dark"] .log-filters select{background:#1c232b;border-color:#3a4550;color:#e8edf2}
+.log-filters input:focus,.log-filters select:focus{border-color:#1a73e8}
+.log-clear-btn{height:32px;padding:0 12px;border:1px solid #dadce0;border-radius:6px;background:#fff;color:#5f6368;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.log-clear-btn:hover{background:#e8eaed;color:#202124}
+:root[data-theme="dark"] .log-clear-btn{background:#1c232b;border-color:#3a4550;color:#9db3a7}
+:root[data-theme="dark"] .log-clear-btn:hover{background:#2a3440;color:#e8edf2}
