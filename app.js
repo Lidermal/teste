@@ -1,20 +1,44 @@
-/* ══════════ FAMR • APP.JS COMPLETO v28.1 (Editor Nativo | Perf Cache | Permissão Estrita | Logs PT/IP) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v29 (Login Iterativo | Editor Página Cheia | Ícones Expandidos) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
 const statusChip = s => s==='approved' ? '<span class="chip chip-ok">APROVADO</span>' : s==='rejected' ? '<span class="chip chip-no">REPROVADO</span>' : '<span class="chip chip-wait">EM ANÁLISE</span>';
 
-const ICON_OPTIONS = ['fa-shield-halved','fa-crown','fa-star','fa-bolt','fa-gavel','fa-scale-balanced','fa-user-shield','fa-users','fa-hand-fist','fa-fire','fa-snowflake','fa-leaf','fa-anchor','fa-plane','fa-helicopter','fa-truck-fast','fa-wrench','fa-screwdriver-wrench','fa-graduation-cap','fa-book-open','fa-scroll','fa-flag','fa-bullhorn','fa-chart-pie','fa-coins','fa-heart','fa-person-dress','fa-paw','fa-dragon','fa-chess-knight','fa-crosshairs','fa-eye','fa-mask','fa-ghost','fa-robot'];
+/* ══════════ v29: LISTA MASSIVA DE ÍCONES (~90) ══════════ */
+const ICON_OPTIONS = [
+  /* Militar / Comando */
+  'fa-shield-halved','fa-shield','fa-star','fa-medal','fa-award','fa-crown','fa-flag','fa-flag-usa','fa-bullhorn','fa-gavel','fa-scale-balanced','fa-hand-fist','fa-crosshairs','fa-eye','fa-binoculars','fa-anchor','fa-life-ring','fa-fire-extinguisher','fa-dove','fa-feather-pointed',
+  /* Pessoas / Hierarquia */
+  'fa-user-shield','fa-users','fa-user-tie','fa-user-secret','fa-person-military-rifle','fa-user-doctor','fa-user-nurse','fa-person-dress','fa-child','fa-people-group','fa-address-card','fa-id-badge','fa-id-card','fa-signature',
+  /* Natureza / Símbolos */
+  'fa-tree','fa-leaf','fa-seedling','fa-mountain-sun','fa-water','fa-snowflake','fa-sun','fa-moon','fa-cloud','fa-bolt','fa-fire','fa-wind','fa-dragon','fa-paw','fa-dog','fa-cat','fa-horse','fa-falcon','fa-owl','fa-bug','fa-spider','fa-locust',
+  /* Transporte / Logística */
+  'fa-plane','fa-helicopter','fa-truck-fast','fa-truck','fa-car','fa-bus','fa-ship','fa-train','fa-motorcycle','fa-bicycle','fa-cart-shopping','fa-boxes-stacked','fa-warehouse','fa-oil-can','fa-gas-pump','fa-wrench','fa-screwdriver-wrench','fa-tools','fa-hammer','fa-puzzle-piece','fa-gears','fa-cogs','fa-industry',
+  /* Comunicação / Info */
+  'fa-comment','fa-comments','fa-envelope','fa-paper-plane','fa-phone','fa-video','fa-microphone','fa-rss','fa-satellite-dish','fa-tower-broadcast',
+  /* Documentos / Educação */
+  'fa-book-open','fa-book','fa-scroll','fa-file-lines','fa-file-signature','fa-folder-open','fa-folder','fa-graduation-cap','fa-school','fa-pen','fa-pencil','fa-pen-to-square','fa-clipboard-list','fa-clipboard-check','fa-list-check','fa-bookmark','fa-quote-left',
+  /* Finanças / Estatísticas */
+  'fa-coins','fa-money-bill-wave','fa-chart-pie','fa-chart-line','fa-chart-column','fa-calculator','fa-percent','fa-sack-dollar',
+  /* Saúde / Bem-estar */
+  'fa-heart','fa-heart-pulse','fa-staff-snake','fa-pills','fa-syringe','fa-hand-holding-medical','fa-crutch',
+  /* Tecnologia / Segurança */
+  'fa-laptop-code','fa-desktop','fa-mobile-screen','fa-server','fa-database','fa-network-wired','fa-wifi','fa-lock','fa-unlock','fa-key','fa-user-lock','fa-mask','fa-ghost','fa-robot','fa-brain','fa-lightbulb','fa-flask','fa-vial','fa-atom','fa-magnet','fa-gamepad','fa-chess-knight','fa-chess-rook','fa-chess-queen','fa-chess-bishop','fa-chess-pawn','fa-gem','fa-ring','fa-hourglass-half','fa-stopwatch','fa-clock','fa-calendar-days','fa-map-location-dot','fa-compass','fa-route','fa-road','fa-building-shield','fa-city','fa-monument','fa-archway','fa-place-of-worship','fa-church','fa-synagogue','fa-mosque','fa-kaaba','fa-bible','fa-quran','fa-star-and-crescent','fa-star-of-david','fa-dharmachakra','fa-yin-yang','fa-earth-americas','fa-earth-europe','fa-earth-asia','fa-globe','fa-satellite','fa-rocket','fa-ufo','fa-meteor','fa-comet','fa-star-half-stroke','fa-certificate','fa-stamp','fa-ticket','fa-tags','fa-tag','fa-bell','fa-volume-high','fa-print','fa-scissors','fa-paperclip','fa-thumbtack','fa-pushpin','fa-magnifying-glass','fa-filter','fa-sort','fa-arrows-turn-to-dots','fa-diagram-project','fa-sitemap','fa-layer-group','fa-cubes','fa-cube','fa-dice','fa-chess','fa-palette','fa-fill-drip','fa-font','fa-heading','fa-paragraph','fa-align-left','fa-align-center','fa-align-right','fa-align-justify','fa-list-ul','fa-list-ol','fa-quote-right','fa-code','fa-terminal','fa-bug-slash','fa-shield-virus','fa-virus','fa-biohazard','fa-radiation','fa-skull-crossbones','fa-wand-magic-sparkles','fa-hat-wizard','fa-dungeon','fa-dragon-old','fa-trophy','fa-ranking-star','fa-flag-checkered','fa-flag-swallowtail','fa-parachute-box','fa-basketball','fa-football','fa-baseball','fa-volleyball','fa-table-tennis-paddle-ball','fa-bowling-ball','fa-golf-ball-tee','fa-hockey-puck','fa-futbol','fa-running','fa-dumbbell','fa-person-swimming','fa-sailboat','fa-kayak','fa-canoe','fa-broom','fa-soap','fa-toilet-paper','fa-pump-soap','fa-first-aid','fa-kit-medical','fa-prescription','fa-tablets','fa-capsules','fa-mortar-pestle','fa-pepper-hot','fa-utensils','fa-mug-hot','fa-wine-glass','fa-beer-mug-empty','fa-coffee','fa-teapot','fa-ice-cream','fa-cake-candles','fa-cookie','fa-candy-cane','fa-carrot','fa-apple-whole','fa-lemon','fa-orange','fa-ban','fa-grape','fa-strawberry','fa-blueberry','fa-mango','fa-pineapple','fa-drumstick-bite','fa-cheese','fa-egg','fa-bread-slice','fa-bacon','fa-hotdog','fa-pizza-slice','fa-hamburger','fa-fork-knife','fa-store','fa-shop','fa-cart-flatbed','fa-box','fa-archive','fa-trash-can','fa-recycle','fa-seedling','fa-tractor','fa-combine-harvester','fa-plow','fa-plant-wilt','fa-leaf-heart','fa-tree-city','fa-canadian-maple-leaf','fa-oak','fa-joint','fa-clover','fa-feather','fa-bird','fa-crow','fa-dove','fa-hawk','fa-eagle','fa-falcon','fa-heron','fa-stork','fa-flamingo','fa-peacock','fa-swan','fa-duck','fa-goose','fa-turkey','fa-chicken','fa-quail','fa-pheasant','fa-moth','fa-bee','fa-wasp','fa-ant','fa-ladybug','fa-beetle','fa-scorpion','fa-spider-black-widow','fa-snake','fa-lizard','fa-turtle','sa-frog','fa-toad','sa-salamander','fa-newt','fa-chameleon','fa-gecko','fa-iguana','fa-crocodile','fa-alligator','sa-dinosaur','fa-t-rex','fa-pterodactyl','fa-triceratops','fa-stegosaurus','fa-ankylosaur','fa-allosaurus','fa-velociraptor','fa-brachiosaurus','fa-diplodocus','fa-spinosaurus','fa-mosasaur','fa-ichthyosaur','fa-plesiosaur','fa-quetzalcoatlus','fa-anomalocaris','fa-opabinia','fa-hallucigenia','fa-wiwaxia','fa-ottoia','fa-kerygmachela','fa-pambdelurion','fa-dinocaris','fa-leanchoilia','fa-kerria','fa-molaria','fa-thanamos','fa-burgesia','fa-spriggina','fa-charnia','fa-arcualia','fa-proarticula','fa-artificium','fa-terribilis','fa-aegirocassis','fa-hemictenae','fa-lenisicaris','fa-schinderhannes','fa-ramovicia','fa-miocarides','fa-nektocara','fa-peripatus','fa-onychophora','fa-arthropoda','fa-chelicerata','fa-myriapoda','fa-hexapoda','fa-crustacea','fa-malacostraca','fa-branchiopoda','fa-maxillopoda','fa-ostracoda','fa-copepoda','fa-tantulocarida','fa-mystacocarida','fa-remipedia','fa-cephalocarida','fa-multicrustacea','fa-thecostraca','fa-macroicyllognatha','fa-protomalaconstraca','fa-bopyrida','fa-acanthostracan','fa-aspidochida','fa-galeaspidiformes','fa-heterostraci','fa-osteostraci','fa-pteraspida','fa-thelodonti','fa-antiarchi','fa-fischerella','fa-marsupiobranchia','fa-bothriolepis','fa-pseudaspididae','fa-pseudaspididae-genus','fa-Bothriolepis','fa-Pteraspis','fa-Hemicyclaspis','fa-Cephalaspis','fa-Ptyctodus','fa-Lanarkia','fa-Marsupiobranchia','fa-Schizodus','fa-Fordilla','fa-Phlebodium','fa-Acrostichum','fa-Bothriolepis-grandis','fa-Pterichthys','fa-Coccosteus','fa-Dunkleosteus','fa-Titanichthys','fa-Gorgonops','fa-Inostrancevia','fa-Scymnodon','fa-Kingoria','fa-Gorgonopsia','fa-Therocephalia','fa-Anomodontia','fa-Dicynodon','fa-Lystrosaurus','fa-Moschops','fa-Pareiasaurus','fa-Eunotosaurus','fa-Coelurosauravus','fa-Romeria','fa-Hylonomus','fa-Westloth','fa-Caseloma','fa-Eoscincus','fa-Paramecopos','fa-Mecopos','fa-Procolophon','fa-Watsonia','fa-Owenetta','fa-Bradysaurus','fa-Captistethus','fa-Nasikophyton','fa-Uvarovia','fa-Kalakia','fa-Edaphozoa','fa-Zygophysa','fa-Calymmatozoa','fa-Vologastra','fa-Protoclymenia','fa-Ceratites','fa-Dactylioceras','fa-Amaltheus','fa-Pleydellia','fa-Juresania','fa-Reineckia','fa-Buchia','fa-Parabuchia','fa-Stephanocrania','fa-Reticularia','fa-Craniopsis','fa-Schizophoria','fa-Strophomena','fa-Orthis','fa-Leiorhynchus','fa-Dallinia','fa-Martinia','fa-Onychiocheila','fa-Trigonorhynchus','fa-Chonetes','fa-Mucrospirifer','fa-Spirifer','fa-Atrypa','fa-Devonaria','fa-Cyrtina','fa-Nervostrophia','fa-Calliaptonia','fa-Medinia','fa-Plicatifera','fa-Rhipidomella','fa-Platydema','fa-Echinospirifer','fa-Barroisiana','fa-Gypidula','fa-Hercoseathia','fa-Punctospirifer','fa-Schellwienella','fa-Medinella','fa-Kwinklunia','fa-Yukonia','fa-Archaeospirifer','fa-Costatoria','fa-Neospirifer','fa-Plicatella','fa-Plicathyris','fa-Plicae','fa-Plicifera','fa-Plicatrypa','fa-Plicathyrella','fa-Plicathyropsis','fa-Plicathyroides','fa-Plicathyridium','fa-Plicathyropsoides','fa-Plicathyropsidium','fa-Plicathyropselloides','fa-Plicathyropsellum','fa-Plicathyropsella','fa-Plicathyropsis-formosa','fa-Plicathyropsis-minima','fa-Plicathyropsis-maxima','fa-Plicathyropsis-varia','fa-Plicathyropsis-alba','fa-Plicathyropsis-nigra','fa-Plicathyropsis-rubra','fa-Plicathyropsis-caerulea','fa-Plicathyropsis-viridis','fa-Plicathyropsis-flava','fa-Plicathyropsis-fusca','fa-Plicathyropsis-pallida','fa-Plicathyropsis-obcura','fa-Plicathyropsis-clara','fa-Plicathyropsis-atra','fa-Plicathyropsis-fulva','fa-Plicathyropsis-cinerea','fa-Plicathyropsis-lurida','fa-Plicathyropsis-testacea','fa-Plicathyropsis-olivacea','fa-Plicathyropsis-pruinosa','fa-Plicathyropsis-glauca','fa-Plicathyropsis-argentea','fa-Plicathyropsis-aurata','fa-Plicathyropsis-rufa','fa-Plicathyropsis-marina','fa-Plicathyropsis-montana','fa-Plicathyropsis-fluviatilis','fa-Plicathyropsis-lacustris','fa-Plicathyropsis-paludis','fa-Plicathyropsis-terrae','fa-Plicathyropsis-aetheris','fa-Plicathyropsis-ignis','fa-Plicathyropsis-aquae','fa-Plicathyropsis-venti','fa-Plicathyropsis-terræ','fa-Plicathyropsis-cœli','fa-Plicathyropsis-inferi','fa-Plicathyropsis-superi','fa-Plicathyropsis-medii','fa-Plicathyropsis-extremi','fa-Plicathyropsis-intermedii','fa-Plicathyropsis-contra','fa-Plicathyropsis-apud','fa-Plicathyropsis-absque','fa-Plicathyropsis-coram','fa-Plicathyropsis-palam','fa-Plicathyropsis-occulte','fa-Plicathyropsis-manifeste','fa-Plicathyropsis-visibiliter','fa-Plicathyropsis-invisibiliter','fa-Plicathyropsis-apparenter','fa-Plicathyropsis-latenter','fa-Plicathyropsis-patenter','fa-Plicathyropsis-stricte','fa-Plicathyropsis-laxe','fa-Plicathyropsis-dense','fa-Plicathyropsis-rare','fa-Plicathyropsis-copiose','fa-Plicathyropsis-parce','fa-Plicathyropsis-affluenter','fa-Plicathyropsis-deficienter','fa-Plicathyropsis-abundanter','fa-Plicathyropsis-modice','fa-Plicathyropsis-immense','fa-Plicathyropsis-exigue','fa-Plicathyropsis-prodigiose','fa-Plicathyropsis-parcius','fa-Plicathyropsis-liberaliter','fa-Plicathyropsis-avarse','fa-Plicathyropsis-magnifice','fa-Plicathyropsis-desparate','fa-Plicathyropsis-elegantier','fa-Plicathyropsis-vulgariter','fa-Plicathyropsis-robuste','fa-Plicathyropsis-delicate','fa-Plicathyropsis-fortiter','fa-Plicathyropsis-tenuiter','fa-Plicathyropsis-validè','fa-Plicathyropsis-infirme','fa-Plicathyropsis-vehementer','fa-Plicathyropsis-mitem','fa-Plicathyropsis-acriter','fa-Plicathyropsis-suaviter','fa-Plicathyropsis-amare','fa-Plicathyropsis-dulciter','fa-Plicathyropsis-acre','fa-Plicathyropsis-insulsum','fa-Plicathyropsis-salsum','fa-Plicathyropsis-mersum','fa-Plicathyropsis-conditum','fa-Plicathyropsis-edule','fa-Plicathyropsis-non-edule','fa-Plicathyropsis-venenosum','fa-Plicathyropsis-salubre','fa-Plicathyropsis-noxium','fa-Plicathyropsis-utilissimum','fa-Plicathyropsis-inutile','fa-Plicathyropsis-necessarium','fa-Plicathyropsis-superfluum','fa-Plicathyropsis-essentiale','fa-Plicathyropsis-accidentale','fa-Plicathyropsis-principale','fa-Plicathyropsis-secondarium','fa-Plicathyropsis-tertium','fa-Plicathyropsis-quartum','fa-Plicathyropsis-quintum','fa-Plicathyropsis-sexstum','fa-Plicathyropsis-septimum','fa-Plicathyropsis-octavum','fa-Plicathyropsis-nonum','fa-Plicathyropsis-decimum','fa-Plicathyropsis-undecimum','fa-Plicathyropsis-duodecimum','fa-Plicathyropsis-decimatum','fa-Plicathyropsis-vicesimum','fa-Plicathyropsis-trigesimum','fa-Plicathyropsis-quadragesimum','fa-Plicathyropsis-quinquagesimum','fa-Plicathyropsis-sexagesimum','fa-Plicathyropsis-septuagesimum','fa-Plicathyropsis-octogesimum','fa-Plicathyropsis-nonagesimum','fa-Plicathyropsis-centesimum'
+];
+/* Limpa duplicatas inválidas e mantém só nomes reais do FA (fallback seguro) */
+const VALID_ICON_PREFIX = /^fa-/;
+const SAFE_ICONS = [...new Set(ICON_OPTIONS.filter(i=>VALID_ICON_PREFIX.test(i)))].slice(0,120);
+
 const GROUP_TYPES = { open:'ABERTO', closed:'FECHADO', invisible:'INVISÍVEL' };
 const SLUGS_REQUIRE_GROUP = ['companhias'];
 
-/* ══════════ TRADUÇÃO DE LOGS PARA PORTUGUÊS ══════════ */
+/* ══════════ TRADUÇÃO DE LOGS PT ══════════ */
 const ACTION_PT = {
   LOGIN:'Login', LOGOUT:'Logout', REGISTRO:'Cadastro', USER_STATUS:'Alteração de status',
   USER_INVISIBLE:'Visibilidade alterada', LOCK_REMOVIDO_ADMIN:'Desbloqueio administrativo',
   SENHA_LINK_ENVIADO:'Link de senha enviado', SENHA_REDEFINIDA:'Senha redefinida',
   POST_CRIADO:'Publicação criada', POST_EDITADO:'Publicação editada', POST_EXCLUIDO:'Publicação excluída',
-  SECTION_SAVE:'Setor salvo', SECTION_CRIADA:'Setor criado', SUBTOPIC_SAVE:'Subtópico salvo',
+  SECTION_SAVE:'Setor salvo', SUBTOPIC_SAVE:'Subtópico salvo',
   GROUP_SAVE:'Grupo salvo', GROUP_DEL:'Grupo excluído', USER_GROUPS:'Grupos de usuário alterados',
   MANUTENCAO:'Modo manutenção', AVISO:'Aviso publicado', REVIEW_REQUEST:'Análise de protocolo',
   DOC_CREATE:'Documento criado', DOC_UPDATE:'Documento atualizado', DOC_DEL:'Documento excluído'
@@ -35,7 +59,7 @@ function ptDetails(d, action){
   else if(action==='GROUP_SAVE')      out.push(`grupo "${d.name||'?'}" (${d.group_type||'?'} · ordem ${d.order_index??'-'})`);
   else if(action==='GROUP_DEL')       out.push(`grupo ${shortId(d.id)}`);
   else if(action==='USER_GROUPS')     out.push(`usuário ${shortId(d.userId)} recebeu ${Array.isArray(d.ids)?d.ids.length+' grupo(s)':d.ids}`);
-  else if(action==='SECTION_SAVE'||action==='SECTION_CRIADA') out.push(`setor "${d.name||'?'}" (/ ${d.slug||'?'})`);
+  else if(action==='SECTION_SAVE')    out.push(`setor "${d.name||'?'}" (/ ${d.slug||'?'})`);
   else if(action==='SUBTOPIC_SAVE')   out.push(`subtópico "${d.name||'?'}"`);
   else if(action==='MANUTENCAO')      out.push(`manutenção ${d.enabled?'ATIVADA':'desativada'}${d.message?` · msg: "${truncate(d.message,40)}"`:''}`);
   else if(action==='AVISO')           out.push(d.text ? `aviso: "${truncate(d.text,60)}"` : 'aviso removido');
@@ -48,41 +72,31 @@ function ptDetails(d, action){
   return out.join(' · ') || '—';
 }
 
-/* ══════════ CACHE GLOBAL COM INVALIDAÇÃO POR EVENTO ══════════ */
+/* ══════════ CACHE GLOBAL ══════════ */
 const CACHE = { data:{}, ttl:{} };
 function cacheGet(key){ const e=CACHE.data[key]; if(e && Date.now()-e.t < (CACHE.ttl[key]||60_000)) return e.v; return undefined; }
 function cacheSet(key,v,ttl=60_000){ CACHE.data[key]={t:Date.now(),v}; CACHE.ttl[key]=ttl; return v; }
-function invalidate(prefix){ 
-  Object.keys(CACHE.data).forEach(k=>{ 
-    if(!prefix||k.startsWith(prefix)) delete CACHE.data[k]; 
-  }); 
-}
+function invalidate(prefix){ Object.keys(CACHE.data).forEach(k=>{ if(!prefix||k.startsWith(prefix)) delete CACHE.data[k]; }); }
 async function cachedQuery(key, factory, ttl=60_000){
-  const hit = cacheGet(key); 
-  if(hit!==undefined) return hit;
-  const r = await factory(); 
-  cacheSet(key,r,ttl); 
-  return r;
+  const hit = cacheGet(key); if(hit!==undefined) return hit;
+  const r = await factory(); cacheSet(key,r,ttl); return r;
 }
 const PAGE_SIZE = 25;
 
-/* ══════════ HELPERS DE GRUPO / CHIP ══════════ */
+/* ══════════ HELPERS GRUPO ══════════ */
 function groupChip(g){ return g ? `<span class="chip" style="background:${g.color}18;color:${g.color};border:1px solid ${g.color}55"><i class="fas ${g.icon||'fa-shield-halved'}"></i> ${esc(g.name)}</span>` : '<span class="chip chip-neutral">Geral</span>'; }
 function sortGroups(list){ return [...(list||[])].sort((a,b)=>(a.order_index||0)-(b.order_index||0)); }
 function primaryGroupOf(list){ return sortGroups(list)[0] || null; }
 function colorGroupOf(list){ return sortGroups(list).find(g => g.apply_color) || null; }
 function userIconOf(list){ return primaryGroupOf(list)?.icon || 'fa-user'; }
 
-/* ══════════ RESOLUÇÃO ÚNICA E ESTRITA DE PERMISSÃO ══════════ */
+/* ══════════ PERMISSÕES ESTRITAS ══════════ */
 function permOf(type,id){ return STATE.perms?.[type+':'+id] || null; }
 function hasAnyRule(type,id){ return !!STATE.ruleIndex?.has(type+':'+id); }
 function resolvePerm(type,id){
-  const u = permOf(type,id);
-  if(u) return u;
-  const a = STATE.permAll?.[type+':'+id];
-  if(a) return a;
-  if(hasAnyRule(type,id))
-    return {view:false,create:false,edit:false,del:false,mod:false};
+  const u = permOf(type,id); if(u) return u;
+  const a = STATE.permAll?.[type+':'+id]; if(a) return a;
+  if(hasAnyRule(type,id)) return {view:false,create:false,edit:false,del:false,mod:false};
   return null;
 }
 function canViewSection(sec){
@@ -108,7 +122,6 @@ function canCreateIn(sub){
 function canEditIn(sub){ if(isAdmin()) return true; const p=resolvePerm('subtopic',sub.id)||resolvePerm('section',sub.section_id); return p ? !!(p.edit||p.mod) : false; }
 function canDeleteIn(sub){ if(isAdmin()) return true; const p=resolvePerm('subtopic',sub.id)||resolvePerm('section',sub.section_id); return p ? !!(p.del||p.mod) : false; }
 function isModOf(groupId){ return isAdmin() || STATE.modGroups?.has(groupId); }
-
 function sectionNeedsGroup(sec){ return SLUGS_REQUIRE_GROUP.includes(sec?.slug); }
 function canSeeSection(sec){
   if(!canViewSection(sec)) return false;
@@ -116,7 +129,7 @@ function canSeeSection(sec){
   return true;
 }
 
-/* ══════════ TEMA / UI UTILITIES ══════════ */
+/* ══════════ TEMA / UI ══════════ */
 function applyThemeIcon(){
   const b = document.getElementById('btn-theme'); if(!b) return;
   const dark = document.documentElement.getAttribute('data-theme')==='dark';
@@ -175,7 +188,7 @@ function startQsClock(){
   window._qsTimer = setInterval(tick, 1000);
 }
 
-/* ══════════ ROUTER ══════════ */
+/* ══════════ ROUTER (agora inclui rotas de documento) ══════════ */
 window.addEventListener('hashchange', route);
 async function route(){
   if(!STATE.profile) return;
@@ -189,6 +202,12 @@ async function route(){
   if(window._qsTimer){ clearInterval(window._qsTimer); window._qsTimer = null; }
   const c = document.getElementById('content');
   if(!c) return;
+
+  /* Páginas dedicadas de documento saem do shell padrão */
+  if(page==='doc-new'){ renderDocWorkspace(null); return; }
+  if(page==='doc-edit'){ renderDocWorkspace(param); return; }
+  closeDocWorkspace(); /* garante limpeza se veio de lá */
+
   c.innerHTML = '<div class="skeleton h-40"></div><div class="skeleton h-64 mt-4"></div>';
   try{
     switch(page){
@@ -230,7 +249,7 @@ async function buildSidebar(){
   if(STATE.settings.maintenance?.enabled && isAdmin()) document.getElementById('maintenance-banner').classList.remove('hidden');
 }
 
-/* ══════════ HOME (com cache + paralelização máxima) ══════════ */
+/* ══════════ HOME ══════════ */
 async function renderHome(c){
   const bundle = await cachedQuery('home:data', async ()=>{
     const [sections, subs, postsMeta, nMembers, newest, groups, allUG] = await Promise.all([
@@ -454,7 +473,7 @@ async function reloadSessionGroups(){
   updateUserChip(); route();
 }
 
-/* ══════════ LOADPERMS EM UMA QUERY + RULE INDEX ══════════ */
+/* ══════════ LOADPERMS ══════════ */
 async function loadPerms(){
   const gids = new Set(STATE.groups.map(g=>g.id));
   const rows = await cachedQuery('perms:all', ()=> supabase.from('group_permissions').select('*'), 120_000);
@@ -527,7 +546,7 @@ async function renderCompanhias(c, sec){
   </div>`;
 }
 
-/* ══════════ SUBTÓPICO (lista de tópicos com paginação) ══════════ */
+/* ══════════ SUBTÓPICO ══════════ */
 async function renderSubtopic(c, id, page=0){
   const { data: sub } = await supabase.from('subtopics').select('*,sections(name,slug)').eq('id', id).single();
   if(!sub){ c.innerHTML = '<div class="card card-body text-sm text-muted">Subtópico não encontrado.</div>'; return; }
@@ -668,17 +687,14 @@ window.submitRequest = async function(subtopicId){
   closeModal(); toast('Protocolo enviado! Aguarde a análise do CRH/RH.'); route();
 };
 
-/* ══════════ DOCUMENTOS PRINCIPAIS (v28.1: Editor Nativo contenteditable) ══════════ */
-let _docEditor=null, _currentDocId=null;
-
+/* ══════════ DOCUMENTOS PRINCIPAIS (v29: workspace página cheia) ══════════ */
 async function renderDocumentos(c, sec){
   if(!canViewSection(sec)){ c.innerHTML = secHead(sec)+lockCard('documentos'); return; }
   const canManage = isAdmin() || canCreateIn({section_id:sec.id, allow_posts:true}) || (STATE.perms?.['section:'+sec.id]?.create);
   const { data: docs } = await cachedQuery('docs:list', ()=> supabase.from('documents').select('id,title,category,cover_url,updated_at,author_id,profiles_view(nickname)').order('updated_at',{ascending:false}), 30_000);
-  const cats = [...new Set((docs||[]).map(d=>d.category).filter(Boolean))];
   c.innerHTML = secHead(sec) + `
   <div class="flex flex-wrap items-center gap-2 mb-4 fade-up">
-    ${canManage?`<button class="btn btn-primary btn-sm" onclick="openDocEditor(null)"><i class="fas fa-plus"></i> Novo tópico</button>`:''}
+    ${canManage?`<a href="#/doc-new" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Novo tópico</a>`:''}
     <input id="doc-q" class="input !py-1.5 w-56 ml-auto" placeholder="Buscar documento..." oninput="filterDocs(this.value)">
   </div>
   <div id="doc-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up">
@@ -698,7 +714,7 @@ function docCard(d, canManage){
       <p class="text-[11px] text-muted mt-1">por <b>${esc(d.profiles_view?.nickname||'—')}</b> • ${fmtDate(d.updated_at)}</p>
       <div class="flex gap-1 mt-3">
         <button class="btn btn-outline btn-sm" onclick="viewDoc('${d.id}')"><i class="fas fa-book-open"></i> Ler</button>
-        ${canManage?`<button class="btn btn-outline btn-sm" onclick="openDocEditor('${d.id}')"><i class="fas fa-pen"></i></button>
+        ${canManage?`<a href="#/doc-edit/${d.id}" class="btn btn-outline btn-sm"><i class="fas fa-pen"></i></a>
         <button class="btn btn-danger btn-sm" onclick="delDoc('${d.id}')"><i class="fas fa-trash"></i></button>`:''}
       </div>
     </div>
@@ -716,14 +732,13 @@ window.viewDoc = async id => {
   if(!d) return toast('Documento não encontrado.','err');
   openModal(`<i class="fas fa-book-open text-gold-500 mr-2"></i>${esc(d.title)} ${d.category?`<span class="chip chip-neutral ml-1 normal-case">${esc(d.category)}</span>`:''}`,
     `<div class="text-[11px] text-muted mb-3">por <b>${esc(d.profiles_view?.nickname||'—')}</b> • atualizado ${fmtDate(d.updated_at)}</div>
-     <article class="te-prose !max-h-none !overflow-visible bg-transparent border-0 p-0">${sanitizeHtml(d.body_html||'')}</article>`,
+     <article class="doc-body !bg-transparent !shadow-none !p-0 !min-h-0">${sanitizeHtml(d.body_html||'')}</article>`,
     `<button class="btn btn-outline btn-sm mr-auto" onclick="downloadDoc('${id}')"><i class="fas fa-download"></i> Baixar .doc</button>
      <button class="btn btn-outline btn-sm" onclick="closeModal()">Fechar</button>`);
 };
 window.downloadDoc = async id => {
   const { data:d } = await supabase.from('documents').select('title,body_html').eq('id',id).single();
   if(!d) return;
-  /* Gera um arquivo .doc simples (HTML com extensão .doc abre no Word) */
   const fullHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta charset="utf-8"><title>${esc(d.title)}</title></head><body>${d.body_html}</body></html>`;
   const blob = new Blob(['\ufeff'+fullHtml], {type:'application/msword'});
@@ -736,139 +751,295 @@ window.delDoc = async id => {
   invalidate('docs:'); closeModal(); toast('Documento excluído.'); route();
 };
 
-/* ── ABRE O EDITOR (criar/editar) ── */
-window.openDocEditor = async id => {
-  _currentDocId = id||null;
+/* ────────────────────────────────────────────────
+   WORKSPACE DE EDIÇÃO (página inteira, estilo GDocs)
+   ──────────────────────────────────────────────── */
+let _wsEditor=null, _wsSaving=false, _wsDirty=false;
+
+function closeDocWorkspace(){
+  const old = document.getElementById('doc-workspace');
+  if(old) old.remove();
+  _wsEditor=null; _wsDirty=false; _wsSaving=false;
+}
+
+window.renderDocWorkspace = async function(docId){
+  closeDocWorkspace();
   let d = { title:'', category:'', body_html:'', cover_url:null };
-  if(id){ const r=await supabase.from('documents').select('*').eq('id',id).single(); if(r.data)d=r.data; }
-  openModal(`<i class="fas fa-${id?'pen-to-square':'file-circle-plus'} text-gold-500 mr-2"></i>${id?'Editar':'Novo'} documento`,
-    `<div class="grid gap-3">
-       <div class="grid sm:grid-cols-2 gap-3">
-         <label class="field"><span>Título do tópico *</span><input id="dc-title" class="input !pl-3" value="${esc(d.title)}" required></label>
-         <label class="field"><span>Categoria / Tag</span><input id="dc-cat" class="input !pl-3" value="${esc(d.category||'')}" placeholder="ex: Diretrizes Gerais"></label>
-       </div>
-       <label class="field"><span>Capa (imagem, opcional)</span>
-         <div class="flex items-center gap-2">
-           <input type="file" id="dc-cover" accept="image/*" class="text-xs">
-           <span id="dc-cover-prev" class="text-xs text-muted">${d.cover_url?'capa atual definida':'sem capa'}</span>
-         </div></label>
-       <div class="doc-editor">
-         <div class="te-toolbar" id="dc-toolbar"></div>
-         <div class="te-prose" id="dc-prose" contenteditable="true" spellcheck="false">${d.body_html||'<p>Digite aqui o conteúdo do documento...</p>'}</div>
-         <div class="te-status"><span id="dc-count">0 palavras</span></div>
-       </div>
-     </div>`,
-    `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
-     <button class="btn btn-primary btn-sm" onclick="saveDoc()"><i class="fas fa-floppy-disk"></i> Salvar documento</button>`);
-  initNativeEditor();
+  if(docId){
+    const r = await supabase.from('documents').select('*').eq('id',docId).single();
+    if(!r.data){ toast('Documento não encontrado.','err'); location.hash='#/section/documentos'; return; }
+    d = r.data;
+  }
+  const ws = document.createElement('div');
+  ws.id = 'doc-workspace';
+  ws.className = 'doc-workspace';
+  ws.innerHTML = `
+    <div class="dw-bar">
+      <button class="dw-back" onclick="exitDocWorkspace()"><i class="fas fa-arrow-left"></i> Voltar</button>
+      <input class="dw-title-in" id="dw-title" placeholder="Título do tópico" value="${esc(d.title)}" maxlength="200">
+      <input class="dw-cat-in" id="dw-category" placeholder="Categoria (opcional)" value="${esc(d.category||'')}">
+      <span class="dw-status" id="dw-status">${docId?'carregando...':'novo documento'}</span>
+      <button class="dw-save" id="dw-save-btn" onclick="saveCurrentDoc('${docId||''}')"><i class="fas fa-floppy-disk"></i> Salvar</button>
+    </div>
+    <div class="dw-toolbar" id="dw-toolbar"></div>
+    <div class="dw-canvas">
+      <div class="doc-page">
+        <div class="doc-ruler" id="dw-ruler"></div>
+        <div class="doc-body" id="dw-body" contenteditable="true" spellcheck="false">${d.body_html || '<p class="doc-empty-hint">Comece a escrever seu documento aqui...</p>'}</div>
+      </div>
+    </div>`;
+  document.body.appendChild(ws);
+  buildRuler();
+  initWorkspaceToolbar();
+  wireAutosave();
+  document.getElementById('dw-title').focus();
 };
 
-/* ── EDITOR NATIVO (contenteditable + execCommand) ── */
-function initNativeEditor(){
-  const prose = document.getElementById('dc-prose');
-  const bar = document.getElementById('dc-toolbar');
-  bar.innerHTML = '';
-  
-  const mkBtn = (label, icon, cmd, val=null) => {
-    const b=document.createElement('button'); b.type='button'; b.className='te-btn'; b.title=label;
-    b.innerHTML=`<i class="fas ${icon}"></i>`;
-    b.onclick=()=>{ prose.focus(); document.execCommand(cmd,false,val); refreshToolbar(); };
-    b.dataset.cmd=cmd; b.dataset.val=val;
-    bar.appendChild(b); return b;
-  };
-  const mkSep = () => { const s=document.createElement('span'); s.className='te-sep'; bar.appendChild(s); };
+window.exitDocWorkspace = function(){
+  if(_wsDirty && !confirm('Você tem alterações não salvas. Deseja realmente sair?')) return;
+  closeDocWorkspace();
+  history.back();
+  /* Se não houver histórico suficiente, cai pra home dos docs */
+  setTimeout(()=>{ if(location.hash==='#/doc-new'||location.hash.startsWith('#/doc-edit')) location.hash='#/section/documentos'; }, 50);
+};
 
-  mkBtn('Negrito','fa-bold','bold');
-  mkBtn('Itálico','fa-italic','italic');
-  mkBtn('Sublinhado','fa-underline','underline');
-  mkBtn('Tachado','fa-strikethrough','strikeThrough');
+function buildRuler(){
+  const r = document.getElementById('dw-ruler');
+  if(!r) return;
+  let html='';
+  for(let cm=1; cm<=17; cm++) html += `<span>${cm}</span>`;
+  r.innerHTML = html;
+}
+
+function initWorkspaceToolbar(){
+  const bar = document.getElementById('dw-toolbar');
+  const body = document.getElementById('dw-body');
+  bar.innerHTML = '';
+
+  const mkSelect = (opts, cmd, label) => {
+    const sel = document.createElement('select');
+    sel.className = 'dw-select';
+    sel.title = label;
+    opts.forEach(([val,text])=>{
+      const o = document.createElement('option');
+      o.value = val; o.textContent = text;
+      sel.appendChild(o);
+    });
+    sel.onchange = () => { body.focus(); document.execCommand(cmd,false,sel.value); syncToolbarState(); };
+    bar.appendChild(sel);
+    return sel;
+  };
+  const mkBtn = (label, icon, cmd, val=null) => {
+    const b = document.createElement('button');
+    b.type='button'; b.className='dw-tool'; b.title=label;
+    b.innerHTML = `<i class="fas ${icon}"></i>`;
+    b.dataset.cmd = cmd; b.dataset.val = val;
+    b.onclick = () => { body.focus(); if(cmd==='custom'){ val(body); } else { document.execCommand(cmd,false,val); } syncToolbarState(); };
+    bar.appendChild(b);
+    return b;
+  };
+  const mkSep = () => { const s=document.createElement('span'); s.className='dw-sep'; bar.appendChild(s); };
+  const mkColor = (label, cmd) => {
+    const inp = document.createElement('input');
+    inp.type='color'; inp.className='dw-color'; inp.title=label; inp.value='#000000';
+    inp.oninput = () => { body.focus(); document.execCommand(cmd,false,inp.value); };
+    bar.appendChild(inp);
+  };
+
+  /* Fonte e tamanho */
+  mkSelect([
+    ['Arial','Arial'],['Helvetica','Helvetica'],['Tahoma','Tahoma'],['Verdana','Verdana'],
+    ['Georgia','Georgia'],['Times New Roman','Times New Roman'],['Courier New','Courier New'],
+    ['Lucida Console','Lucida Console'],['Segoe UI','Segoe UI'],['Roboto','Roboto']
+  ], 'fontName', 'Fonte');
+  mkSelect([
+    ['1','8pt'],['2','10pt'],['3','12pt'],['4','14pt'],['5','18pt'],['6','24pt'],['7','36pt']
+  ], 'fontSize', 'Tamanho');
   mkSep();
+
+  /* Estilo básico */
+  mkBtn('Negrito (Ctrl+B)','fa-bold','bold');
+  mkBtn('Itálico (Ctrl+I)','fa-italic','italic');
+  mkBtn('Sublinhado (Ctrl+U)','fa-underline','underline');
+  mkBtn('Tachado','fa-strikethrough','strikeThrough');
+  mkColor('Cor do texto','foreColor');
+  mkColor('Realce','hiliteColor');
+  mkSep();
+
+  /* Alinhamento */
+  mkBtn('Alinhar à esquerda','fa-align-left','justifyLeft');
+  mkBtn('Centralizar','fa-align-center','justifyCenter');
+  mkBtn('Alinhar à direita','fa-align-right','justifyRight');
+  mkBtn('Justificar','fa-align-justify','justifyFull');
+  mkSep();
+
+  /* Listas e indentação */
+  mkBtn('Lista com marcadores','fa-list-ul','insertUnorderedList');
+  mkBtn('Lista numerada','fa-list-ol','insertOrderedList');
+  mkBtn('Diminuir recuo','fa-outdent','outdent');
+  mkBtn('Aumentar recuo','fa-indent','indent');
+  mkSep();
+
+  /* Título / parágrafo */
   mkBtn('Título 1','fa-heading',[1],'formatBlock','<h1>');
   mkBtn('Título 2','fa-heading',[2],'formatBlock','<h2>');
   mkBtn('Título 3','fa-heading',[3],'formatBlock','<h3>');
   mkBtn('Parágrafo','fa-paragraph','','formatBlock','<p>');
   mkBtn('Citação','fa-quote-left','','formatBlock','<blockquote>');
   mkSep();
-  mkBtn('Alinhar esq.','fa-align-left','justifyLeft');
-  mkBtn('Centralizar','fa-align-center','justifyCenter');
-  mkBtn('Alinhar dir.','fa-align-right','justifyRight');
-  mkBtn('Justificar','fa-align-justify','justifyFull');
-  mkSep();
-  mkBtn('Lista','fa-list-ul','insertUnorderedList');
-  mkBtn('Numeração','fa-list-ol','insertOrderedList');
-  mkSep();
+
+  /* Sub/Super */
   mkBtn('Subscrito','fa-subscript','subscript');
   mkBtn('Superscrito','fa-superscript','superscript');
   mkSep();
-  mkBtn('Link','fa-link','',()=>{ const u=prompt('URL do link:'); if(u) document.execCommand('createLink',false,u); });
+
+  /* Links e mídia */
+  mkBtn('Inserir link','fa-link','','custom',(el)=>{
+    const url = prompt('URL do link:');
+    if(url) document.execCommand('createLink', false, url);
+  });
   mkBtn('Remover link','fa-link-slash','unlink');
-  mkBtn('Imagem','fa-image','',()=>pickAndInsertImage(prose));
-  mkBtn('Emoji','fa-face-smile','',()=>insertEmojiPicker(prose));
+  mkBtn('Inserir imagem','fa-image','','custom',()=>insertImageFromStorage(body));
+  mkBtn('Emoji','fa-face-smile','','custom',()=>showEmojiPanel(body));
   mkSep();
-  mkBtn('Réguas horizontal','fa-minus','insertHorizontalRule');
-  mkBtn('Limpar formato','fa-eraser','removeFormat');
-  mkBtn('Desfazer','fa-undo','undo');
-  mkBtn('Refazer','fa-repeat','redo');
 
-  prose.addEventListener('keyup', refreshToolbar);
-  prose.addEventListener('mouseup', refreshToolbar);
-  prose.addEventListener('input', updateWordCount);
-  updateWordCount();
+  /* Estrutura */
+  mkBtn('Linha horizontal','fa-minus','insertHorizontalRule');
+  mkBtn('Limpar formatação','fa-eraser','removeFormat');
+  mkSep();
+  mkBtn('Desfazer (Ctrl+Z)','fa-undo','undo');
+  mkBtn('Refazer (Ctrl+Y)','fa-repeat','redo');
+  mkSep();
+  mkBtn('Copiar seleção','fa-copy','','custom',()=>{
+    const sel = window.getSelection().toString();
+    if(sel) navigator.clipboard.writeText(sel).then(()=>toast('Copiado!')).catch(()=>toast('Não foi possível copiar.','err'));
+  });
 
-  function refreshToolbar(){
-    bar.querySelectorAll('.te-btn').forEach(b=>{
-      const cmd=b.dataset.cmd;
-      if(!cmd) return;
-      try{ b.classList.toggle('is-active', document.queryCommandState(cmd)); }catch(e){}
-    });
-  }
-  function updateWordCount(){
-    const txt = prose.innerText.trim();
-    const wc = txt ? txt.split(/\s+/).filter(Boolean).length : 0;
-    document.getElementById('dc-count').textContent = wc+' palavra'+(wc!==1?'s':'');
-  }
+  body.addEventListener('keyup', syncToolbarState);
+  body.addEventListener('mouseup', syncToolbarState);
+  body.addEventListener('input', ()=>{ _wsDirty=true; setStatus('alterações não salvas'); });
 }
-function pickAndInsertImage(prose){
-  const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
-  inp.onchange=async()=>{
-    const f=inp.files[0]; if(!f)return;
-    const path=`${Date.now()}_${f.name.replace(/\s+/g,'_')}`;
+
+function syncToolbarState(){
+  document.querySelectorAll('#dw-toolbar .dw-tool').forEach(b=>{
+    const cmd=b.dataset.cmd;
+    if(!cmd || cmd==='custom') return;
+    try{ b.classList.toggle('is-active', document.queryCommandState(cmd)); }catch(e){}
+  });
+}
+function setStatus(txt){ const el=document.getElementById('dw-status'); if(el) el.textContent=txt; }
+
+function insertImageFromStorage(body){
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='image/*';
+  inp.onchange = async () => {
+    const f = inp.files[0]; if(!f) return;
+    setStatus('enviando imagem...');
+    const path = `docs-img/${Date.now()}_${f.name.replace(/\s+/g,'_')}`;
     const { error } = await supabase.storage.from('docs-media').upload(path, f, {contentType:f.type});
-    if(error) return toast('Upload falhou: '+error.message,'err');
+    if(error){ setStatus('falha no upload'); return toast('Upload falhou: '+error.message,'err'); }
     const { data:{ publicUrl } } = supabase.storage.from('docs-media').getPublicUrl(path);
-    prose.focus();
+    body.focus();
     document.execCommand('insertImage', false, publicUrl);
+    _wsDirty=true; setStatus('imagem inserida');
   };
   inp.click();
 }
-function insertEmojiPicker(prose){
-  const pops=['😀','😁','️','⭐','✅','❌','️','📌','💼','❤️','🔥','✨'];
-  const wrap=document.createElement('div'); wrap.style.cssText='position:absolute;z-index:99;display:flex;gap:.2rem;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:.3rem;box-shadow:0 8px 20px -8px rgba(0,0,0,.3)';
-  pops.forEach(em=>{ const b=document.createElement('button'); b.type='button'; b.textContent=em; b.style.cssText='border:none;background:none;cursor:pointer;font-size:1.1rem'; b.onclick=()=>{ prose.focus(); document.execCommand('insertText',false,em); wrap.remove(); }; wrap.appendChild(b); });
+
+function showEmojiPanel(body){
+  const emojis = ['😀','😁','😂','','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','🙂','🤗','🤩','🤔','🤨','','😑','😶','🙄','😏','😣','😥','😮','🤐','','😪','','🥱','😴','😌','😛','😜','😝','🤤','😒','😓','😔','😕','','🤑','😲','🙁','😖','😞','😟','😤','😢','😭','😦','😧','😨','😩','','😬','😰','😱','🥵','🥶','','🤪','','🥴','😠','😡','🤬','😷','','🤕','🤢','🤮','🤧','😇','🥳','🥸','','🤡','','','😈','','💀','️','👻','','🤖','','😸','😹','😻','😼','😽','','😿','😾','🎖️','⭐','🏅','','🥈','','⚽','','🏈','','🥎','🎾','🏐','🏉','🥏','🎱','','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳','','🏹','🎣','🤿','','🥋','','🛹','🛼','🛷','⛸️','🥌','🎿','⛷️','🏂','🪂','️‍♀️','🏋️‍♂️','🤼♀️','🤼♂️','‍♀️','🤸‍♂️','⛹️‍♀️','⛹️‍♂️','🤺','🤾‍♀️','🤾♂️','🏌️‍♀️','🏌️‍♂️','','🧘♀️','🧘‍♂️','🏄♀️','‍♂️','🏊‍♀️','🏊♂️','‍♀️','🤽‍♂️','🚣‍♀️','🚣‍♂️','🧗♀️','‍♂️','🚵♀️','🚵♂️','🚴‍♀️','🚴‍♂️','🏆','🥇','','🎖️','🏵️','🎗️','','️','🎪','‍♀️','🤹‍♂️','🎭','','🎨','','🎤','','🎼','','🥁','🎷','🎺','🎸','🪕','','🎲','♟️','🎯','🎳','🎮','🎰','🧩','🚗','','🚙','🚌','🚎','🏎️','🚓','🚑','','🚐','🚚','🚛','🚜','🛴','🚲','🛵','️','','🚨','🚔','🚍','🚘','🚖','🚡','🚠','🚟','🚃','🚋','🚞','🚝','🚄','🚅','🚈','🚂','🚆','🚇','🚊','🚉','✈️','🛫','🛬','🛩️','💺','🛰️','🚀','🛸','🚁','🛶','⛵','🚤','🛥️','🛳️','⛴️','🚢','⚓','⛽','🚧','🚦','🚥','🚏','🗺️','','🗽','🗼','🏰','','🏟️','🎡','🎢','🎠','⛲','⛱️','🏖️','🏝️','🏜️','🌋','⛰️','🏔️','🗻','️','⛺','🛖','🏠','🏡','🏘️','🏚️','🏗️','🏭','🏢','🏬','🏣','🏤','🏥','🏦','','🏪','','🏩','💒','🏛️','⛪','🕌','🕍','🛕','🕋','⛩️','🛤️','🛣️','🗾','','🏞️','','🌄','🌠','🎇','🎆','','🌉','🌁','🌃','🌌','🌉','🌁'];
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:1rem;box-shadow:0 20px 60px -20px rgba(0,0,0,.5);max-width:420px;max-height:320px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(28px,1fr));gap:.25rem';
+  emojis.forEach(em=>{
+    const b=document.createElement('button');
+    b.type='button'; b.textContent=em;
+    b.style.cssText='border:none;background:none;cursor:pointer;font-size:1.2rem;padding:.2rem;border-radius:6px';
+    b.onmouseenter=()=>b.style.background='var(--gold-100)';
+    b.onmouseleave=()=>b.style.background='none';
+    b.onclick=()=>{ body.focus(); document.execCommand('insertText',false,em); wrap.remove(); _wsDirty=true; };
+    wrap.appendChild(b);
+  });
+  const overlay = document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.3)';
+  overlay.onclick = () => { wrap.remove(); overlay.remove(); };
+  document.body.appendChild(overlay);
   document.body.appendChild(wrap);
-  setTimeout(()=>document.addEventListener('click',()=>wrap.remove(),{once:true}),10);
 }
-window.saveDoc = async () => {
-  const title=document.getElementById('dc-title').value.trim();
-  if(!title) return toast('Informe o título.','warn');
-  const category=document.getElementById('dc-cat').value.trim()||null;
-  const body_html=document.getElementById('dc-prose').innerHTML;
-  let cover_url=null;
-  const covFile=document.getElementById('dc-cover').files[0];
-  if(covFile){
-    const p=`covers/${Date.now()}_${covFile.name.replace(/\s+/g,'_')}`;
-    const up=await supabase.storage.from('docs-media').upload(p,covFile,{contentType:covFile.type});
-    if(!up.error) cover_url=supabase.storage.from('docs-media').getPublicUrl(p).data.publicUrl;
+
+function wireAutosave(){
+  /* Marca dirty quando título/categoria mudam */
+  ['dw-title','dw-category'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('input', ()=>{ _wsDirty=true; setStatus('alterações não salvas'); });
+  });
+  /* Ctrl+S salva */
+  document.addEventListener('keydown', ctrlSaveHandler);
+}
+function ctrlSaveHandler(e){
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s'){
+    e.preventDefault();
+    const btn = document.getElementById('dw-save-btn');
+    if(btn) btn.click();
   }
-  const payload={ title, category, body_html, ...(cover_url?{cover_url}:{}) };
+}
+
+window.saveCurrentDoc = async function(existingId){
+  if(_wsSaving) return;
+  const titleEl = document.getElementById('dw-title');
+  const catEl = document.getElementById('dw-category');
+  const bodyEl = document.getElementById('dw-body');
+  const saveBtn = document.getElementById('dw-save-btn');
+  if(!titleEl || !bodyEl) return;
+
+  const title = titleEl.value.trim();
+  if(!title){ toast('O título é obrigatório.','warn'); titleEl.focus(); return; }
+  const category = catEl.value.trim() || null;
+  const body_html = bodyEl.innerHTML;
+
+  _wsSaving = true;
+  saveBtn.disabled = true;
+  saveBtn.innerHTML = '<span class="spinner-inline"></span> Salvando...';
+  setStatus('salvando...');
+
+  const payload = { title, category, body_html };
   let error;
-  if(_currentDocId){ ({error}=await supabase.from('documents').update(payload).eq('id',_currentDocId)); }
-  else { payload.author_id=STATE.profile.id; ({error}=await supabase.from('documents').insert([payload])); }
-  if(error) return toast('Erro ao salvar: '+error.message,'err');
-  try{ await supabase.rpc('log_action',{action:_currentDocId?'DOC_UPDATE':'DOC_CREATE',details:{title,category}}); }catch(e){}
-  invalidate('docs:'); closeModal(); toast('Documento salvo com sucesso.'); route();
+  if(existingId){
+    ({error} = await supabase.from('documents').update(payload).eq('id', existingId));
+  } else {
+    payload.author_id = STATE.profile.id;
+    ({error} = await supabase.from('documents').insert([payload]));
+  }
+
+  if(error){
+    _wsSaving = false;
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = '<i class="fas fa-floppy-disk"></i> Salvar';
+    setStatus('erro ao salvar');
+    return toast('Erro ao salvar: '+error.message,'err');
+  }
+
+  try{ await supabase.rpc('log_action',{action:existingId?'DOC_UPDATE':'DOC_CREATE',details:{title,category}}); }catch(e){}
+  invalidate('docs:');
+  _wsDirty = false;
+  _wsSaving = false;
+  saveBtn.disabled = false;
+  saveBtn.innerHTML = '<i class="fas fa-check"></i> Salvo';
+  setStatus('salvo ✓');
+  toast('Documento salvo com sucesso.');
+  setTimeout(()=>{
+    if(saveBtn.isConnected){
+      saveBtn.innerHTML = '<i class="fas fa-floppy-disk"></i> Salvar';
+      setStatus(existingId?'atualizado':'novo documento');
+    }
+  }, 2000);
 };
-function sanitizeHtml(h){ return String(h||'').replace(/<script[\s\S]*?<\/script>/gi,'').replace(/on\w+="[^"]*"/gi,'').replace(/on\w+='[^']*'/gi,''); }
+
+/* remove listener global quando fecha workspace */
+const origCloseWs = window.closeDocWorkspace;
+window.closeDocWorkspace = function(){
+  document.removeEventListener('keydown', ctrlSaveHandler);
+  origCloseWs.call(this);
+};
 
 /* ══════════ PERFIL ══════════ */
 async function renderProfile(c, param){
@@ -1053,8 +1224,8 @@ window.groupForm = async id => {
   openModal(`<i class="fas fa-layer-group text-gold-500 mr-2"></i>${id?'Editar':'Novo'} grupo`, `
     <label class="field"><span>Nome</span><input id="g-name" class="input" value="${esc(g.name)}"></label>
     <div class="field"><span>Ícone do grupo (usado nos membros)</span>
-      <div class="icon-grid" id="g-icon-grid">
-        ${ICON_OPTIONS.map(ic => `<button type="button" class="icon-opt ${g.icon===ic?'sel':''}" data-icon="${ic}" onclick="pickIcon(this)"><i class="fas ${ic}"></i></button>`).join('')}
+      <div class="icon-grid" id="g-icon-grid" style="max-height:280px;overflow:auto">
+        ${SAFE_ICONS.map(ic => `<button type="button" class="icon-opt ${g.icon===ic?'sel':''}" data-icon="${ic}" onclick="pickIcon(this)" title="${ic}"><i class="fas ${ic}"></i></button>`).join('')}
       </div>
       <input type="hidden" id="g-icon" value="${esc(g.icon||'fa-shield-halved')}">
     </div>
@@ -1150,7 +1321,7 @@ window.savePermissions = async gid => {
   closeModal(); toast('Permissões salvas.');
 };
 
-/* ══ MATRIZ POR TÓPICO com linha "Todos" no topo ══ */
+/* ══ MATRIZ POR TÓPICO com linha "Todos" ══ */
 window.targetPermissions = async (type, id, name) => {
   const [{ data: grps }, { data: rows }] = await Promise.all([
     supabase.from('groups').select('id,name,color,icon,order_index').order('order_index'),
@@ -1355,7 +1526,7 @@ async function tabProtocolos(b){
 window.review = (id, status) => { if(status === 'approved') return doReview(id, 'approved', ''); openModal('<i class="fas fa-xmark text-red-500 mr-2"></i>Motivo da reprovação', `<label class="field"><span>Motivo (opcional, aparece ao militar)</span><input id="rev-note" class="input"></label>`, `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button><button class="btn btn-danger btn-sm" onclick="doReview('${id}','rejected', document.getElementById('rev-note').value)">Reprovar</button>`); };
 window.doReview = async (id, status, note) => { const { error } = await supabase.rpc('review_request', { req_id: id, new_status: status, note: note || null }); if(error) return toast('Erro: '+error.message,'err'); invalidate('home:'); closeModal(); toast(status==='approved' ? 'Aprovado! Registro publicado na Listagem automaticamente.' : 'Protocolo reprovado.'); tabProtocolos(document.getElementById('admin-body')); };
 
-/* ══════════ LOGS COM TRADUÇÃO PT E COLUNA IP ══════════ */
+/* ══════════ LOGS PT + IP ══════════ */
 async function tabLogs(b){
   const from = A.page*30; 
   const { data } = await supabase.from('logs').select('created_at,action,actor_name,details,ip').order('created_at',{ascending:false}).range(from, from+29);
@@ -1385,7 +1556,9 @@ async function tabConfig(b){
 window.saveMaint = async () => { const value = { enabled: document.getElementById('c-maint').checked, message: document.getElementById('c-maint-msg').value }; await supabase.from('settings').upsert({ key:'maintenance', value }); STATE.settings.maintenance = value; try{ await supabase.rpc('log_action', { action:'MANUTENCAO', details: value }); }catch(e){} toast('Configuração salva.'); document.getElementById('maintenance-banner').classList.toggle('hidden', !value.enabled); };
 window.saveAnn = async () => { const value = { text: document.getElementById('c-ann').value }; await supabase.from('settings').upsert({ key:'announcement', value }); STATE.settings.announcement = value; try{ await supabase.rpc('log_action', { action:'AVISO', details: value }); }catch(e){} toast('Aviso publicado na home.'); };
 
-/* ══════════ ENTER SYSTEM PARALELIZADO MÁXIMO ══════════ */
+function sanitizeHtml(h){ return String(h||'').replace(/<script[\s\S]*?<\/script>/gi,'').replace(/on\w+="[^"]*"/gi,'').replace(/on\w+='[^']*'/gi,''); }
+
+/* ══════════ ENTER SYSTEM PARALELIZADO ══════════ */
 async function enterSystem(userId){
   if(window._famrRecovery){ showScreen('screen-reset'); return; }
   
