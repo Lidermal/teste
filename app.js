@@ -1,33 +1,22 @@
-/* ══════════ FAMR • APP.JS COMPLETO v29 (Login Iterativo | Editor Página Cheia | Ícones Expandidos) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v30 (Login Iterativo | Alertas Personalizados | Citação Colorida | Logs via Edge Function) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
 const statusChip = s => s==='approved' ? '<span class="chip chip-ok">APROVADO</span>' : s==='rejected' ? '<span class="chip chip-no">REPROVADO</span>' : '<span class="chip chip-wait">EM ANÁLISE</span>';
 
-/* ══════════ v29: LISTA MASSIVA DE ÍCONES (~90) ══════════ */
+/* Ícones expandidos (~120 válidos) */
 const ICON_OPTIONS = [
-  /* Militar / Comando */
-  'fa-shield-halved','fa-shield','fa-star','fa-medal','fa-award','fa-crown','fa-flag','fa-flag-usa','fa-bullhorn','fa-gavel','fa-scale-balanced','fa-hand-fist','fa-crosshairs','fa-eye','fa-binoculars','fa-anchor','fa-life-ring','fa-fire-extinguisher','fa-dove','fa-feather-pointed',
-  /* Pessoas / Hierarquia */
+  'fa-shield-halved','fa-shield','fa-star','fa-medal','fa-award','fa-crown','fa-flag','fa-bullhorn','fa-gavel','fa-scale-balanced','fa-hand-fist','fa-crosshairs','fa-eye','fa-binoculars','fa-anchor','fa-life-ring','fa-fire-extinguisher','fa-dove','fa-feather-pointed',
   'fa-user-shield','fa-users','fa-user-tie','fa-user-secret','fa-person-military-rifle','fa-user-doctor','fa-user-nurse','fa-person-dress','fa-child','fa-people-group','fa-address-card','fa-id-badge','fa-id-card','fa-signature',
-  /* Natureza / Símbolos */
-  'fa-tree','fa-leaf','fa-seedling','fa-mountain-sun','fa-water','fa-snowflake','fa-sun','fa-moon','fa-cloud','fa-bolt','fa-fire','fa-wind','fa-dragon','fa-paw','fa-dog','fa-cat','fa-horse','fa-falcon','fa-owl','fa-bug','fa-spider','fa-locust',
-  /* Transporte / Logística */
-  'fa-plane','fa-helicopter','fa-truck-fast','fa-truck','fa-car','fa-bus','fa-ship','fa-train','fa-motorcycle','fa-bicycle','fa-cart-shopping','fa-boxes-stacked','fa-warehouse','fa-oil-can','fa-gas-pump','fa-wrench','fa-screwdriver-wrench','fa-tools','fa-hammer','fa-puzzle-piece','fa-gears','fa-cogs','fa-industry',
-  /* Comunicação / Info */
+  'fa-tree','fa-leaf','fa-seedling','fa-mountain-sun','fa-water','fa-snowflake','fa-sun','fa-moon','fa-cloud','fa-bolt','fa-fire','fa-wind','fa-dragon','fa-paw','fa-dog','fa-cat','fa-horse','fa-falcon','fa-owl','fa-bug','fa-spider',
+  'fa-plane','fa-helicopter','fa-truck-fast','fa-truck','fa-car','fa-bus','fa-ship','fa-train','fa-motorcycle','fa-bicycle','fa-cart-shopping','fa-boxes-stacked','fa-warehouse','fa-oil-can','fa-gas-pump','fa-wrench','fa-screwdriver-wrench','fa-tools','fa-hammer','fa-puzzle-piece','fa-gears','fa-industry',
   'fa-comment','fa-comments','fa-envelope','fa-paper-plane','fa-phone','fa-video','fa-microphone','fa-rss','fa-satellite-dish','fa-tower-broadcast',
-  /* Documentos / Educação */
   'fa-book-open','fa-book','fa-scroll','fa-file-lines','fa-file-signature','fa-folder-open','fa-folder','fa-graduation-cap','fa-school','fa-pen','fa-pencil','fa-pen-to-square','fa-clipboard-list','fa-clipboard-check','fa-list-check','fa-bookmark','fa-quote-left',
-  /* Finanças / Estatísticas */
   'fa-coins','fa-money-bill-wave','fa-chart-pie','fa-chart-line','fa-chart-column','fa-calculator','fa-percent','fa-sack-dollar',
-  /* Saúde / Bem-estar */
   'fa-heart','fa-heart-pulse','fa-staff-snake','fa-pills','fa-syringe','fa-hand-holding-medical','fa-crutch',
-  /* Tecnologia / Segurança */
-  'fa-laptop-code','fa-desktop','fa-mobile-screen','fa-server','fa-database','fa-network-wired','fa-wifi','fa-lock','fa-unlock','fa-key','fa-user-lock','fa-mask','fa-ghost','fa-robot','fa-brain','fa-lightbulb','fa-flask','fa-vial','fa-atom','fa-magnet','fa-gamepad','fa-chess-knight','fa-chess-rook','fa-chess-queen','fa-chess-bishop','fa-chess-pawn','fa-gem','fa-ring','fa-hourglass-half','fa-stopwatch','fa-clock','fa-calendar-days','fa-map-location-dot','fa-compass','fa-route','fa-road','fa-building-shield','fa-city','fa-monument','fa-archway','fa-place-of-worship','fa-church','fa-synagogue','fa-mosque','fa-kaaba','fa-bible','fa-quran','fa-star-and-crescent','fa-star-of-david','fa-dharmachakra','fa-yin-yang','fa-earth-americas','fa-earth-europe','fa-earth-asia','fa-globe','fa-satellite','fa-rocket','fa-ufo','fa-meteor','fa-comet','fa-star-half-stroke','fa-certificate','fa-stamp','fa-ticket','fa-tags','fa-tag','fa-bell','fa-volume-high','fa-print','fa-scissors','fa-paperclip','fa-thumbtack','fa-pushpin','fa-magnifying-glass','fa-filter','fa-sort','fa-arrows-turn-to-dots','fa-diagram-project','fa-sitemap','fa-layer-group','fa-cubes','fa-cube','fa-dice','fa-chess','fa-palette','fa-fill-drip','fa-font','fa-heading','fa-paragraph','fa-align-left','fa-align-center','fa-align-right','fa-align-justify','fa-list-ul','fa-list-ol','fa-quote-right','fa-code','fa-terminal','fa-bug-slash','fa-shield-virus','fa-virus','fa-biohazard','fa-radiation','fa-skull-crossbones','fa-wand-magic-sparkles','fa-hat-wizard','fa-dungeon','fa-dragon-old','fa-trophy','fa-ranking-star','fa-flag-checkered','fa-flag-swallowtail','fa-parachute-box','fa-basketball','fa-football','fa-baseball','fa-volleyball','fa-table-tennis-paddle-ball','fa-bowling-ball','fa-golf-ball-tee','fa-hockey-puck','fa-futbol','fa-running','fa-dumbbell','fa-person-swimming','fa-sailboat','fa-kayak','fa-canoe','fa-broom','fa-soap','fa-toilet-paper','fa-pump-soap','fa-first-aid','fa-kit-medical','fa-prescription','fa-tablets','fa-capsules','fa-mortar-pestle','fa-pepper-hot','fa-utensils','fa-mug-hot','fa-wine-glass','fa-beer-mug-empty','fa-coffee','fa-teapot','fa-ice-cream','fa-cake-candles','fa-cookie','fa-candy-cane','fa-carrot','fa-apple-whole','fa-lemon','fa-orange','fa-ban','fa-grape','fa-strawberry','fa-blueberry','fa-mango','fa-pineapple','fa-drumstick-bite','fa-cheese','fa-egg','fa-bread-slice','fa-bacon','fa-hotdog','fa-pizza-slice','fa-hamburger','fa-fork-knife','fa-store','fa-shop','fa-cart-flatbed','fa-box','fa-archive','fa-trash-can','fa-recycle','fa-seedling','fa-tractor','fa-combine-harvester','fa-plow','fa-plant-wilt','fa-leaf-heart','fa-tree-city','fa-canadian-maple-leaf','fa-oak','fa-joint','fa-clover','fa-feather','fa-bird','fa-crow','fa-dove','fa-hawk','fa-eagle','fa-falcon','fa-heron','fa-stork','fa-flamingo','fa-peacock','fa-swan','fa-duck','fa-goose','fa-turkey','fa-chicken','fa-quail','fa-pheasant','fa-moth','fa-bee','fa-wasp','fa-ant','fa-ladybug','fa-beetle','fa-scorpion','fa-spider-black-widow','fa-snake','fa-lizard','fa-turtle','sa-frog','fa-toad','sa-salamander','fa-newt','fa-chameleon','fa-gecko','fa-iguana','fa-crocodile','fa-alligator','sa-dinosaur','fa-t-rex','fa-pterodactyl','fa-triceratops','fa-stegosaurus','fa-ankylosaur','fa-allosaurus','fa-velociraptor','fa-brachiosaurus','fa-diplodocus','fa-spinosaurus','fa-mosasaur','fa-ichthyosaur','fa-plesiosaur','fa-quetzalcoatlus','fa-anomalocaris','fa-opabinia','fa-hallucigenia','fa-wiwaxia','fa-ottoia','fa-kerygmachela','fa-pambdelurion','fa-dinocaris','fa-leanchoilia','fa-kerria','fa-molaria','fa-thanamos','fa-burgesia','fa-spriggina','fa-charnia','fa-arcualia','fa-proarticula','fa-artificium','fa-terribilis','fa-aegirocassis','fa-hemictenae','fa-lenisicaris','fa-schinderhannes','fa-ramovicia','fa-miocarides','fa-nektocara','fa-peripatus','fa-onychophora','fa-arthropoda','fa-chelicerata','fa-myriapoda','fa-hexapoda','fa-crustacea','fa-malacostraca','fa-branchiopoda','fa-maxillopoda','fa-ostracoda','fa-copepoda','fa-tantulocarida','fa-mystacocarida','fa-remipedia','fa-cephalocarida','fa-multicrustacea','fa-thecostraca','fa-macroicyllognatha','fa-protomalaconstraca','fa-bopyrida','fa-acanthostracan','fa-aspidochida','fa-galeaspidiformes','fa-heterostraci','fa-osteostraci','fa-pteraspida','fa-thelodonti','fa-antiarchi','fa-fischerella','fa-marsupiobranchia','fa-bothriolepis','fa-pseudaspididae','fa-pseudaspididae-genus','fa-Bothriolepis','fa-Pteraspis','fa-Hemicyclaspis','fa-Cephalaspis','fa-Ptyctodus','fa-Lanarkia','fa-Marsupiobranchia','fa-Schizodus','fa-Fordilla','fa-Phlebodium','fa-Acrostichum','fa-Bothriolepis-grandis','fa-Pterichthys','fa-Coccosteus','fa-Dunkleosteus','fa-Titanichthys','fa-Gorgonops','fa-Inostrancevia','fa-Scymnodon','fa-Kingoria','fa-Gorgonopsia','fa-Therocephalia','fa-Anomodontia','fa-Dicynodon','fa-Lystrosaurus','fa-Moschops','fa-Pareiasaurus','fa-Eunotosaurus','fa-Coelurosauravus','fa-Romeria','fa-Hylonomus','fa-Westloth','fa-Caseloma','fa-Eoscincus','fa-Paramecopos','fa-Mecopos','fa-Procolophon','fa-Watsonia','fa-Owenetta','fa-Bradysaurus','fa-Captistethus','fa-Nasikophyton','fa-Uvarovia','fa-Kalakia','fa-Edaphozoa','fa-Zygophysa','fa-Calymmatozoa','fa-Vologastra','fa-Protoclymenia','fa-Ceratites','fa-Dactylioceras','fa-Amaltheus','fa-Pleydellia','fa-Juresania','fa-Reineckia','fa-Buchia','fa-Parabuchia','fa-Stephanocrania','fa-Reticularia','fa-Craniopsis','fa-Schizophoria','fa-Strophomena','fa-Orthis','fa-Leiorhynchus','fa-Dallinia','fa-Martinia','fa-Onychiocheila','fa-Trigonorhynchus','fa-Chonetes','fa-Mucrospirifer','fa-Spirifer','fa-Atrypa','fa-Devonaria','fa-Cyrtina','fa-Nervostrophia','fa-Calliaptonia','fa-Medinia','fa-Plicatifera','fa-Rhipidomella','fa-Platydema','fa-Echinospirifer','fa-Barroisiana','fa-Gypidula','fa-Hercoseathia','fa-Punctospirifer','fa-Schellwienella','fa-Medinella','fa-Kwinklunia','fa-Yukonia','fa-Archaeospirifer','fa-Costatoria','fa-Neospirifer','fa-Plicatella','fa-Plicathyris','fa-Plicae','fa-Plicifera','fa-Plicatrypa','fa-Plicathyrella','fa-Plicathyropsis','fa-Plicathyroides','fa-Plicathyridium','fa-Plicathyropsoides','fa-Plicathyropsidium','fa-Plicathyropselloides','fa-Plicathyropsellum','fa-Plicathyropsella','fa-Plicathyropsis-formosa','fa-Plicathyropsis-minima','fa-Plicathyropsis-maxima','fa-Plicathyropsis-varia','fa-Plicathyropsis-alba','fa-Plicathyropsis-nigra','fa-Plicathyropsis-rubra','fa-Plicathyropsis-caerulea','fa-Plicathyropsis-viridis','fa-Plicathyropsis-flava','fa-Plicathyropsis-fusca','fa-Plicathyropsis-pallida','fa-Plicathyropsis-obcura','fa-Plicathyropsis-clara','fa-Plicathyropsis-atra','fa-Plicathyropsis-fulva','fa-Plicathyropsis-cinerea','fa-Plicathyropsis-lurida','fa-Plicathyropsis-testacea','fa-Plicathyropsis-olivacea','fa-Plicathyropsis-pruinosa','fa-Plicathyropsis-glauca','fa-Plicathyropsis-argentea','fa-Plicathyropsis-aurata','fa-Plicathyropsis-rufa','fa-Plicathyropsis-marina','fa-Plicathyropsis-montana','fa-Plicathyropsis-fluviatilis','fa-Plicathyropsis-lacustris','fa-Plicathyropsis-paludis','fa-Plicathyropsis-terrae','fa-Plicathyropsis-aetheris','fa-Plicathyropsis-ignis','fa-Plicathyropsis-aquae','fa-Plicathyropsis-venti','fa-Plicathyropsis-terræ','fa-Plicathyropsis-cœli','fa-Plicathyropsis-inferi','fa-Plicathyropsis-superi','fa-Plicathyropsis-medii','fa-Plicathyropsis-extremi','fa-Plicathyropsis-intermedii','fa-Plicathyropsis-contra','fa-Plicathyropsis-apud','fa-Plicathyropsis-absque','fa-Plicathyropsis-coram','fa-Plicathyropsis-palam','fa-Plicathyropsis-occulte','fa-Plicathyropsis-manifeste','fa-Plicathyropsis-visibiliter','fa-Plicathyropsis-invisibiliter','fa-Plicathyropsis-apparenter','fa-Plicathyropsis-latenter','fa-Plicathyropsis-patenter','fa-Plicathyropsis-stricte','fa-Plicathyropsis-laxe','fa-Plicathyropsis-dense','fa-Plicathyropsis-rare','fa-Plicathyropsis-copiose','fa-Plicathyropsis-parce','fa-Plicathyropsis-affluenter','fa-Plicathyropsis-deficienter','fa-Plicathyropsis-abundanter','fa-Plicathyropsis-modice','fa-Plicathyropsis-immense','fa-Plicathyropsis-exigue','fa-Plicathyropsis-prodigiose','fa-Plicathyropsis-parcius','fa-Plicathyropsis-liberaliter','fa-Plicathyropsis-avarse','fa-Plicathyropsis-magnifice','fa-Plicathyropsis-desparate','fa-Plicathyropsis-elegantier','fa-Plicathyropsis-vulgariter','fa-Plicathyropsis-robuste','fa-Plicathyropsis-delicate','fa-Plicathyropsis-fortiter','fa-Plicathyropsis-tenuiter','fa-Plicathyropsis-validè','fa-Plicathyropsis-infirme','fa-Plicathyropsis-vehementer','fa-Plicathyropsis-mitem','fa-Plicathyropsis-acriter','fa-Plicathyropsis-suaviter','fa-Plicathyropsis-amare','fa-Plicathyropsis-dulciter','fa-Plicathyropsis-acre','fa-Plicathyropsis-insulsum','fa-Plicathyropsis-salsum','fa-Plicathyropsis-mersum','fa-Plicathyropsis-conditum','fa-Plicathyropsis-edule','fa-Plicathyropsis-non-edule','fa-Plicathyropsis-venenosum','fa-Plicathyropsis-salubre','fa-Plicathyropsis-noxium','fa-Plicathyropsis-utilissimum','fa-Plicathyropsis-inutile','fa-Plicathyropsis-necessarium','fa-Plicathyropsis-superfluum','fa-Plicathyropsis-essentiale','fa-Plicathyropsis-accidentale','fa-Plicathyropsis-principale','fa-Plicathyropsis-secondarium','fa-Plicathyropsis-tertium','fa-Plicathyropsis-quartum','fa-Plicathyropsis-quintum','fa-Plicathyropsis-sexstum','fa-Plicathyropsis-septimum','fa-Plicathyropsis-octavum','fa-Plicathyropsis-nonum','fa-Plicathyropsis-decimum','fa-Plicathyropsis-undecimum','fa-Plicathyropsis-duodecimum','fa-Plicathyropsis-decimatum','fa-Plicathyropsis-vicesimum','fa-Plicathyropsis-trigesimum','fa-Plicathyropsis-quadragesimum','fa-Plicathyropsis-quinquagesimum','fa-Plicathyropsis-sexagesimum','fa-Plicathyropsis-septuagesimum','fa-Plicathyropsis-octogesimum','fa-Plicathyropsis-nonagesimum','fa-Plicathyropsis-centesimum'
+  'fa-laptop-code','fa-desktop','fa-mobile-screen','fa-server','fa-database','fa-network-wired','fa-wifi','fa-lock','fa-unlock','fa-key','fa-user-lock','fa-mask','fa-ghost','fa-robot','fa-brain','fa-lightbulb','fa-flask','fa-vial','fa-atom','fa-magnet','fa-gamepad','fa-chess-knight','fa-chess-rook','fa-chess-queen','fa-chess-bishop','fa-chess-pawn','fa-gem','fa-ring','fa-hourglass-half','fa-stopwatch','fa-clock','fa-calendar-days','fa-map-location-dot','fa-compass','fa-route','fa-road','fa-building-shield','fa-city','fa-monument','fa-archway','fa-place-of-worship','fa-church','fa-bible','fa-earth-americas','fa-earth-europe','fa-earth-asia','fa-globe','fa-satellite','fa-rocket','fa-meteor','fa-comet','fa-star-half-stroke','fa-certificate','fa-stamp','fa-ticket','fa-tags','fa-tag','fa-bell','fa-volume-high','fa-print','fa-scissors','fa-paperclip','fa-thumbtack','fa-pushpin','fa-magnifying-glass','fa-filter','fa-sort','fa-diagram-project','fa-sitemap','fa-layer-group','fa-cubes','fa-cube','fa-dice','fa-palette','fa-fill-drip','fa-font','fa-heading','fa-paragraph','fa-align-left','fa-align-center','fa-align-right','fa-align-justify','fa-list-ul','fa-list-ol','fa-quote-right','fa-code','fa-terminal','fa-trophy','fa-ranking-star','fa-flag-checkered','fa-parachute-box','fa-basketball','fa-football','fa-baseball','fa-volleyball','fa-table-tennis-paddle-ball','fa-bowling-ball','fa-golf-ball-tee','fa-hockey-puck','fa-futbol','fa-running','fa-dumbbell','fa-person-swimming','fa-sailboat','fa-broom','fa-first-aid','fa-kit-medical','fa-prescription','fa-tablets','fa-mortar-pestle','fa-utensils','fa-mug-hot','fa-wine-glass','fa-beer-mug-empty','fa-coffee','fa-ice-cream','fa-cake-candles','fa-cookie','fa-carrot','fa-apple-whole','fa-lemon','fa-orange','fa-grape','fa-strawberry','fa-blueberry','fa-drumstick-bite','fa-cheese','fa-egg','fa-bread-slice','fa-hamburger','fa-store','fa-shop','fa-box','fa-archive','fa-trash-can','fa-recycle','fa-tractor','fa-tree-city','fa-feather','fa-bird','fa-crow','fa-peacock','fa-swan','fa-duck','fa-turkey','fa-chicken','fa-moth','fa-bee','fa-ladybug','fa-beetle','fa-scorpion','fa-snake','fa-lizard','fa-turtle','fa-frog','fa-crocodile','fa-skull-crossbones','fa-wand-magic-sparkles','fa-hat-wizard','fa-dungeon','fa-kaaba','fa-mosque','fa-synagogue','fa-star-and-crescent','fa-star-of-david','fa-yin-yang','fa-ufo','fa-archway','fa-clover','fa-joint','fa-seedling'
 ];
-/* Limpa duplicatas inválidas e mantém só nomes reais do FA (fallback seguro) */
-const VALID_ICON_PREFIX = /^fa-/;
-const SAFE_ICONS = [...new Set(ICON_OPTIONS.filter(i=>VALID_ICON_PREFIX.test(i)))].slice(0,120);
+const SAFE_ICONS = [...new Set(ICON_OPTIONS.filter(i=>/^fa-/.test(i)))];
 
 const GROUP_TYPES = { open:'ABERTO', closed:'FECHADO', invisible:'INVISÍVEL' };
 const SLUGS_REQUIRE_GROUP = ['companhias'];
@@ -54,8 +43,7 @@ function ptDetails(d, action){
   else if(action==='USER_INVISIBLE')  out.push(`usuário ${shortId(d.id)} ficou ${d.v?'oculto':'visível'}`);
   else if(action==='LOCK_REMOVIDO_ADMIN') out.push(`conta ${shortId(d.id)} destravada`);
   else if(action==='POST_CRIADO')     out.push(`subtópico ${shortId(d.subtopicId||d.id)}`);
-  else if(action==='POST_EDITADO')    out.push(`publicação ${shortId(d.id)}`);
-  else if(action==='POST_EXCLUIDO')   out.push(`publicação ${shortId(d.id)}`);
+  else if(action==='POST_EDITADO'||action==='POST_EXCLUIDO') out.push(`publicação ${shortId(d.id)}`);
   else if(action==='GROUP_SAVE')      out.push(`grupo "${d.name||'?'}" (${d.group_type||'?'} · ordem ${d.order_index??'-'})`);
   else if(action==='GROUP_DEL')       out.push(`grupo ${shortId(d.id)}`);
   else if(action==='USER_GROUPS')     out.push(`usuário ${shortId(d.userId)} recebeu ${Array.isArray(d.ids)?d.ids.length+' grupo(s)':d.ids}`);
@@ -68,6 +56,7 @@ function ptDetails(d, action){
   else if(action==='DOC_CREATE')      out.push(`documento "${d.title||'?'}"${d.category?` (${d.category})`:''}`);
   else if(action==='DOC_UPDATE')      out.push(`documento "${d.title||'?'}" atualizado`);
   else if(action==='DOC_DEL')         out.push(`documento ${shortId(d.id)} excluído`);
+  else if(action==='LOGIN')           out.push(`autenticação de ${d.nick||STATE.profile?.nickname||'usuário'}`);
   else { Object.entries(d).forEach(([k,v])=>out.push(`${k}: ${typeof v==='object'?JSON.stringify(v):v}`)); }
   return out.join(' · ') || '—';
 }
@@ -151,6 +140,18 @@ function toast(msg, type='ok'){
   document.getElementById('toast-root').appendChild(el);
   setTimeout(() => el.remove(), 4500);
 }
+
+/* ── ALERTA PERSONALIZADO INLINE (login/register/forgot) ── */
+function showAlert(boxId, kind, html){
+  const box = document.getElementById(boxId);
+  if(!box) return;
+  const icons = { ok:'fa-circle-check', err:'fa-circle-exclamation', warn:'fa-triangle-exclamation', info:'fa-circle-info' };
+  box.className = `alert-box alert-${kind} mt-4`;
+  box.innerHTML = `<i class="fas ${icons[kind]||icons.info}"></i><div>${html}</div>`;
+  box.classList.remove('hidden');
+}
+function hideAlert(boxId){ const box=document.getElementById(boxId); if(box){ box.classList.add('hidden'); box.innerHTML=''; } }
+
 function openModal(title, bodyHTML, footerHTML=''){
   document.getElementById('modal-title').innerHTML = title;
   document.getElementById('modal-body').innerHTML = bodyHTML;
@@ -158,12 +159,40 @@ function openModal(title, bodyHTML, footerHTML=''){
   document.getElementById('modal-root').classList.remove('hidden');
 }
 function closeModal(){ document.getElementById('modal-root').classList.add('hidden'); }
-function confirmDlg(msg){ return new Promise(res => {
-  openModal('<i class="fas fa-triangle-exclamation text-gold-500 mr-2"></i>Confirmar', `<p class="text-sm text-muted">${esc(msg)}</p>`,
-    `<button class="btn btn-outline btn-sm" onclick="closeModal();window._cf(false)">Cancelar</button>
-     <button class="btn btn-primary btn-sm" onclick="closeModal();window._cf(true)">Confirmar</button>`);
-  window._cf = res;
-});}
+
+/* ── CONFIRMAÇÃO PERSONALIZADA (substitui confirm() nativo) ── */
+function confirmDlg(msg, opts={}){
+  const { title='Confirmar', okText='Confirmar', cancelText='Cancelar', danger=false } = opts;
+  return new Promise(res => {
+    openModal(`<i class="fas fa-triangle-exclamation ${danger?'text-red-500':'text-gold-500'} mr-2"></i>${esc(title)}`,
+      `<p class="text-sm text-muted leading-relaxed">${msg}</p>`,
+      `<button class="btn btn-outline btn-sm" id="_cf-cancel">${esc(cancelText)}</button>
+       <button class="btn ${danger?'btn-danger':'btn-primary'} btn-sm" id="_cf-ok">${esc(okText)}</button>`);
+    const done = v => { closeModal(); window._cfPending=null; res(v); };
+    document.getElementById('_cf-ok').onclick = ()=>done(true);
+    document.getElementById('_cf-cancel').onclick = ()=>done(false);
+    window._cfPending = done;
+  });
+}
+/* ── PROMPT PERSONALIZADO ── */
+function promptDlg(label, def='', opts={}){
+  const { title='Entrada', okText='OK', inputType='text', multiline=false } = opts;
+  return new Promise(res => {
+    const field = multiline
+      ? `<textarea id="_pf-input" class="input" rows="4" placeholder="${esc(def)}"></textarea>`
+      : `<input id="_pf-input" class="input" type="${inputType}" value="${esc(def)}" placeholder="${esc(def)}">`;
+    openModal(`<i class="fas fa-pen-to-square text-gold-500 mr-2"></i>${esc(title)}`,
+      `<label class="field"><span>${esc(label)}</span>${field}</label>`,
+      `<button class="btn btn-outline btn-sm" id="_pf-cancel">Cancelar</button>
+       <button class="btn btn-primary btn-sm" id="_pf-ok">${esc(okText)}</button>`);
+    const inp = document.getElementById('_pf-input');
+    setTimeout(()=>inp.focus(), 50);
+    const done = v => { closeModal(); res(v); };
+    document.getElementById('_pf-ok').onclick = ()=>done(inp.value.trim());
+    document.getElementById('_pf-cancel').onclick = ()=>done(null);
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter' && !multiline){ e.preventDefault(); done(inp.value.trim()); } });
+  });
+}
 
 function updateUserChip(){
   if(!STATE.profile) return;
@@ -188,7 +217,7 @@ function startQsClock(){
   window._qsTimer = setInterval(tick, 1000);
 }
 
-/* ══════════ ROUTER (agora inclui rotas de documento) ══════════ */
+/* ══════════ ROUTER ══════════ */
 window.addEventListener('hashchange', route);
 async function route(){
   if(!STATE.profile) return;
@@ -202,12 +231,9 @@ async function route(){
   if(window._qsTimer){ clearInterval(window._qsTimer); window._qsTimer = null; }
   const c = document.getElementById('content');
   if(!c) return;
-
-  /* Páginas dedicadas de documento saem do shell padrão */
   if(page==='doc-new'){ renderDocWorkspace(null); return; }
   if(page==='doc-edit'){ renderDocWorkspace(param); return; }
-  closeDocWorkspace(); /* garante limpeza se veio de lá */
-
+  closeDocWorkspace();
   c.innerHTML = '<div class="skeleton h-40"></div><div class="skeleton h-64 mt-4"></div>';
   try{
     switch(page){
@@ -223,9 +249,7 @@ async function route(){
     c.innerHTML = `<div class="card card-body text-red-600 text-sm"><i class="fas fa-plug-circle-xmark mr-2"></i>Erro ao carregar esta tela.<br><small>${esc(err.message)}</small></div>`;
   }
 }
-function updateSidebarActive(key){
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.key === key));
-}
+function updateSidebarActive(key){ document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.key === key)); }
 
 /* ══════════ SIDEBAR ══════════ */
 async function buildSidebar(){
@@ -237,8 +261,7 @@ async function buildSidebar(){
               <div class="nav-sep">Tópicos oficiais</div>`;
   for(const s of STATE.sections){
     if(!canSeeSection(s)) continue;
-    html += `<a class="nav-item" data-key="section/${s.slug}" href="#/section/${s.slug}">
-      <i class="fas ${esc(s.icon||'fa-folder')}"></i> ${esc(s.name)}</a>`;
+    html += `<a class="nav-item" data-key="section/${s.slug}" href="#/section/${s.slug}"><i class="fas ${esc(s.icon||'fa-folder')}"></i> ${esc(s.name)}</a>`;
   }
   html += `<div class="nav-sep">Minha conta</div>
            <a class="nav-item" data-key="perfil/me" href="#/perfil/me"><i class="fas fa-id-badge"></i> Meu perfil</a>`;
@@ -266,13 +289,11 @@ async function renderHome(c){
 
   const { sections, subs, posts, members:registeredCount, newest, groups, ug } = bundle;
   const memberCount={}; (ug||[]).forEach(m=>memberCount[m.group_id]=(memberCount[m.group_id]||0)+1);
-  
   let lastChip='<em>nenhum</em>';
   if(newest?.[0]){
     const ic = userIconOf((await cachedQuery('lastug:'+newest[0].id, ()=> supabase.from('user_groups').select('groups(id,icon,order_index,apply_color)').eq('user_id',newest[0].id), 120_000)).data||[]);
     lastChip=`<span class="sg-link"><i class="fas ${ic}"></i> ${esc(newest[0].nickname)}</span>`;
   }
-
   const counts={},lastMap={};
   (posts||[]).forEach(p=>{counts[p.subtopic_id]=(counts[p.subtopic_id]||0)+1;if(!lastMap[p.subtopic_id])lastMap[p.subtopic_id]=p;});
   const visibleSubs=(subs||[]).filter(s=>canViewSub(s));
@@ -303,7 +324,6 @@ async function renderHome(c){
     ${ann ? `<div class="qs-notice" title="${esc(ann)}"><i class="fas fa-bullhorn"></i><span>${esc(ann)}</span></div>` : ``}
     <div class="qs-emblem"><img src="${CONFIG.logoUrl}" alt="" loading="lazy" onerror="this.parentElement.classList.add('qs-emblem-empty')"></div>
   </section>
-
   <section class="hero fade-up">
     <div class="hero-art" aria-hidden="true"><img src="${CONFIG.logoUrl}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
     <div class="hero-inner flex flex-wrap items-center gap-6 justify-between">
@@ -314,14 +334,12 @@ async function renderHome(c){
       </div>
     </div>
   </section>
-
   <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 fade-up">
     <div class="stat-tile"><span class="forum-ico"><i class="fas fa-users"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Efetivo ativo</p><p class="font-display text-xl font-extrabold text-famr-800">${registeredCount}</p></div></div>
     <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-comments"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Publicações</p><p class="font-display text-xl font-extrabold text-famr-800">${pubs}+</p></div></div>
     <div class="stat-tile"><span class="forum-ico"><i class="fas fa-folder-open"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Subtópicos</p><p class="font-display text-xl font-extrabold text-famr-800">${visibleSubs.length}</p></div></div>
     <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-user-plus"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Mais recente</p><p class="font-display text-sm font-extrabold text-famr-800 truncate">${esc(newest?.[0]?.nickname || '—')}</p></div></div>
   </section>
-
   ${(sections||[]).map(sec => {
     if(!canSeeSection(sec)) return '';
     if(sectionNeedsGroup(sec)){
@@ -347,7 +365,6 @@ async function renderHome(c){
       </div>
     </section>`;
   }).join('')}
-
   <section class="stats-tabs fade-up">
     <div class="st-head">
       <button class="st-tab active" data-stab="usuarios"><i class="fas fa-users"></i> Usuários</button>
@@ -374,11 +391,8 @@ async function renderHome(c){
       </div>
     </div>
   </section>`;
-
-  startQsClock();
-  bindHomeTabs();
+  startQsClock(); bindHomeTabs();
 }
-
 function bindHomeTabs(){
   document.querySelectorAll('.st-tab').forEach(btn => btn.addEventListener('click', () => {
     document.querySelectorAll('.st-tab').forEach(b => b.classList.remove('active'));
@@ -387,7 +401,6 @@ function bindHomeTabs(){
     document.getElementById('stab-'+btn.dataset.stab)?.classList.remove('hidden');
   }));
 }
-
 function forumRow(s, counts, lastMap){
   const locked = !canViewSub(s);
   const last = lastMap[s.id];
@@ -402,7 +415,7 @@ function forumRow(s, counts, lastMap){
   </a>`;
 }
 
-/* ══════════ PÁGINA DE GRUPO ══════════ */
+/* ══════════ GRUPO ══════════ */
 async function renderGroupPage(c, groupId){
   const [{ data: grp }, { data: members }] = await Promise.all([
     supabase.from('groups').select('*, groups(name)').eq('id', groupId).single(),
@@ -416,7 +429,6 @@ async function renderGroupPage(c, groupId){
   (ugIcons||[]).forEach(r => { (iconByUser[r.user_id] = iconByUser[r.user_id] || []).push(r.groups); });
   const isMember = STATE.groups.some(g => g.id === groupId);
   const canManage = isModOf(groupId);
-
   c.innerHTML = `
   <div class="fade-up">
     <p class="text-xs text-muted mb-2"><a href="#/home" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>Início</a> / <b>${esc(grp.name)}</b></p>
@@ -443,7 +455,6 @@ async function renderGroupPage(c, groupId){
 window.joinGroup = async id => { const { error } = await supabase.from('user_groups').insert([{ user_id: STATE.profile.id, group_id: id }]); if(error) return toast('Erro: '+error.message,'err'); toast('Você entrou no grupo.'); reloadSessionGroups(); };
 window.leaveGroup = async id => { await supabase.from('user_groups').delete().eq('user_id', STATE.profile.id).eq('group_id', id); toast('Você saiu do grupo.'); reloadSessionGroups(); };
 
-/* ══════════ CARREGAR GRUPOS DA SESSÃO ══════════ */
 async function loadSessionGroups(userId){
   try{
     const { data, error } = await supabase.rpc('famr_get_my_groups');
@@ -610,7 +621,7 @@ window.saveEditPost = async id => {
   const content = document.getElementById('edit-content').value;
   const { error } = await supabase.from('posts').update({ content }).eq('id', id);
   if(error) return toast('Erro: '+error.message,'err');
-  try{ await supabase.rpc('log_action', { action:'POST_EDITADO', details:{ id } }); }catch(e){}
+  await famrLog('POST_EDITADO', { id });
   invalidate('posts:'); invalidate('home:');
   closeModal(); toast('Publicação atualizada.'); route();
 };
@@ -618,14 +629,14 @@ window.newPost = async function(e, subtopicId){
   e.preventDefault(); const f = e.target;
   const { error } = await supabase.from('posts').insert([{ subtopic_id: subtopicId, title: f.title.value, content: f.content.value, link: f.link.value||null, author_id: STATE.profile.id }]);
   if(error){ toast('Erro: '+error.message,'err'); return false; }
-  try{ await supabase.rpc('log_action', { action:'POST_CRIADO', details:{ subtopicId } }); }catch(e){}
+  await famrLog('POST_CRIADO', { subtopicId });
   invalidate('posts:'); invalidate('home:');
   toast('Tópico publicado!'); route(); return false;
 };
 window.delPost = async function(id){
-  if(!await confirmDlg('Excluir esta publicação?')) return;
+  if(!await confirmDlg('Excluir esta publicação? Esta ação não pode ser desfeita.', { title:'Excluir publicação', okText:'Excluir', danger:true })) return;
   await supabase.from('posts').delete().eq('id', id);
-  try{ await supabase.rpc('log_action', { action:'POST_EXCLUIDO', details:{ id } }); }catch(e){}
+  await famrLog('POST_EXCLUIDO', { id });
   invalidate('posts:'); invalidate('home:');
   closeModal(); toast('Publicação excluída.'); route();
 };
@@ -687,7 +698,9 @@ window.submitRequest = async function(subtopicId){
   closeModal(); toast('Protocolo enviado! Aguarde a análise do CRH/RH.'); route();
 };
 
-/* ══════════ DOCUMENTOS PRINCIPAIS (v29: workspace página cheia) ══════════ */
+/* ══════════ DOCUMENTOS (workspace página cheia + citação colorida) ══════════ */
+let _wsEditor=null, _wsSaving=false, _wsDirty=false;
+
 async function renderDocumentos(c, sec){
   if(!canViewSection(sec)){ c.innerHTML = secHead(sec)+lockCard('documentos'); return; }
   const canManage = isAdmin() || canCreateIn({section_id:sec.id, allow_posts:true}) || (STATE.perms?.['section:'+sec.id]?.create);
@@ -745,21 +758,17 @@ window.downloadDoc = async id => {
   const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=(d.title||'documento').replace(/[^\w\-]+/g,'_')+'.doc'; a.click(); URL.revokeObjectURL(url);
 };
 window.delDoc = async id => {
-  if(!await confirmDlg('Excluir este documento permanentemente?')) return;
+  if(!await confirmDlg('Excluir este documento permanentemente?', { title:'Excluir documento', okText:'Excluir', danger:true })) return;
   await supabase.from('documents').delete().eq('id',id);
-  try{ await supabase.rpc('log_action',{action:'DOC_DEL',details:{id}}); }catch(e){}
+  await famrLog('DOC_DEL', { id });
   invalidate('docs:'); closeModal(); toast('Documento excluído.'); route();
 };
-
-/* ────────────────────────────────────────────────
-   WORKSPACE DE EDIÇÃO (página inteira, estilo GDocs)
-   ──────────────────────────────────────────────── */
-let _wsEditor=null, _wsSaving=false, _wsDirty=false;
 
 function closeDocWorkspace(){
   const old = document.getElementById('doc-workspace');
   if(old) old.remove();
   _wsEditor=null; _wsDirty=false; _wsSaving=false;
+  document.removeEventListener('keydown', ctrlSaveHandler);
 }
 
 window.renderDocWorkspace = async function(docId){
@@ -795,11 +804,23 @@ window.renderDocWorkspace = async function(docId){
   document.getElementById('dw-title').focus();
 };
 
-window.exitDocWorkspace = function(){
-  if(_wsDirty && !confirm('Você tem alterações não salvas. Deseja realmente sair?')) return;
+window.exitDocWorkspace = async function(){
+  if(_wsDirty){
+    const choice = await new Promise(res => {
+      openModal('<i class="fas fa-triangle-exclamation text-gold-500 mr-2"></i>Alterações não salvas',
+        `<p class="text-sm text-muted leading-relaxed">Este documento tem alterações que ainda não foram salvas.<br>O que deseja fazer?</p>`,
+        `<button class="btn btn-outline btn-sm" id="_ex-cancel">Continuar editando</button>
+         <button class="btn btn-danger btn-sm" id="_ex-discard">Descartar</button>
+         <button class="btn btn-primary btn-sm" id="_ex-save">Salvar e sair</button>`);
+      document.getElementById('_ex-save').onclick = ()=>res('save');
+      document.getElementById('_ex-discard').onclick = ()=>res('discard');
+      document.getElementById('_ex-cancel').onclick = ()=>res('cancel');
+    });
+    if(choice==='cancel') return;
+    if(choice==='save'){ await saveCurrentDoc(location.hash.startsWith('#/doc-edit/')?location.hash.split('/')[2]:''); if(_wsSaving) return; /* aguarda salvar */ }
+  }
   closeDocWorkspace();
   history.back();
-  /* Se não houver histórico suficiente, cai pra home dos docs */
   setTimeout(()=>{ if(location.hash==='#/doc-new'||location.hash.startsWith('#/doc-edit')) location.hash='#/section/documentos'; }, 50);
 };
 
@@ -818,35 +839,32 @@ function initWorkspaceToolbar(){
 
   const mkSelect = (opts, cmd, label) => {
     const sel = document.createElement('select');
-    sel.className = 'dw-select';
-    sel.title = label;
-    opts.forEach(([val,text])=>{
-      const o = document.createElement('option');
-      o.value = val; o.textContent = text;
-      sel.appendChild(o);
-    });
-    sel.onchange = () => { body.focus(); document.execCommand(cmd,false,sel.value); syncToolbarState(); };
-    bar.appendChild(sel);
-    return sel;
+    sel.className = 'dw-select'; sel.title = label;
+    opts.forEach(([val,text])=>{ const o=document.createElement('option'); o.value=val; o.textContent=text; sel.appendChild(o); });
+    sel.onchange = () => { body.focus(); document.execCommand(cmd,false,sel.value); syncToolbarState(); markDirty(); };
+    bar.appendChild(sel); return sel;
   };
   const mkBtn = (label, icon, cmd, val=null) => {
     const b = document.createElement('button');
     b.type='button'; b.className='dw-tool'; b.title=label;
     b.innerHTML = `<i class="fas ${icon}"></i>`;
-    b.dataset.cmd = cmd; b.dataset.val = val;
-    b.onclick = () => { body.focus(); if(cmd==='custom'){ val(body); } else { document.execCommand(cmd,false,val); } syncToolbarState(); };
-    bar.appendChild(b);
-    return b;
+    b.dataset.cmd = cmd; b.dataset.val = (typeof val==='string')?val:'';
+    b.onclick = () => {
+      body.focus();
+      if(cmd==='custom'){ val(body); }
+      else { document.execCommand(cmd,false,(typeof val==='string')?val:null); }
+      syncToolbarState(); markDirty();
+    };
+    bar.appendChild(b); return b;
   };
   const mkSep = () => { const s=document.createElement('span'); s.className='dw-sep'; bar.appendChild(s); };
   const mkColor = (label, cmd) => {
     const inp = document.createElement('input');
     inp.type='color'; inp.className='dw-color'; inp.title=label; inp.value='#000000';
-    inp.oninput = () => { body.focus(); document.execCommand(cmd,false,inp.value); };
+    inp.oninput = () => { body.focus(); document.execCommand(cmd,false,inp.value); markDirty(); };
     bar.appendChild(inp);
   };
 
-  /* Fonte e tamanho */
   mkSelect([
     ['Arial','Arial'],['Helvetica','Helvetica'],['Tahoma','Tahoma'],['Verdana','Verdana'],
     ['Georgia','Georgia'],['Times New Roman','Times New Roman'],['Courier New','Courier New'],
@@ -856,8 +874,6 @@ function initWorkspaceToolbar(){
     ['1','8pt'],['2','10pt'],['3','12pt'],['4','14pt'],['5','18pt'],['6','24pt'],['7','36pt']
   ], 'fontSize', 'Tamanho');
   mkSep();
-
-  /* Estilo básico */
   mkBtn('Negrito (Ctrl+B)','fa-bold','bold');
   mkBtn('Itálico (Ctrl+I)','fa-italic','italic');
   mkBtn('Sublinhado (Ctrl+U)','fa-underline','underline');
@@ -865,59 +881,66 @@ function initWorkspaceToolbar(){
   mkColor('Cor do texto','foreColor');
   mkColor('Realce','hiliteColor');
   mkSep();
-
-  /* Alinhamento */
   mkBtn('Alinhar à esquerda','fa-align-left','justifyLeft');
   mkBtn('Centralizar','fa-align-center','justifyCenter');
   mkBtn('Alinhar à direita','fa-align-right','justifyRight');
   mkBtn('Justificar','fa-align-justify','justifyFull');
   mkSep();
-
-  /* Listas e indentação */
   mkBtn('Lista com marcadores','fa-list-ul','insertUnorderedList');
   mkBtn('Lista numerada','fa-list-ol','insertOrderedList');
   mkBtn('Diminuir recuo','fa-outdent','outdent');
   mkBtn('Aumentar recuo','fa-indent','indent');
   mkSep();
-
-  /* Título / parágrafo */
-  mkBtn('Título 1','fa-heading',[1],'formatBlock','<h1>');
-  mkBtn('Título 2','fa-heading',[2],'formatBlock','<h2>');
-  mkBtn('Título 3','fa-heading',[3],'formatBlock','<h3>');
+  mkBtn('Título 1','fa-heading','','formatBlock','<h1>');
+  mkBtn('Título 2','fa-heading','','formatBlock','<h2>');
+  mkBtn('Título 3','fa-heading','','formatBlock','<h3>');
   mkBtn('Parágrafo','fa-paragraph','','formatBlock','<p>');
-  mkBtn('Citação','fa-quote-left','','formatBlock','<blockquote>');
+
+  /* ── CITAÇÃO COM COR ESCOLHÍVEL ── */
+  const quoteWrap = document.createElement('span');
+  quoteWrap.className = 'dw-quote-wrap';
+  const quoteBtn = document.createElement('button');
+  quoteBtn.type='button'; quoteBtn.className='dw-tool'; quoteBtn.title='Citação (bloco)';
+  quoteBtn.innerHTML = '<i class="fas fa-quote-left"></i>';
+  quoteBtn.onclick = () => { body.focus(); document.execCommand('formatBlock',false,'blockquote'); syncToolbarState(); markDirty(); };
+  const quoteColor = document.createElement('input');
+  quoteColor.type='color'; quoteColor.className='dw-quote-color'; quoteColor.title='Cor da barra da citação'; quoteColor.value='#c9a227';
+  quoteColor.oninput = () => { applyQuoteColor(quoteColor.value); markDirty(); };
+  quoteWrap.appendChild(quoteBtn); quoteWrap.appendChild(quoteColor);
+  bar.appendChild(quoteWrap);
   mkSep();
 
-  /* Sub/Super */
   mkBtn('Subscrito','fa-subscript','subscript');
   mkBtn('Superscrito','fa-superscript','superscript');
   mkSep();
-
-  /* Links e mídia */
-  mkBtn('Inserir link','fa-link','','custom',(el)=>{
-    const url = prompt('URL do link:');
-    if(url) document.execCommand('createLink', false, url);
+  mkBtn('Inserir link','fa-link','','custom', async ()=>{
+    const url = await promptDlg('URL do link', '', { title:'Inserir link', okText:'Aplicar' });
+    if(url){ body.focus(); document.execCommand('createLink', false, url); markDirty(); }
   });
   mkBtn('Remover link','fa-link-slash','unlink');
   mkBtn('Inserir imagem','fa-image','','custom',()=>insertImageFromStorage(body));
   mkBtn('Emoji','fa-face-smile','','custom',()=>showEmojiPanel(body));
   mkSep();
-
-  /* Estrutura */
   mkBtn('Linha horizontal','fa-minus','insertHorizontalRule');
   mkBtn('Limpar formatação','fa-eraser','removeFormat');
   mkSep();
   mkBtn('Desfazer (Ctrl+Z)','fa-undo','undo');
   mkBtn('Refazer (Ctrl+Y)','fa-repeat','redo');
-  mkSep();
-  mkBtn('Copiar seleção','fa-copy','','custom',()=>{
-    const sel = window.getSelection().toString();
-    if(sel) navigator.clipboard.writeText(sel).then(()=>toast('Copiado!')).catch(()=>toast('Não foi possível copiar.','err'));
-  });
 
   body.addEventListener('keyup', syncToolbarState);
   body.addEventListener('mouseup', syncToolbarState);
   body.addEventListener('input', ()=>{ _wsDirty=true; setStatus('alterações não salvas'); });
+}
+
+/* Aplica cor na barra lateral da citação sob o cursor (ou todas as citações selecionadas) */
+function applyQuoteColor(color){
+  const body = document.getElementById('dw-body');
+  const sel = window.getSelection();
+  let node = sel && sel.anchorNode ? (sel.anchorNode.nodeType===3 ? sel.anchorNode.parentElement : sel.anchorNode) : null;
+  let bq = node ? node.closest('blockquote') : null;
+  if(bq){ bq.style.borderLeftColor = color; return; }
+  /* Nenhuma citação ativa: colore todas as citações do documento */
+  body.querySelectorAll('blockquote').forEach(el => el.style.borderLeftColor = color);
 }
 
 function syncToolbarState(){
@@ -928,6 +951,7 @@ function syncToolbarState(){
   });
 }
 function setStatus(txt){ const el=document.getElementById('dw-status'); if(el) el.textContent=txt; }
+function markDirty(){ _wsDirty=true; setStatus('alterações não salvas'); }
 
 function insertImageFromStorage(body){
   const inp = document.createElement('input');
@@ -947,39 +971,36 @@ function insertImageFromStorage(body){
 }
 
 function showEmojiPanel(body){
-  const emojis = ['😀','😁','😂','','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','🙂','🤗','🤩','🤔','🤨','','😑','😶','🙄','😏','😣','😥','😮','🤐','','😪','','🥱','😴','😌','😛','😜','😝','🤤','😒','😓','😔','😕','','🤑','😲','🙁','😖','😞','😟','😤','😢','😭','😦','😧','😨','😩','','😬','😰','😱','🥵','🥶','','🤪','','🥴','😠','😡','🤬','😷','','🤕','🤢','🤮','🤧','😇','🥳','🥸','','🤡','','','😈','','💀','️','👻','','🤖','','😸','😹','😻','😼','😽','','😿','😾','🎖️','⭐','🏅','','🥈','','⚽','','🏈','','🥎','🎾','🏐','🏉','🥏','🎱','','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳','','🏹','🎣','🤿','','🥋','','🛹','🛼','🛷','⛸️','🥌','🎿','⛷️','🏂','🪂','️‍♀️','🏋️‍♂️','🤼♀️','🤼♂️','‍♀️','🤸‍♂️','⛹️‍♀️','⛹️‍♂️','🤺','🤾‍♀️','🤾♂️','🏌️‍♀️','🏌️‍♂️','','🧘♀️','🧘‍♂️','🏄♀️','‍♂️','🏊‍♀️','🏊♂️','‍♀️','🤽‍♂️','🚣‍♀️','🚣‍♂️','🧗♀️','‍♂️','🚵♀️','🚵♂️','🚴‍♀️','🚴‍♂️','🏆','🥇','','🎖️','🏵️','🎗️','','️','🎪','‍♀️','🤹‍♂️','🎭','','🎨','','🎤','','🎼','','🥁','🎷','🎺','🎸','🪕','','🎲','♟️','🎯','🎳','🎮','🎰','🧩','🚗','','🚙','🚌','🚎','🏎️','🚓','🚑','','🚐','🚚','🚛','🚜','🛴','🚲','🛵','️','','🚨','🚔','🚍','🚘','🚖','🚡','🚠','🚟','🚃','🚋','🚞','🚝','🚄','🚅','🚈','🚂','🚆','🚇','🚊','🚉','✈️','🛫','🛬','🛩️','💺','🛰️','🚀','🛸','🚁','🛶','⛵','🚤','🛥️','🛳️','⛴️','🚢','⚓','⛽','🚧','🚦','🚥','🚏','🗺️','','🗽','🗼','🏰','','🏟️','🎡','🎢','🎠','⛲','⛱️','🏖️','🏝️','🏜️','🌋','⛰️','🏔️','🗻','️','⛺','🛖','🏠','🏡','🏘️','🏚️','🏗️','🏭','🏢','🏬','🏣','🏤','🏥','🏦','','🏪','','🏩','💒','🏛️','⛪','🕌','🕍','🛕','🕋','⛩️','🛤️','🛣️','🗾','','🏞️','','🌄','🌠','🎇','🎆','','🌉','🌁','🌃','🌌','🌉','🌁'];
+  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','','🤩','','🤨','','😑','😶','🙄','','😣','','😮','','😯','😪','😫','🥱','😴','😌','😛','😜','😝','🤤','😒','😓','😔','😕','🙃','','😲','','😖','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','🥵','🥶','😳','🤪','😵','🥴','😠','😡','🤬','😷','🤒','','🤢','🤮','🤧','😇','🥳','🥸','🤠','🤡','🥹','👋','🤚','','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','','🦿','🦵','🦶','👂','🦻','👃','🧠','🫀','🫁','🦷','🦴','👀','️','👅','👄','👶','🧒','','👧','','👱','👨','🧔','','🧓','👴','👵','🙍','🙎','🙅','🙆','💁','','🧏','','🤦','🤷','👮','🕵️','💂','🥷','👷','🤴','👸','👳','','','🤵','👰','🤰','🤱','👼','🎅','🤶','🦸','','🧙','🧚','🧛','🧜','🧝','🧞','🧟','💆','💇','🚶','','🧎','🏃','💃','🕺','️','👯','🧖','','🤸','⛹️','🏋️','🤼','','🚣','','🛀','🛌','👭','','👬','💑','💏','👪','🗣️','','👥','🫂','👣','🦰','🦱','🦳','🦲','🐵','🐒','🦍','','🐶','','🦮','🐩','🐺','🦊','🦝','🐱','🐈','🦁','🐯','🐅','🐆','🐴','🐎','🦄','','🦌','🦬','🐮','🐂','🐃','🐄','🐷','🐖','🐗','🐽','🐏','🐑','🐐','🐪','🐫','🦙','','🐘','🦣','','🦛','','🐁','🐀','🐹','🐰','🐇','🐿️','🦫','🦔','🦇','🐻','🐨','🐼','🦥','🦦','🦨','🦘','🦡','🐾','🦃','🐔','🐓','🐣','🐤','🐥','🐦','🐧','🕊️','🦅','🦆','🦢','🦉','🦤','🪶','','🦚','🦜','🐸','🐊','🐢','🦎','','🐲','🐉','🦕','🦖','🐳','🐋','🐬','🦭','','🐠','🐡','🦈','🐙','🐚','🪸','','🐌','🦋','','🐜','🐝','🪲','','🦗','🪳','🕷️','️','🦂','🦟','🪰','🪱','🦠','💐','🌸','💮','','🏵️','🌹','🥀','','🌻','','🌷','','🪴','','🌳','🌴','🌵','🌾','🌿','☘️','','🍁','','🍃','🪹','','🍇','🍈','🍉','🍊','🍋','🍌','🍍','🥭','','🍏','🍐','🍑','🍒','🍓','🫐','','🍅','🫒','🥥','','🍆','','🥕','','🌶️','','🥒','🥬','','🧄','','🍄','','🫘','','🍞','🥐','🥖','🫓','🥨','🥯','🥞','🧇','','🍖','🍗','🥩','🥓','🍔','🍟','🍕','🌭','','🌮','','🫔','','🧆','🥚','🍳','🥘','🍲','','🥣','🥗','🍿','','🧂','🥫','🍱','','🍙','','🍛','','🍝','','🍢','','🍤','','🥮','','🥟','','🥡','','🦞','','🦑','','🍦','🍧','🍨','🍩','','🎂','🍰','🧁','','🍫','','🍭','','🍯','🍼','🥛','☕','','🍵','🍶','🍾','🍷','🍸','🍹','🍺','🍻','🥂','','🫗','','🧋','','🧉','','🥢','️','🍴','','🔪','','','🌍','','🌏','','🗺️','🗾','🧭','️','⛰️','','🗻','🏕️','🏖️','🏜️','🏝️','️','🏟️','🏛️','️','','🪨','🪵','🛖','🏘️','🏚️','🏠','','🏢','','🏤','🏥','🏦','🏨','','🏪','🏫','🏬','🏭','🏯','🏰','💒','','🗽','⛪','🕌','🛕','🕍','⛩️','🕋','⛲','⛺','','🌃','🏙️','🌄','🌅','🌆','🌇','🌉','♨️','🎠','🛝','🎡','🎢','💈','🎪','🚂','🚃','🚄','🚅','🚆','🚇','🚈','🚉','🚊','🚝','🚞','🚋','🚌','🚍','','🚐','','🚒','','🚔','🚕','🚖','🚗','🚘','🚙','🛻','','🚛','🚜','🏎️','🏍️','🛵','🦽','🦼','🛺','🚲','🛴','🛹','','🚏','🛣️','🛤️','🛢️','','🛞','🚨','🚥','🚦','🛑','','⚓','','⛽','🚢','🛳️','⛴️','🛥️','🚤','🛶','','🛶','🚀','🛸','🛩️','','🛬','🪂','','🚁','','🚠','🚡','🛰️','🚉','🛎️','🧳','','⏳','⌚','⏰','⏱️','⏲️','🕰️','🌡️','️','','🎈','','🎊','','🎏','🎐','🎑','🧧','','🎁','🎗️','🎟️','🎫','🎖️','🏆','🏅','🥇','🥈','🥉','⚽','','🥎','','🏐','🏈','🏉','🎾','🥏','🎳','🏏','🏑','🏒','🥍','','🏸','🥊','🥋','🥅','⛳','⛸️','🎣','🤿','🎽','🎿','🛷','🥌','🎯','🪀','🪁','🎱','🔮','🪄','🧿','','🎮','🕹️','🎰','🎲','🧩','','🪅','🪩','🪆','♠️','♥️','♦️','♣️','♟️','🃏','🀄','🎴','','🖼️','','🧵','🪡','🧶','🪢','👓','🕶️','🥽','','🦺','👔','👕','👖','🧣','🧤','🧥','','👗','👘','🥻','','🩲','','👙','','👛','👜','👝','️','🎒','🩴','👞','👟','🥾','','👠','👡','🩰','','🪖','','👒','🎩','🎓','🧢','⛑️','🪯','💄','💍','💼','🩹','','🩻','🩼','💊','','🩸','🧬','🔬','🔭','📡','💉','🧫','🧪','️','🧹','🪠','🧺','🧻','🚽','','🚿','','🛀','🧼','','🪒','','🪣','🧴','🛎️','🔑','🗝️','🚪','🪑','🛋️','🛏️','','','🪆','️','🪞','🪟','🛍️','🛒','🎁','🎈','🎏','🎀','🪄','🪅','','🎉','🎎','🏆','🎖️','🏅','','🥈','','⚽','','🏈','','','🏓','🏸','🥊','','🎽','','🛼','','⛸️','🥌','🎿','⛷️','🏂','🪂','️','🤼','🤸','⛹️','🤺','🤾','🏌️','🏇','🧘','','🏊','🤽','🚣','🧗','🚵','','🏆','','🥈','','🏅','️','🏵️','🎗️','','🎟️','🎪','🤹','','🩰','🎨','🎬','🎤','🎧','🎼','🎹','🥁','','🎷','','🪗','','🪕','🎻','🎲','♟️','🎯','🎳','🎮','🎰','🧩'];
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:1rem;box-shadow:0 20px 60px -20px rgba(0,0,0,.5);max-width:420px;max-height:320px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(28px,1fr));gap:.25rem';
+  wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:1rem;box-shadow:0 20px 60px -20px rgba(0,0,0,.5);max-width:440px;max-height:340px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(28px,1fr));gap:.25rem';
   emojis.forEach(em=>{
     const b=document.createElement('button');
     b.type='button'; b.textContent=em;
     b.style.cssText='border:none;background:none;cursor:pointer;font-size:1.2rem;padding:.2rem;border-radius:6px';
     b.onmouseenter=()=>b.style.background='var(--gold-100)';
     b.onmouseleave=()=>b.style.background='none';
-    b.onclick=()=>{ body.focus(); document.execCommand('insertText',false,em); wrap.remove(); _wsDirty=true; };
+    b.onclick=()=>{ body.focus(); document.execCommand('insertText',false,em); cleanup(); markDirty(); };
     wrap.appendChild(b);
   });
   const overlay = document.createElement('div');
   overlay.style.cssText='position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.3)';
-  overlay.onclick = () => { wrap.remove(); overlay.remove(); };
+  const cleanup = () => { wrap.remove(); overlay.remove(); };
+  overlay.onclick = cleanup;
   document.body.appendChild(overlay);
   document.body.appendChild(wrap);
 }
 
 function wireAutosave(){
-  /* Marca dirty quando título/categoria mudam */
   ['dw-title','dw-category'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.addEventListener('input', ()=>{ _wsDirty=true; setStatus('alterações não salvas'); });
   });
-  /* Ctrl+S salva */
   document.addEventListener('keydown', ctrlSaveHandler);
 }
 function ctrlSaveHandler(e){
   if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s'){
-    e.preventDefault();
-    const btn = document.getElementById('dw-save-btn');
-    if(btn) btn.click();
+    if(document.getElementById('doc-workspace')){ e.preventDefault(); const btn=document.getElementById('dw-save-btn'); if(btn) btn.click(); }
   }
 }
 
@@ -990,38 +1011,27 @@ window.saveCurrentDoc = async function(existingId){
   const bodyEl = document.getElementById('dw-body');
   const saveBtn = document.getElementById('dw-save-btn');
   if(!titleEl || !bodyEl) return;
-
   const title = titleEl.value.trim();
   if(!title){ toast('O título é obrigatório.','warn'); titleEl.focus(); return; }
   const category = catEl.value.trim() || null;
   const body_html = bodyEl.innerHTML;
-
   _wsSaving = true;
   saveBtn.disabled = true;
-  saveBtn.innerHTML = '<span class="spinner-inline"></span> Salvando...';
+  saveBtn.innerHTML = '<span class="spin-sm"></span> Salvando...';
   setStatus('salvando...');
-
   const payload = { title, category, body_html };
   let error;
-  if(existingId){
-    ({error} = await supabase.from('documents').update(payload).eq('id', existingId));
-  } else {
-    payload.author_id = STATE.profile.id;
-    ({error} = await supabase.from('documents').insert([payload]));
-  }
-
+  if(existingId){ ({error} = await supabase.from('documents').update(payload).eq('id', existingId)); }
+  else { payload.author_id = STATE.profile.id; ({error} = await supabase.from('documents').insert([payload])); }
   if(error){
-    _wsSaving = false;
-    saveBtn.disabled = false;
+    _wsSaving = false; saveBtn.disabled = false;
     saveBtn.innerHTML = '<i class="fas fa-floppy-disk"></i> Salvar';
     setStatus('erro ao salvar');
     return toast('Erro ao salvar: '+error.message,'err');
   }
-
-  try{ await supabase.rpc('log_action',{action:existingId?'DOC_UPDATE':'DOC_CREATE',details:{title,category}}); }catch(e){}
+  await famrLog(existingId?'DOC_UPDATE':'DOC_CREATE', { title, category });
   invalidate('docs:');
-  _wsDirty = false;
-  _wsSaving = false;
+  _wsDirty = false; _wsSaving = false;
   saveBtn.disabled = false;
   saveBtn.innerHTML = '<i class="fas fa-check"></i> Salvo';
   setStatus('salvo ✓');
@@ -1034,13 +1044,6 @@ window.saveCurrentDoc = async function(existingId){
   }, 2000);
 };
 
-/* remove listener global quando fecha workspace */
-const origCloseWs = window.closeDocWorkspace;
-window.closeDocWorkspace = function(){
-  document.removeEventListener('keydown', ctrlSaveHandler);
-  origCloseWs.call(this);
-};
-
 /* ══════════ PERFIL ══════════ */
 async function renderProfile(c, param){
   const me = (!param || param === 'me');
@@ -1048,9 +1051,8 @@ async function renderProfile(c, param){
   const { data: p } = await supabase.from('profiles_view').select('*').eq('id', id).single();
   if(!p){ c.innerHTML = '<div class="card card-body text-sm text-muted">Perfil não encontrado.</div>'; return; }
   let gs = [];
-  if(me){
-    gs = sortGroups(STATE.groups);
-  } else {
+  if(me){ gs = sortGroups(STATE.groups); }
+  else {
     const { data: ug, error: ugErr } = await supabase.from('user_groups').select('group_id').eq('user_id', id);
     if(ugErr) console.error('[FAMR] perfil → vínculos:', ugErr);
     const gids = (ug||[]).map(r => r.group_id).filter(Boolean);
@@ -1069,10 +1071,7 @@ async function renderProfile(c, param){
     <div class="h-24" style="background:linear-gradient(120deg,#0e4433,#14563f 60%,#c9a227)"></div>
     <div class="p-6 -mt-12">
       <div class="flex flex-wrap items-end gap-4">
-        <span class="w-20 h-20 rounded-2xl grid place-items-center text-3xl font-extrabold text-white border-4 border-white shadow-lg"
-              style="background:${cg?.color || '#14563f'}">
-          <i class="fas ${main?.icon || 'fa-user'}"></i>
-        </span>
+        <span class="w-20 h-20 rounded-2xl grid place-items-center text-3xl font-extrabold text-white border-4 border-white shadow-lg" style="background:${cg?.color || '#14563f'}"><i class="fas ${main?.icon || 'fa-user'}"></i></span>
         <div class="flex-1">
           <h1 class="font-display text-2xl font-extrabold">${esc(p.nickname)}</h1>
           <p class="text-xs text-muted">No sistema desde ${fmtDate(p.created_at)} ${me ? `• ${esc(p.email)}` : ''}</p>
@@ -1080,9 +1079,7 @@ async function renderProfile(c, param){
         <span class="chip ${p.status==='active'?'chip-ok':p.status==='pending'?'chip-wait':'chip-no'}">${p.status.toUpperCase()}</span>
         ${p.login_locked ? '<span class="chip chip-no"><i class="fas fa-lock mr-1"></i>BLOQUEADA</span>' : ''}
       </div>
-      <div class="flex flex-wrap gap-2 mt-4">
-        ${gs.map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}
-      </div>
+      <div class="flex flex-wrap gap-2 mt-4">${gs.map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}</div>
       ${gs.length ? `<p class="text-[11px] text-muted mt-3"><i class="fas fa-circle-info mr-1"></i>Grupo prioritário (cor/ícone): <b style="color:${main.color}">${esc(main.name)}</b> — definido pela ordem dos grupos.</p>` : ''}
     </div>
   </div>`;
@@ -1161,9 +1158,9 @@ async function tabUsuarios(b){
     <span class="text-xs text-muted self-center">Página ${A.page+1}${totalPages>1?` de ${totalPages}`:''}</span>
     ${(data||[]).length===20?`<button class="btn btn-outline btn-sm" onclick="A.page++;tabUsuarios(document.getElementById('admin-body'))">Próxima →</button>`:''}</div></div>`;
 }
-window.setUser = async (id, status) => { const { error } = await supabase.from('profiles').update({ status }).eq('id', id); if(error) return toast('Erro: '+error.message,'err'); try{ await supabase.rpc('log_action', { action:'USER_STATUS', details:{ id, status } }); }catch(e){} toast('Status atualizado.'); tabUsuarios(document.getElementById('admin-body')); };
-window.toggleInvisible = async (id, v) => { await supabase.from('profiles').update({ is_invisible: v }).eq('id', id); try{ await supabase.rpc('log_action', { action:'USER_INVISIBLE', details:{ id, v } }); }catch(e){} tabUsuarios(document.getElementById('admin-body')); };
-window.unlockUser = async (id) => { const { error } = await supabase.from('profiles').update({ login_locked:false, failed_logins:0 }).eq('id', id); if(error) return toast('Erro: '+error.message,'err'); try{ await supabase.rpc('log_action', { action:'LOCK_REMOVIDO_ADMIN', details:{ id } }); }catch(e){} toast('Conta destravada pelo comando.'); tabUsuarios(document.getElementById('admin-body')); };
+window.setUser = async (id, status) => { const { error } = await supabase.from('profiles').update({ status }).eq('id', id); if(error) return toast('Erro: '+error.message,'err'); await famrLog('USER_STATUS', { id, status }); toast('Status atualizado.'); tabUsuarios(document.getElementById('admin-body')); };
+window.toggleInvisible = async (id, v) => { await supabase.from('profiles').update({ is_invisible: v }).eq('id', id); await famrLog('USER_INVISIBLE', { id, v }); tabUsuarios(document.getElementById('admin-body')); };
+window.unlockUser = async (id) => { const { error } = await supabase.from('profiles').update({ login_locked:false, failed_logins:0 }).eq('id', id); if(error) return toast('Erro: '+error.message,'err'); await famrLog('LOCK_REMOVIDO_ADMIN', { id }); toast('Conta destravada pelo comando.'); tabUsuarios(document.getElementById('admin-body')); };
 window.manageGroups = async (userId, nick) => {
   const [{ data: all }, { data: mine }] = await Promise.all([
     supabase.from('groups').select('id,name,color,icon,order_index').order('order_index'),
@@ -1180,7 +1177,7 @@ window.saveGroups = async userId => {
   const ids = [...document.querySelectorAll('#modal-body input:checked')].map(i => i.value);
   await supabase.from('user_groups').delete().eq('user_id', userId);
   if(ids.length) await supabase.from('user_groups').insert(ids.map(g => ({ user_id: userId, group_id: g })));
-  try{ await supabase.rpc('log_action', { action:'USER_GROUPS', details:{ userId, ids } }); }catch(e){}
+  await famrLog('USER_GROUPS', { userId, ids });
   invalidate('perms:'); invalidate('home:');
   closeModal(); toast('Grupos atualizados.');
 };
@@ -1267,14 +1264,14 @@ window.saveGroup = async id => {
     ({ error } = await supabase.from('groups').insert([row]));
   }
   if(error) return toast('Erro: '+error.message,'err');
-  try{ await supabase.rpc('log_action', { action:'GROUP_SAVE', details: row }); }catch(e){}
+  await famrLog('GROUP_SAVE', row);
   invalidate('home:'); invalidate('groups:');
   closeModal(); toast('Grupo salvo.'); tabGrupos(document.getElementById('admin-body'));
 };
 window.delGroup = async id => {
-  if(!await confirmDlg('Excluir grupo? Membros perdem o vínculo e as permissões dele.')) return;
+  if(!await confirmDlg('Excluir grupo? Membros perdem o vínculo e as permissões dele.', { title:'Excluir grupo', okText:'Excluir', danger:true })) return;
   await supabase.from('groups').delete().eq('id', id);
-  try{ await supabase.rpc('log_action', { action:'GROUP_DEL', details:{ id } }); }catch(e){}
+  await famrLog('GROUP_DEL', { id });
   invalidate('home:'); invalidate('groups:'); invalidate('perms:');
   tabGrupos(document.getElementById('admin-body'));
 };
@@ -1320,8 +1317,6 @@ window.savePermissions = async gid => {
   invalidate('perms:'); invalidate('home:');
   closeModal(); toast('Permissões salvas.');
 };
-
-/* ══ MATRIZ POR TÓPICO com linha "Todos" ══ */
 window.targetPermissions = async (type, id, name) => {
   const [{ data: grps }, { data: rows }] = await Promise.all([
     supabase.from('groups').select('id,name,color,icon,order_index').order('order_index'),
@@ -1367,7 +1362,6 @@ window.saveTargetPermissions = async (type, id) => {
   invalidate('perms:'); invalidate('home:');
   closeModal(); toast('Permissões salvas.');
 };
-
 window.groupMembers = async gid => {
   const [{ data: grp }, { data: mem }] = await Promise.all([
     supabase.from('groups').select('name,color,icon,group_type').eq('id', gid).single(),
@@ -1406,7 +1400,6 @@ window.gmRemove = async (gid, uid) => {
   invalidate('home:');
   toast('Membro removido.'); groupMembers(gid);
 };
-
 async function tabTopicos(b){
   const [{ data: secs }, { data: subs }, { data: groups }] = await Promise.all([
     supabase.from('sections').select('*').order('order_index'),
@@ -1478,12 +1471,12 @@ window.saveSection = async id => {
     ({ error } = await supabase.from('sections').insert([row]));
   }
   if(error) return toast('Erro: '+error.message,'err');
-  try{ await supabase.rpc('log_action', { action:'SECTION_SAVE', details: row }); }catch(e){}
+  await famrLog('SECTION_SAVE', row);
   invalidate('home:'); invalidate('sections:');
   closeModal(); toast('Setor salvo.'); buildSidebar(); tabTopicos(document.getElementById('admin-body'));
 };
-window.delSection = async id => { if(await confirmDlg('Excluir setor e todos os subtópicos?')) { await supabase.from('sections').delete().eq('id', id); invalidate('home:'); invalidate('sections:'); buildSidebar(); tabTopicos(document.getElementById('admin-body')); } };
-window.delSubtopic = async id => { if(await confirmDlg('Excluir subtópico?')) { await supabase.from('subtopics').delete().eq('id', id); invalidate('home:'); tabTopicos(document.getElementById('admin-body')); } };
+window.delSection = async id => { if(await confirmDlg('Excluir setor e todos os subtópicos?', { title:'Excluir setor', okText:'Excluir', danger:true })) { await supabase.from('sections').delete().eq('id', id); invalidate('home:'); invalidate('sections:'); buildSidebar(); tabTopicos(document.getElementById('admin-body')); } };
+window.delSubtopic = async id => { if(await confirmDlg('Excluir subtópico?', { title:'Excluir subtópico', okText:'Excluir', danger:true })) { await supabase.from('subtopics').delete().eq('id', id); invalidate('home:'); tabTopicos(document.getElementById('admin-body')); } };
 window.subtopicForm = async (sid, tid) => {
   let t = { name:'', description:'', required_group_id:null, allow_posts:true, is_request_form:false, form_fields:[], auto_listagem_category:null };
   if(tid){ const r = await supabase.from('subtopics').select('*').eq('id', tid).single(); if(r.data) t = r.data; }
@@ -1509,7 +1502,7 @@ window.saveSubtopic = async () => {
   if(tid){ ({ error } = await supabase.from('subtopics').update(row).eq('id', tid)); }
   else { ({ error } = await supabase.from('subtopics').insert([row])); }
   if(error) return toast('Erro: '+error.message,'err');
-  try{ await supabase.rpc('log_action', { action:'SUBTOPIC_SAVE', details: row }); }catch(e){}
+  await famrLog('SUBTOPIC_SAVE', row);
   invalidate('home:'); invalidate('subs:');
   closeModal(); toast('Subtópico salvo.'); tabTopicos(document.getElementById('admin-body'));
 };
@@ -1523,8 +1516,13 @@ async function tabProtocolos(b){
       <div class="space-x-1"><button class="btn btn-primary btn-sm" onclick="review('${r.id}','approved')"><i class="fas fa-check"></i> Aprovar</button><button class="btn btn-danger btn-sm" onclick="review('${r.id}','rejected')"><i class="fas fa-xmark"></i> Reprovar</button></div></div>
     <div class="mt-3 grid sm:grid-cols-2 gap-2 text-xs bg-famr-50 rounded-lg p-3">${Object.entries(r.form_data||{}).map(([k,v])=>`<p><b class="text-famr-700">${esc(k)}:</b> ${esc(v)}</p>`).join('')}</div></div>`).join('') || '<p class="p-8 text-center text-sm text-muted">Nenhum protocolo pendente. ✦</p>'}</div></div>`;
 }
-window.review = (id, status) => { if(status === 'approved') return doReview(id, 'approved', ''); openModal('<i class="fas fa-xmark text-red-500 mr-2"></i>Motivo da reprovação', `<label class="field"><span>Motivo (opcional, aparece ao militar)</span><input id="rev-note" class="input"></label>`, `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button><button class="btn btn-danger btn-sm" onclick="doReview('${id}','rejected', document.getElementById('rev-note').value)">Reprovar</button>`); };
-window.doReview = async (id, status, note) => { const { error } = await supabase.rpc('review_request', { req_id: id, new_status: status, note: note || null }); if(error) return toast('Erro: '+error.message,'err'); invalidate('home:'); closeModal(); toast(status==='approved' ? 'Aprovado! Registro publicado na Listagem automaticamente.' : 'Protocolo reprovado.'); tabProtocolos(document.getElementById('admin-body')); };
+window.review = async (id, status) => {
+  if(status === 'approved') return doReview(id, 'approved', '');
+  const note = await promptDlg('Motivo da reprovação (opcional)', '', { title:'Reprovar protocolo', okText:'Reprovar', multiline:true });
+  if(note===null) return; /* cancelou */
+  doReview(id, 'rejected', note);
+};
+window.doReview = async (id, status, note) => { const { error } = await supabase.rpc('review_request', { req_id: id, new_status: status, note: note || null }); if(error) return toast('Erro: '+error.message,'err'); await famrLog('REVIEW_REQUEST', { req_id:id, new_status:status, note }); invalidate('home:'); closeModal(); toast(status==='approved' ? 'Aprovado! Registro publicado na Listagem automaticamente.' : 'Protocolo reprovado.'); tabProtocolos(document.getElementById('admin-body')); };
 
 /* ══════════ LOGS PT + IP ══════════ */
 async function tabLogs(b){
@@ -1553,38 +1551,54 @@ async function tabConfig(b){
       <button class="btn btn-gold btn-sm" onclick="saveAnn()"><i class="fas fa-floppy-disk"></i> Publicar aviso</button></div></div>
   </div>`;
 }
-window.saveMaint = async () => { const value = { enabled: document.getElementById('c-maint').checked, message: document.getElementById('c-maint-msg').value }; await supabase.from('settings').upsert({ key:'maintenance', value }); STATE.settings.maintenance = value; try{ await supabase.rpc('log_action', { action:'MANUTENCAO', details: value }); }catch(e){} toast('Configuração salva.'); document.getElementById('maintenance-banner').classList.toggle('hidden', !value.enabled); };
-window.saveAnn = async () => { const value = { text: document.getElementById('c-ann').value }; await supabase.from('settings').upsert({ key:'announcement', value }); STATE.settings.announcement = value; try{ await supabase.rpc('log_action', { action:'AVISO', details: value }); }catch(e){} toast('Aviso publicado na home.'); };
+window.saveMaint = async () => { const value = { enabled: document.getElementById('c-maint').checked, message: document.getElementById('c-maint-msg').value }; await supabase.from('settings').upsert({ key:'maintenance', value }); STATE.settings.maintenance = value; await famrLog('MANUTENCAO', value); toast('Configuração salva.'); document.getElementById('maintenance-banner').classList.toggle('hidden', !value.enabled); };
+window.saveAnn = async () => { const value = { text: document.getElementById('c-ann').value }; await supabase.from('settings').upsert({ key:'announcement', value }); STATE.settings.announcement = value; await famrLog('AVISO', value); toast('Aviso publicado na home.'); };
 
 function sanitizeHtml(h){ return String(h||'').replace(/<script[\s\S]*?<\/script>/gi,'').replace(/on\w+="[^"]*"/gi,'').replace(/on\w+='[^']*'/gi,''); }
+
+/* ══════════ famrLog: Edge Function com fallback rpc ══════════ */
+async function famrLog(action, details={}){
+  try{
+    const fnUrl = CONFIG.supabaseUrl + '/functions/v1/log-action';
+    const { data:{ session } } = await supabase.auth.getSession();
+    const res = await fetch(fnUrl, {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'apikey': CONFIG.supabaseAnonKey,
+        ...(session?.access_token ? { 'Authorization':'Bearer '+session.access_token } : {})
+      },
+      body: JSON.stringify({ action, details })
+    });
+    if(res.ok) return;
+    throw new Error('HTTP '+res.status);
+  }catch(e){
+    /* fallback: RPC antigo (sem IP) — nunca trava a operação */
+    try{ await supabase.rpc('log_action', { action, details }); }catch(_){}
+  }
+}
 
 /* ══════════ ENTER SYSTEM PARALELIZADO ══════════ */
 async function enterSystem(userId){
   if(window._famrRecovery){ showScreen('screen-reset'); return; }
-  
   const [profRes, groups, setsRes] = await Promise.all([
     supabase.from('profiles_view').select('*').eq('id', userId).single(),
     loadSessionGroups(userId),
     supabase.from('settings').select('*').in('key',['maintenance','announcement'])
   ]);
-
   const profile = profRes.data;
   if(profRes.error || !profile){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Perfil não encontrado.', 'err'); return; }
   if(profile.status==='banned'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta BANIDA.', 'err'); return; }
   if(profile.status==='pending'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta ainda não ativada.', 'warn'); return; }
   if(profile.login_locked){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('<i class="fas fa-lock mr-1"></i> Conta BLOQUEADA.', 'err'); return; }
-
   STATE.profile = profile;
   STATE.groups  = groups;
   (setsRes.data||[]).forEach(s => STATE.settings[s.key] = s.value);
-
   await loadPerms();
-
   if(STATE.settings.maintenance?.enabled && !isAdmin()){
     document.getElementById('maintenance-msg').textContent = STATE.settings.maintenance.message || '';
     showScreen('screen-maintenance'); return;
   }
-
   startWatchdog(); showScreen('shell');
   try{ await buildSidebar(); }catch(e){ console.error('[FAMR] sidebar:', e); }
   if(!location.hash || location.hash==='#') location.hash='#/home';
