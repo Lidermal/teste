@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v36 (Imagem Drag/Livre | Colar Code Perfeito | Links Fix) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v37 (Páginas Sub-Doc | Layout Full-Width Fix | Colar Code Real | Imagem Drag | Links Absolutos) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -29,7 +29,8 @@ const ACTION_PT = {
   SECTION_SAVE:'Setor salvo', SUBTOPIC_SAVE:'Subtópico salvo',
   GROUP_SAVE:'Grupo salvo', GROUP_DEL:'Grupo excluído', USER_GROUPS:'Grupos de usuário alterados',
   MANUTENCAO:'Modo manutenção', AVISO:'Aviso publicado', REVIEW_REQUEST:'Análise de protocolo',
-  DOC_CREATE:'Documento criado', DOC_UPDATE:'Documento atualizado', DOC_DEL:'Documento excluído'
+  DOC_CREATE:'Documento criado', DOC_UPDATE:'Documento atualizado', DOC_DEL:'Documento excluído',
+  DOC_PAGE_SAVE:'Página salva', DOC_PAGE_DEL:'Página excluída'
 };
 function ptAction(a){ return ACTION_PT[a] || a; }
 function shortId(s){ return String(s||'').slice(0,8)+'…'; }
@@ -52,9 +53,11 @@ function ptDetails(d, action){
   else if(action==='AVISO')           out.push(d.text ? `aviso: "${truncate(d.text,60)}"` : 'aviso removido');
   else if(action==='SENHA_LINK_ENVIADO') out.push(`nickname: ${d.nick||'?'}`);
   else if(action==='REVIEW_REQUEST')  out.push(`protocolo ${shortId(d.req_id)} → ${statusLabel(d.new_status)}${d.note?` · motivo: "${truncate(d.note,40)}"`:''}`);
-  else if(action==='DOC_CREATE')      out.push(`documento "${d.title||'?'}"${d.category?` (${d.category})`:''}`);
+  else if(action==='DOC_CREATE')      out.push(`documento "${d.title||'?'}"${d.category?` (${d.category})`:''}${d.page_name?` · página: ${d.page_name}`:''}`);
   else if(action==='DOC_UPDATE')      out.push(`documento "${d.title||'?'}" atualizado`);
   else if(action==='DOC_DEL')         out.push(`documento ${shortId(d.id)} excluído`);
+  else if(action==='DOC_PAGE_SAVE')   out.push(`página "${d.name||'?'}" (${d.slug||'?'})`);
+  else if(action==='DOC_PAGE_DEL')    out.push(`página ${shortId(d.id)} excluída`);
   else if(action==='LOGIN')           out.push(`autenticação de ${d.nick||STATE.profile?.nickname||'usuário'}`);
   else if(action==='LOGOUT')          out.push(`saída de ${d.nick||STATE.profile?.nickname||'usuário'}`);
   else { Object.entries(d).forEach(([k,v])=>out.push(`${k}: ${typeof v==='object'?JSON.stringify(v):v}`)); }
@@ -225,13 +228,17 @@ async function route(){
   const parts = clean.split('/');
   const page = parts[0] || 'home';
   const param = parts[1] || null;
+  const subParam = parts[2] || null;
   const key = (page==='home') ? 'home' : (param ? page+'/'+param : page);
   updateUserChip(); applyThemeIcon(); updateSidebarActive(key);
   if(window._qsTimer){ clearInterval(window._qsTimer); window._qsTimer = null; }
   const c = document.getElementById('content');
   if(!c) return;
-  if(page==='doc-new'){ renderDocWorkspace(null); return; }
-  if(page==='doc-edit'){ renderDocWorkspace(param); return; }
+  /* Garante sempre largura total em todas as rotas */
+  forceFullWidthContent();
+  if(page==='doc-new'){ renderDocWorkspace(null, subParam); return; }
+  if(page==='doc-edit'){ renderDocWorkspace(param, subParam); return; }
+  if(page==='doc-page'){ await renderDocPage(c, param); return; }
   closeDocWorkspace();
   c.innerHTML = '<div class="skeleton h-40"></div><div class="skeleton h-64 mt-4"></div>';
   try{
@@ -249,6 +256,37 @@ async function route(){
   }
 }
 function updateSidebarActive(key){ document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.key === key)); }
+
+/* ══════════ FIX LAYOUT FULL-WIDTH (CORREÇÃO DO BUG ENCOLHIDO) ══════════ */
+function forceFullWidthContent(){
+  const c = document.getElementById('content');
+  if(!c) return;
+  /* Remove qualquer classe residual que limite largura */
+  c.classList.remove('max-w-4xl','max-w-5xl','max-w-6xl','max-w-7xl','mx-auto','container');
+  /* Aplica estilo inline garantindo 100% em qualquer viewport */
+  c.style.width = '100%';
+  c.style.maxWidth = '100%';
+  c.style.minWidth = '0';
+  c.style.marginLeft = '0';
+  c.style.marginRight = '0';
+  c.style.paddingLeft = '';
+  c.style.paddingRight = '';
+  /* Força também o pai direto para evitar flex/grid shrinking */
+  const parent = c.parentElement;
+  if(parent){
+    parent.style.flex = '1 1 auto';
+    parent.style.minWidth = '0';
+    parent.style.overflowX = 'auto';
+  }
+}
+/* Executa uma vez no boot e após cada troca de rota */
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(forceFullWidthContent, 100);
+});
+window.addEventListener('resize', () => {
+  clearTimeout(window._rzT);
+  window._rzT = setTimeout(forceFullWidthContent, 150);
+});
 
 /* ══════════ SIDEBAR ══════════ */
 async function buildSidebar(){
@@ -661,25 +699,69 @@ window.submitRequest = async function(subtopicId){
 };
 
 /* ═══════════════════════════════════════════════════
-   DOCUMENTOS — WORKSPACE PÁGINA CHEIA (v36 IMAGEM LIVRE + CODE REAL)
+   DOCUMENTOS PRINCIPAIS — COM SISTEMA DE PÁGINAS (v37)
    ═══════════════════════════════════════════════════ */
 let _wsDirty=false, _wsSaving=false;
 
 async function renderDocumentos(c, sec){
   if(!canViewSection(sec)){ c.innerHTML = secHead(sec)+lockCard(); return; }
   const canManage = isAdmin() || (STATE.perms?.['section:'+sec.id]?.create);
-  const { data: docs } = await cachedQuery('docs:list', ()=> supabase.from('documents').select('id,title,category,cover_url,updated_at,author_id,profiles_view(nickname)').order('updated_at',{ascending:false}), 30_000);
+  
+  /* Carrega páginas (doc_pages) e documentos gerais */
+  const [{ data: pages }, { data: generalDocs }] = await Promise.all([
+    cachedQuery('docpages:list', ()=> supabase.from('doc_pages').select('*').order('order_index'), 30_000),
+    cachedQuery('docs:list-general', ()=> supabase.from('documents').select('id,title,category,cover_url,updated_at,author_id,profiles_view(nickname)').is('page_id', null).order('updated_at',{ascending:false}), 30_000)
+  ]);
+  
   c.innerHTML = secHead(sec) + `
   <div class="flex flex-wrap items-center gap-2 mb-4 fade-up">
-    ${canManage?`<a href="#/doc-new" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Novo tópico</a>`:''}
+    ${canManage?`
+      <button class="btn btn-primary btn-sm" onclick="showNewDocDialog(null)"><i class="fas fa-plus"></i> Novo Documento</button>
+      <button class="btn btn-gold btn-sm" onclick="docPageForm()"><i class="fas fa-file-circle-plus"></i> Nova Página</button>
+    `:''}
     <input id="doc-q" class="input !py-1.5 w-56 ml-auto" placeholder="Buscar..." oninput="filterDocs(this.value)">
   </div>
-  <div id="doc-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up">
-    ${(docs||[]).map(d=>docCard(d, canManage)).join('') || '<div class="card card-body text-sm text-muted col-span-full text-center py-10">Nenhum documento.</div>'}
+  
+  <!-- Páginas (sub-documentos) -->
+  ${(pages||[]).length ? `
+  <section class="mb-6 fade-up">
+    <h2 class="font-display text-lg font-extrabold text-famr-900 mb-3"><i class="fas fa-layer-group text-gold-500 mr-2"></i>Páginas</h2>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      ${(pages||[]).map(p => docPageCard(p, canManage)).join('')}
+    </div>
+  </section>` : ''}
+  
+  <!-- Documentos Gerais (sem página) -->
+  <section class="fade-up">
+    <h2 class="font-display text-lg font-extrabold text-famr-900 mb-3"><i class="fas fa-file-lines text-famr-700 mr-2"></i>Documentos Gerais</h2>
+    <div id="doc-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      ${(generalDocs||[]).map(d=>docCard(d, canManage, null)).join('') || '<div class="card card-body text-sm text-muted col-span-full text-center py-10">Nenhum documento geral.</div>'}
+    </div>
+  </section>`;
+}
+
+function lockCard(){ return `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2></div>`; }
+
+function docPageCard(p, canManage){
+  return `<div class="card card-hover overflow-hidden doc-page-item" data-name="${esc((p.name||'').toLowerCase())}">
+    <div class="p-5">
+      <div class="flex items-start justify-between gap-2">
+        <span class="forum-ico"><i class="fas ${p.icon||'fa-folder-open'}" style="color:${p.color||'#14563f'}"></i></span>
+        ${canManage?`
+          <div class="flex gap-1">
+            <button class="btn btn-outline btn-sm" onclick="docPageForm('${p.id}')" title="Editar"><i class="fas fa-pen"></i></button>
+            <button class="btn btn-danger btn-sm" onclick="delDocPage('${p.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
+          </div>`:''}
+      </div>
+      <h3 class="font-bold mt-3 text-famr-800">${esc(p.name)}</h3>
+      <p class="text-xs text-muted mt-1">${esc(p.description||'')}</p>
+      <p class="text-[10px] text-muted mt-2"><i class="fas fa-hashtag mr-1"></i>/${esc(p.slug||'')}</p>
+      <a href="#/doc-page/${p.id}" class="btn btn-primary btn-sm mt-3 w-full justify-center"><i class="fas fa-folder-open"></i> Abrir Página</a>
+    </div>
   </div>`;
 }
-function lockCard(){ return `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2></div>`; }
-function docCard(d, canManage){
+
+function docCard(d, canManage, pageId){
   return `<div class="card card-hover overflow-hidden doc-item" data-title="${esc((d.title||'').toLowerCase())}">
     ${d.cover_url?`<img src="${esc(d.cover_url)}" class="w-full h-32 object-cover" alt="" loading="lazy">`:''}
     <div class="p-4">
@@ -696,12 +778,67 @@ function docCard(d, canManage){
     </div>
   </div>`;
 }
+
+/* Renderiza uma Página específica (lista seus documentos + botão novo) */
+async function renderDocPage(c, pageId){
+  const { data: pg } = await supabase.from('doc_pages').select('*').eq('id', pageId).single();
+  if(!pg){ c.innerHTML = '<div class="card card-body text-sm text-muted">Página não encontrada.</div>'; return; }
+  const canManage = isAdmin();
+  const { data: docs } = await supabase.from('documents').select('id,title,category,cover_url,updated_at,author_id,profiles_view(nickname)').eq('page_id', pageId).order('updated_at',{ascending:false});
+  c.innerHTML = `
+  <div class="fade-up">
+    <p class="text-xs text-muted mb-2"><a href="#/section/documentos" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>Documentos Principais</a> / <b>${esc(pg.name)}</b></p>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="font-display text-xl md:text-2xl font-extrabold text-famr-900"><i class="fas ${pg.icon||'fa-folder-open'} mr-2" style="color:${pg.color||'#14563f'}"></i>${esc(pg.name)}</h1>
+      ${canManage?`<button class="btn btn-primary btn-sm" onclick="showNewDocDialog('${pg.id}')"><i class="fas fa-plus"></i> Novo Documento</button>`:''}
+    </div>
+    <p class="text-sm text-muted mt-1">${esc(pg.description||'')}</p>
+  </div>
+  <section class="card overflow-hidden fade-up mt-4">
+    <div class="cat-head"><i class="fas fa-file-lines"></i> Documentos nesta página <span class="ml-auto text-[10px] normal-case tracking-normal text-gold-300">${(docs||[]).length} item(ns)</span></div>
+    <div class="p-4">
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        ${(docs||[]).map(d=>docCard(d, canManage, pg.id)).join('') || '<div class="card card-body text-sm text-muted col-span-full text-center py-10">Nenhum documento nesta página.</div>'}
+      </div>
+    </div>
+  </section>`;
+}
+
+/* Diálogo para escolher onde criar o novo documento */
+window.showNewDocDialog = async function(preferredPageId){
+  const { data: pages } = await supabase.from('doc_pages').select('id,name,icon,color').order('order_index');
+  const options = [
+    `<option value="">📄 Sem página (geral)</option>`,
+    ...(pages||[]).map(p => `<option value="${p.id}" ${preferredPageId===p.id?'selected':''}>${esc(p.name)}</option>`)
+  ].join('');
+  openModal('<i class="fas fa-file-circle-plus text-gold-500 mr-2"></i>Novo Documento',
+    `<label class="field"><span>Título</span><input id="nd-title" class="input" placeholder="Ex.: Relatório Mensal S3"></label>
+     <label class="field"><span>Categoria (opcional)</span><input id="nd-category" class="input" placeholder="Ex.: Operacional"></label>
+     <label class="field"><span>Página destino</span><select id="nd-page" class="input">${options}</select></label>
+     <p class="text-xs text-muted mt-2"><i class="fas fa-info-circle"></i> Após confirmar, você será levado ao editor completo.</p>`,
+    `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
+     <button class="btn btn-primary btn-sm" onclick="confirmNewDoc()"><i class="fas fa-check"></i> Criar e abrir editor</button>`);
+};
+
+window.confirmNewDoc = async function(){
+  const title = document.getElementById('nd-title').value.trim();
+  const category = document.getElementById('nd-category').value.trim();
+  const pageId = document.getElementById('nd-page').value || null;
+  if(!title) return toast('Título obrigatório.','warn');
+  closeModal();
+  /* Navega para o workspace com metadados passados via hash query-like */
+  const meta = encodeURIComponent(JSON.stringify({ title, category, page_id: pageId }));
+  location.hash = `#/doc-new/${meta}`;
+};
+
 window.filterDocs = q => {
   q=q.toLowerCase().trim();
-  document.querySelectorAll('.doc-item').forEach(el=>{
-    el.style.display = (!q || el.dataset.title.includes(q))?'':'none';
+  document.querySelectorAll('.doc-item, .doc-page-item').forEach(el=>{
+    const t = (el.dataset.title || el.dataset.name || '').toLowerCase();
+    el.style.display = (!q || t.includes(q))?'':'none';
   });
 };
+
 window.viewDoc = async id => {
   const { data:d } = await supabase.from('documents').select('*,profiles_view(nickname)').eq('id',id).single();
   if(!d) return toast('Não encontrado.','err');
@@ -722,7 +859,64 @@ window.delDoc = async id => {
   if(!await confirmDlg('Excluir este documento permanentemente?', { title:'Excluir', okText:'Excluir', danger:true })) return;
   await supabase.from('documents').delete().eq('id',id);
   await famrLog('DOC_DEL', { id });
-  invalidate('docs:'); closeModal(); toast('Excluído.'); route();
+  invalidate('docs:'); invalidate('docpages:'); closeModal(); toast('Excluído.'); route();
+};
+
+/* Formulário de criação/edição de Página */
+window.docPageForm = async id => {
+  let p = { name:'', slug:'', description:'', icon:'fa-folder-open', color:'#14563f', order_index:0 };
+  if(id){
+    const r = await supabase.from('doc_pages').select('*').eq('id', id).single();
+    if(r.data) p = r.data;
+  }
+  openModal(`<i class="fas fa-file-circle-plus text-gold-500 mr-2"></i>${id?'Editar':'Nova'} Página`,
+    `<label class="field"><span>Nome</span><input id="dp-name" class="input" value="${esc(p.name)}"></label>
+     <label class="field"><span>Slug (URL amigável)</span><input id="dp-slug" class="input" value="${esc(p.slug)}" placeholder="ex.: relatorios-mensais"></label>
+     <label class="field"><span>Descrição</span><textarea id="dp-desc" class="input" rows="2">${esc(p.description||'')}</textarea></label>
+     <div class="grid grid-cols-2 gap-3">
+       <label class="field"><span>Ícone</span>
+         <div class="icon-grid" id="dp-icon-grid" style="max-height:200px;overflow:auto;border:1px solid #dee2e6;border-radius:8px;padding:6px;">
+           ${SAFE_ICONS.slice(0,80).map(ic => `<button type="button" class="icon-opt ${p.icon===ic?'sel':''}" data-icon="${ic}" onclick="pickIconDP(this)" title="${ic}"><i class="fas ${ic}"></i></button>`).join('')}
+         </div>
+         <input type="hidden" id="dp-icon" value="${esc(p.icon||'fa-folder-open')}">
+       </label>
+       <label class="field"><span>Cor</span><input id="dp-color" type="color" class="input !p-1 h-11" value="${p.color||'#14563f'}"></label>
+     </div>`,
+    `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
+     <button class="btn btn-primary btn-sm" onclick="saveDocPage('${id||''}')"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
+};
+window.pickIconDP = btn => {
+  document.querySelectorAll('#dp-icon-grid .icon-opt').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+  document.getElementById('dp-icon').value = btn.dataset.icon;
+};
+window.saveDocPage = async id => {
+  const row = {
+    name: document.getElementById('dp-name').value.trim(),
+    slug: document.getElementById('dp-slug').value.trim().toLowerCase().replace(/\s+/g,'-'),
+    description: document.getElementById('dp-desc').value.trim(),
+    icon: document.getElementById('dp-icon').value.trim() || 'fa-folder-open',
+    color: document.getElementById('dp-color').value
+  };
+  if(!row.name || !row.slug) return toast('Nome e slug obrigatórios.','warn');
+  let error;
+  if(id){ ({ error } = await supabase.from('doc_pages').update(row).eq('id', id)); }
+  else {
+    const { count } = await supabase.from('doc_pages').select('*', { count:'exact', head:true });
+    row.order_index = (count||0)+1;
+    ({ error } = await supabase.from('doc_pages').insert([row]));
+  }
+  if(error) return toast('Erro: '+error.message,'err');
+  await famrLog('DOC_PAGE_SAVE', row);
+  invalidate('docpages:'); invalidate('docs:');
+  closeModal(); toast('Página salva.'); route();
+};
+window.delDocPage = async id => {
+  if(!await confirmDlg('Excluir esta página? Os documentos dentro dela ficarão como "gerais".', { title:'Excluir', okText:'Excluir', danger:true })) return;
+  await supabase.from('documents').update({ page_id: null }).eq('page_id', id);
+  await supabase.from('doc_pages').delete().eq('id', id);
+  await famrLog('DOC_PAGE_DEL', { id });
+  invalidate('docpages:'); invalidate('docs:'); toast('Excluída.'); route();
 };
 
 function closeDocWorkspace(){
@@ -732,24 +926,44 @@ function closeDocWorkspace(){
   document.removeEventListener('keydown', ctrlSaveHandler);
 }
 
-window.renderDocWorkspace = async function(docId){
+window.renderDocWorkspace = async function(docId, metaEncoded){
   closeDocWorkspace();
-  let d = { title:'', category:'', body_html:'', cover_url:null };
+  let d = { title:'', category:'', body_html:'', cover_url:null, page_id:null };
+  
+  /* Se vier metadados novos (criação via diálogo) */
+  if(metaEncoded){
+    try{
+      const meta = JSON.parse(decodeURIComponent(metaEncoded));
+      d.title = meta.title || '';
+      d.category = meta.category || '';
+      d.page_id = meta.page_id || null;
+    }catch(e){}
+  }
+  
   if(docId){
     const r = await supabase.from('documents').select('*').eq('id',docId).single();
     if(!r.data){ toast('Documento não encontrado.','err'); location.hash='#/section/documentos'; return; }
     d = r.data;
   }
+  
+  /* Busca nome da página para exibir breadcrumb */
+  let pageName = null;
+  if(d.page_id){
+    const pr = await supabase.from('doc_pages').select('name').eq('id', d.page_id).single();
+    pageName = pr.data?.name || null;
+  }
+  
   const ws = document.createElement('div');
   ws.id = 'doc-workspace';
   ws.className = 'doc-workspace';
   ws.innerHTML = `
     <div class="dw-bar">
       <button class="dw-back" onclick="exitDocWorkspace()"><i class="fas fa-arrow-left"></i> Voltar</button>
-      <input class="dw-title-in" id="dw-title" placeholder="Título do tópico" value="${esc(d.title)}" maxlength="200">
+      <span class="text-xs text-muted mx-2">${pageName ? `<i class="fas fa-folder-open mr-1"></i>${esc(pageName)} /` : '<i class="fas fa-file-lines mr-1"></i>Geral /'}</span>
+      <input class="dw-title-in" id="dw-title" placeholder="Título do documento" value="${esc(d.title)}" maxlength="200">
       <input class="dw-cat-in" id="dw-category" placeholder="Categoria (opcional)" value="${esc(d.category||'')}">
       <span class="dw-status" id="dw-status">${docId?'carregado':'novo documento'}</span>
-      <button class="dw-save" id="dw-save-btn" onclick="saveCurrentDoc('${docId||''}')"><i class="fas fa-floppy-disk"></i> Salvar</button>
+      <button class="dw-save" id="dw-save-btn" onclick="saveCurrentDoc('${docId||''}','${d.page_id||''}')"><i class="fas fa-floppy-disk"></i> Salvar</button>
     </div>
     <div class="dw-toolbar" id="dw-toolbar"></div>
     <div class="dw-canvas" id="dw-canvas">
@@ -779,7 +993,7 @@ window.exitDocWorkspace = async function(){
     if(choice==='cancel') return;
     if(choice==='save'){
       const did = location.hash.startsWith('#/doc-edit/')?location.hash.split('/')[2]:'';
-      await saveCurrentDoc(did);
+      await saveCurrentDoc(did, '');
       if(_wsSaving) return;
       if(_wsDirty) return;
     }
@@ -793,13 +1007,7 @@ window.exitDocWorkspace = async function(){
 function getBody(){ return document.getElementById('dw-body'); }
 function focusBody(){ 
   const b = getBody(); 
-  if(b){ 
-    b.focus(); 
-    const sel = window.getSelection();
-    if(!sel.rangeCount){
-       /* Se não houver seleção, coloca no início */
-    }
-  }
+  if(b){ b.focus(); }
 }
 
 function execSafe(cmd, val=null){
@@ -853,7 +1061,7 @@ function manuallyApplyTag(tagName){
   }
 }
 
-/* ─── TOOLBAR v36 (IMAGEM DRAG + CODE REAL) ─── */
+/* ─── TOOLBAR v37 ─── */
 function initToolbar(){
   const bar = document.getElementById('dw-toolbar');
   bar.innerHTML = '';
@@ -914,12 +1122,10 @@ function initToolbar(){
     bar.appendChild(wrap);
   }
 
-  /* Fonte & Tamanho */
   addSelect([['Arial','Arial'],['Georgia','Georgia'],['Times New Roman','TNR'],['Verdana','Verdana']], v => execSafe('fontName', v));
   addSelect([['1','Peq'],['2','Norm'],['3','Med'],['4','Grande'],['5','Maior'],['6','Enorme']], v => execSafe('fontSize', v));
   addSep();
 
-  /* Estilo Básico */
   addBtn('Negrito','fa-bold', () => execSafe('bold'), () => document.queryCommandState('bold'));
   addBtn('Itálico','fa-italic', () => execSafe('italic'), () => document.queryCommandState('italic'));
   addBtn('Sublinhado','fa-underline', () => execSafe('underline'), () => document.queryCommandState('underline'));
@@ -929,28 +1135,24 @@ function initToolbar(){
   addColorPicker('Realce','hiliteColor',COLORS_HILITE);
   addSep();
 
-  /* Alinhamento */
   addBtn('Esquerda','fa-align-left', () => execSafe('justifyLeft'), () => document.queryCommandState('justifyLeft'));
   addBtn('Centro','fa-align-center', () => execSafe('justifyCenter'), () => document.queryCommandState('justifyCenter'));
   addBtn('Direita','fa-align-right', () => execSafe('justifyRight'), () => document.queryCommandState('justifyRight'));
   addBtn('Justificado','fa-align-justify', () => execSafe('justifyFull'), () => document.queryCommandState('justifyFull'));
   addSep();
 
-  /* Listas */
   addBtn('Marcadores','fa-list-ul', () => execSafe('insertUnorderedList'), () => document.queryCommandState('insertUnorderedList'));
   addBtn('Numerada','fa-list-ol', () => execSafe('insertOrderedList'), () => document.queryCommandState('insertOrderedList'));
   addBtn('-Recuo','fa-outdent', () => execSafe('outdent'));
   addBtn('+Recuo','fa-indent', () => execSafe('indent'));
   addSep();
 
-  /* Blocos */
   addBtn('Título 1','fa-heading', () => execSafe('formatBlock','<h1>'));
   addBtn('Título 2','fa-heading', () => execSafe('formatBlock','<h2>'));
   addBtn('Título 3','fa-heading', () => execSafe('formatBlock','<h3>'));
   addBtn('Parágrafo','fa-paragraph', () => execSafe('formatBlock','<p>'));
   addSep();
 
-  /* Quote Limpa */
   const quoteBtn = document.createElement('button');
   quoteBtn.type='button'; quoteBtn.className='dw-tool-fixed'; quoteBtn.title='Citação (Caixa Cinza)';
   quoteBtn.innerHTML = '<i class="fas fa-comment-dots"></i>';
@@ -973,12 +1175,10 @@ function initToolbar(){
   bar.appendChild(quoteBtn);
   addSep();
 
-  /* Sub/Super */
   addBtn('Subscrito','fa-subscript', () => execSafe('subscript'));
   addBtn('Superscrito','fa-superscript', () => execSafe('superscript'));
   addSep();
 
-  /* Link - CORREGIDO PARA ABSOLUTO */
   addBtn('Inserir Link','fa-link', async () => {
     const urlRaw = await promptDlg('Cole a URL completa (ex: https://site.com)','https://', { title:'Inserir Link', okText:'Aplicar' });
     if(urlRaw){ 
@@ -994,19 +1194,15 @@ function initToolbar(){
   addBtn('Remover Link','fa-link-slash', () => execSafe('unlink'));
   addSep();
 
-  /* Imagem */
   addBtn('Imagem','fa-image', () => insertImage(getBody()));
   addSep();
 
-  /* Emoji */
   addBtn('Emoji','fa-face-smile', () => showEmojiPanel(getBody()));
   addSep();
 
-  /* Colar Código - REALISTA */
   addBtn('Colar Código','fa-code', () => openCodeModal());
   addSep();
 
-  /* Estrutura */
   addBtn('Linha Horiz.','fa-minus', () => execSafe('insertHorizontalRule'));
   addBtn('Limpar Formato','fa-eraser', () => execSafe('removeFormat'));
   addSep();
@@ -1030,7 +1226,7 @@ function syncState(){
   });
 }
 
-/* ─── MODAL COLAR CÓDIGO (REALISTA) ─── */
+/* Modal Colar Código */
 function openCodeModal(){
   const old = document.getElementById('code-modal-root');
   if(old) old.remove();
@@ -1069,41 +1265,31 @@ window.applyCodeToDoc = function(){
   
   let rawContent = input.value;
   
-  /* Extrai CSS */
   let cssBlocks = [];
   let htmlPart = rawContent.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (match, p1) => {
     cssBlocks.push(p1);
     return '';
   });
   
-  /* Sanitiza HTML */
   let cleanHtml = htmlPart
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/on\w+="[^"]*"/gi, '')
     .replace(/on\w+='[^']*'/gi, '');
   
-  let finalSnippet = '';
-  
-  /* Injeta CSS no Head se possível, senão no Body */
   if(cssBlocks.length > 0){
     const combinedCss = cssBlocks.join('\n');
-    /* Tentativa de adicionar ao head global para não poluir o editor */
     const styleTag = document.createElement('style');
     styleTag.innerHTML = combinedCss;
     document.head.appendChild(styleTag);
-    /* Marca para remoção futura se necessário, mas por enquanto deixa ativo */
   }
   
-  finalSnippet += cleanHtml;
-  
   focusBody();
-  document.execCommand('insertHTML', false, finalSnippet);
+  document.execCommand('insertHTML', false, cleanHtml);
   markDirty();
   closeCodeModal();
   toast('Código inserido visualmente.');
 };
 
-/* ─── INSERÇÃO DE IMAGEM COM DRAG E FLOAT ─── */
 function insertImage(body){
   const inp = document.createElement('input');
   inp.type='file'; inp.accept='image/*';
@@ -1116,7 +1302,6 @@ function insertImage(body){
     const { data:{ publicUrl } } = supabase.storage.from('docs-media').getPublicUrl(path);
     
     focusBody();
-    /* Wrapper Interativo */
     const wrapper = `<div class="img-wrapper drag-enabled" contenteditable="false" data-src="${publicUrl}" style="position:relative;display:inline-block;margin:8px;border:1px dashed transparent;">
       <div class="img-toolbar">
         <button title="Flutuar Esq." onclick="setImgFloat(this.parentNode.parentNode,'left')"><i class="fas fa-align-left"></i></button>
@@ -1143,7 +1328,6 @@ function insertImage(body){
 window.setImgFloat = function(wrapper, side){
   const img = wrapper.querySelector('img');
   if(!img) return;
-  /* Remove floats anteriores */
   img.style.float = 'none';
   img.style.display = 'block';
   img.style.margin = '8px auto'; 
@@ -1184,19 +1368,17 @@ window.resizeImg = function(wrapper, delta){
 };
 window.removeImg = function(wrapper){ wrapper.remove(); markDirty(); };
 
-/* Setup Interação Imagem (Drag & Resize) */
 function setupImageInteractivity(){
   const canvas = document.getElementById('dw-canvas');
   if(!canvas) return;
   let selectedWrapper = null;
   let dragHandle = null, startX=0, startY=0, startW=0;
-  let isDraggingMove = false; // Para mover a imagem inteira
+  let isDraggingMove = false;
 
   canvas.addEventListener('mousedown', e => {
     const handle = e.target.closest('.img-handle');
     const wrapper = e.target.closest('.img-wrapper');
     
-    /* Clique na própria imagem para selecionar/mover */
     if(wrapper && !handle && e.target.tagName === 'IMG'){
        e.preventDefault();
        selectWrapper(wrapper);
@@ -1222,15 +1404,10 @@ function setupImageInteractivity(){
   document.addEventListener('mousemove', e => {
     if(!selectedWrapper) return;
     
-    /* Movimentação Livre (Arrastar a imagem) */
     if(isDraggingMove){
-       /* Simples deslocamento horizontal baseado no mouse */
-       /* Nota: Em contenteditable puro, mover pixel-perfect é difícil sem iframe.
-          Aqui usamos margens relativas ou transform para simular */
        const dx = e.clientX - startX;
        const dy = e.clientY - startY;
        
-       /* Aplica um leve ajuste de margem para dar sensação de movimento */
        const currentMarginLeft = parseInt(selectedWrapper.style.marginLeft || '0');
        const currentMarginTop = parseInt(selectedWrapper.style.marginTop || '0');
        
@@ -1242,7 +1419,6 @@ function setupImageInteractivity(){
        return;
     }
 
-    /* Redimensionamento */
     if(!dragHandle) return;
     const img = selectedWrapper.querySelector('img');
     const dx = e.clientX - startX;
@@ -1282,7 +1458,7 @@ function setupImageInteractivity(){
 }
 
 function showEmojiPanel(body){
-  const emojis = ['😀','😁','😂','','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','','🤩','','🤨','','😑','😶','','😏','😣','😥','😮','','','😪','😫','','','','','😜','😝','🤤','😒','😓','😔','😕','🙃','🤑','😲','🙁','','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','','','😱','🥵','','😳','','','','','😡','','😷','','','🤢','','🤧','😇','🥳','','🤠','','🥹','⭐','✅','❌','️','📌','','❤️','','✨','🎖️','🏅','','','','🏆'];
+  const emojis = ['😀','😁','😂','','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','','🤩','','🤨','','😑','😶','','😏','😣','😥','😮','','','😪','😫','','','','','😜','😝','','😒','','😔','😕','','🤑','😲','🙁','','','😟','😤','😢','😭','😦','😧','😨','😩','🤯','','😰','😱','','','😳','','','','','😡','','😷','','','','','🤧','','🥳','','','🤡','','⭐','✅','❌','⚠️','📌','','❤️','🔥','✨','🎖️','','','','',''];
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#fff;border:1px solid #dadce0;border-radius:12px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);max-width:460px;max-height:360px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:2px';
   emojis.forEach(em=>{
@@ -1323,7 +1499,7 @@ function ctrlSaveHandler(e){
   }
 }
 
-window.saveCurrentDoc = async function(existingId){
+window.saveCurrentDoc = async function(existingId, pageId){
   if(_wsSaving) return;
   const titleEl = document.getElementById('dw-title');
   const catEl = document.getElementById('dw-category');
@@ -1334,11 +1510,12 @@ window.saveCurrentDoc = async function(existingId){
   if(!title){ toast('Título obrigatório.','warn'); titleEl.focus(); return; }
   const category = catEl.value.trim() || null;
   const body_html = bodyEl.innerHTML;
+  const pid = pageId || null;
   _wsSaving = true;
   saveBtn.disabled = true;
   saveBtn.innerHTML = '<span class="spin-sm"></span> Salvando...';
   setStatus('salvando...');
-  const payload = { title, category, body_html };
+  const payload = { title, category, body_html, page_id: pid };
   let error;
   if(existingId){ ({error} = await supabase.from('documents').update(payload).eq('id', existingId)); }
   else { payload.author_id = STATE.profile.id; ({error} = await supabase.from('documents').insert([payload])); }
@@ -1347,8 +1524,8 @@ window.saveCurrentDoc = async function(existingId){
     saveBtn.innerHTML = '<i class="fas fa-floppy-disk"></i> Salvar';
     setStatus('erro'); return toast('Erro: '+error.message,'err');
   }
-  await famrLog(existingId?'DOC_UPDATE':'DOC_CREATE', { title, category });
-  invalidate('docs:');
+  await famrLog(existingId?'DOC_UPDATE':'DOC_CREATE', { title, category, page_name: pid ? '(nesta página)' : '(geral)' });
+  invalidate('docs:'); invalidate('docpages:');
   _wsDirty = false; _wsSaving = false;
   saveBtn.disabled = false;
   saveBtn.innerHTML = '<i class="fas fa-check"></i> Salvo';
@@ -1675,13 +1852,39 @@ window.gmRemove = async (gid, uid) => {
   invalidate('home:'); toast('Removido.'); groupMembers(gid);
 };
 async function tabTopicos(b){
-  const [{ data: secs }, { data: subs }, { data: groups }] = await Promise.all([
+  const [{ data: secs }, { data: subs }, { data: groups }, { data: docPages }] = await Promise.all([
     supabase.from('sections').select('*').order('order_index'),
     supabase.from('subtopics').select('*,groups(name)').order('order_index'),
-    supabase.from('groups').select('id,name')]);
+    supabase.from('groups').select('id,name'),
+    supabase.from('doc_pages').select('*').order('order_index')
+  ]);
   window._groupsCache = groups || [];
   b.innerHTML = `<div class="space-y-4 fade-up">
-    <div class="flex justify-end"><button class="btn btn-gold btn-sm" onclick="sectionForm()"><i class="fas fa-plus"></i> Novo setor</button></div>
+    <div class="flex justify-end gap-2">
+      <button class="btn btn-gold btn-sm" onclick="docPageForm()"><i class="fas fa-file-circle-plus"></i> Nova Página Doc</button>
+      <button class="btn btn-primary btn-sm" onclick="sectionForm()"><i class="fas fa-plus"></i> Novo setor</button>
+    </div>
+    
+    <!-- Páginas de Documentos -->
+    ${(docPages||[]).length ? `
+    <div class="card">
+      <div class="cat-head"><i class="fas fa-file-lines"></i> Páginas de Documentos <span class="chip chip-neutral ml-2 normal-case">${(docPages||[]).length}</span></div>
+      <div class="divide-y divide-line">
+        ${(docPages||[]).map(p => `
+          <div class="p-3.5 flex flex-wrap items-center gap-3 text-sm">
+            <i class="fas ${p.icon||'fa-folder-open'}" style="color:${p.color||'#14563f'}"></i>
+            <b>${esc(p.name)}</b>
+            <span class="chip chip-neutral">/${esc(p.slug||'')}</span>
+            <span class="ml-auto flex gap-1">
+              <a href="#/doc-page/${p.id}" class="btn btn-outline btn-sm"><i class="fas fa-folder-open"></i></a>
+              <button class="btn btn-outline btn-sm" onclick="docPageForm('${p.id}')"><i class="fas fa-pen"></i></button>
+              <button class="btn btn-danger btn-sm" onclick="delDocPage('${p.id}')"><i class="fas fa-trash"></i></button>
+            </span>
+          </div>`).join('')}
+      </div>
+    </div>` : ''}
+    
+    <!-- Setores normais -->
     ${(secs||[]).map((s,i,arr) => `<div class="card">
       <div class="cat-head">
         <span class="flex items-center gap-1 mr-2">
@@ -1842,7 +2045,7 @@ window.saveAnn = async () => { const value = { text: document.getElementById('c-
 
 function sanitizeHtml(h){ return String(h||'').replace(/<script[\s\S]*?<\/script>/gi,'').replace(/on\w+="[^"]*"/gi,'').replace(/on\w+='[^']*'/gi,''); }
 
-/* ══════════ famrLog SEMPRE ENVIA NICK (garante IP em login/logout) ══════════ */
+/* ══════════ famrLog SEMPRE ENVIA NICK ══════════ */
 async function famrLog(action, details={}){
   const enriched = { ...details };
   if(!enriched.nick){
