@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v30 (Login Iterativo | Alertas Personalizados | Citação Colorida | Logs via Edge Function) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v30.1 (Editor GDocs Real | Alertas Sem Fantasma | Logs c/ IP) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -14,7 +14,7 @@ const ICON_OPTIONS = [
   'fa-book-open','fa-book','fa-scroll','fa-file-lines','fa-file-signature','fa-folder-open','fa-folder','fa-graduation-cap','fa-school','fa-pen','fa-pencil','fa-pen-to-square','fa-clipboard-list','fa-clipboard-check','fa-list-check','fa-bookmark','fa-quote-left',
   'fa-coins','fa-money-bill-wave','fa-chart-pie','fa-chart-line','fa-chart-column','fa-calculator','fa-percent','fa-sack-dollar',
   'fa-heart','fa-heart-pulse','fa-staff-snake','fa-pills','fa-syringe','fa-hand-holding-medical','fa-crutch',
-  'fa-laptop-code','fa-desktop','fa-mobile-screen','fa-server','fa-database','fa-network-wired','fa-wifi','fa-lock','fa-unlock','fa-key','fa-user-lock','fa-mask','fa-ghost','fa-robot','fa-brain','fa-lightbulb','fa-flask','fa-vial','fa-atom','fa-magnet','fa-gamepad','fa-chess-knight','fa-chess-rook','fa-chess-queen','fa-chess-bishop','fa-chess-pawn','fa-gem','fa-ring','fa-hourglass-half','fa-stopwatch','fa-clock','fa-calendar-days','fa-map-location-dot','fa-compass','fa-route','fa-road','fa-building-shield','fa-city','fa-monument','fa-archway','fa-place-of-worship','fa-church','fa-bible','fa-earth-americas','fa-earth-europe','fa-earth-asia','fa-globe','fa-satellite','fa-rocket','fa-meteor','fa-comet','fa-star-half-stroke','fa-certificate','fa-stamp','fa-ticket','fa-tags','fa-tag','fa-bell','fa-volume-high','fa-print','fa-scissors','fa-paperclip','fa-thumbtack','fa-pushpin','fa-magnifying-glass','fa-filter','fa-sort','fa-diagram-project','fa-sitemap','fa-layer-group','fa-cubes','fa-cube','fa-dice','fa-palette','fa-fill-drip','fa-font','fa-heading','fa-paragraph','fa-align-left','fa-align-center','fa-align-right','fa-align-justify','fa-list-ul','fa-list-ol','fa-quote-right','fa-code','fa-terminal','fa-trophy','fa-ranking-star','fa-flag-checkered','fa-parachute-box','fa-basketball','fa-football','fa-baseball','fa-volleyball','fa-table-tennis-paddle-ball','fa-bowling-ball','fa-golf-ball-tee','fa-hockey-puck','fa-futbol','fa-running','fa-dumbbell','fa-person-swimming','fa-sailboat','fa-broom','fa-first-aid','fa-kit-medical','fa-prescription','fa-tablets','fa-mortar-pestle','fa-utensils','fa-mug-hot','fa-wine-glass','fa-beer-mug-empty','fa-coffee','fa-ice-cream','fa-cake-candles','fa-cookie','fa-carrot','fa-apple-whole','fa-lemon','fa-orange','fa-grape','fa-strawberry','fa-blueberry','fa-drumstick-bite','fa-cheese','fa-egg','fa-bread-slice','fa-hamburger','fa-store','fa-shop','fa-box','fa-archive','fa-trash-can','fa-recycle','fa-tractor','fa-tree-city','fa-feather','fa-bird','fa-crow','fa-peacock','fa-swan','fa-duck','fa-turkey','fa-chicken','fa-moth','fa-bee','fa-ladybug','fa-beetle','fa-scorpion','fa-snake','fa-lizard','fa-turtle','fa-frog','fa-crocodile','fa-skull-crossbones','fa-wand-magic-sparkles','fa-hat-wizard','fa-dungeon','fa-kaaba','fa-mosque','fa-synagogue','fa-star-and-crescent','fa-star-of-david','fa-yin-yang','fa-ufo','fa-archway','fa-clover','fa-joint','fa-seedling'
+  'fa-laptop-code','fa-desktop','fa-mobile-screen','fa-server','fa-database','fa-network-wired','fa-wifi','fa-lock','fa-unlock','fa-key','fa-user-lock','fa-mask','fa-ghost','fa-robot','fa-brain','fa-lightbulb','fa-flask','fa-vial','fa-atom','fa-magnet','fa-gamepad','fa-chess-knight','fa-chess-rook','fa-chess-queen','fa-chess-bishop','fa-chess-pawn','fa-gem','fa-ring','fa-hourglass-half','fa-stopwatch','fa-clock','fa-calendar-days','fa-map-location-dot','fa-compass','fa-route','fa-road','fa-building-shield','fa-city','fa-monument','fa-archway','fa-place-of-worship','fa-church','fa-bible','fa-earth-americas','fa-earth-europe','fa-earth-asia','fa-globe','fa-satellite','fa-rocket','fa-meteor','fa-comet','fa-star-half-stroke','fa-certificate','fa-stamp','fa-ticket','fa-tags','fa-tag','fa-bell','fa-volume-high','fa-print','fa-scissors','fa-paperclip','fa-thumbtack','fa-pushpin','fa-magnifying-glass','fa-filter','fa-sort','fa-diagram-project','fa-sitemap','fa-layer-group','fa-cubes','fa-cube','fa-dice','fa-palette','fa-fill-drip','fa-font','fa-heading','fa-paragraph','fa-align-left','fa-align-center','fa-align-right','fa-align-justify','fa-list-ul','fa-list-ol','fa-quote-right','fa-code','fa-terminal','fa-trophy','fa-ranking-star','fa-flag-checkered','fa-parachute-box','fa-basketball','fa-football','fa-baseball','fa-volleyball','fa-table-tennis-paddle-ball','fa-bowling-ball','fa-golf-ball-tee','fa-hockey-puck','fa-futbol','fa-running','fa-dumbbell','fa-person-swimming','fa-sailboat','fa-broom','fa-first-aid','fa-kit-medical','fa-prescription','fa-tablets','fa-mortar-pestle','fa-utensils','fa-mug-hot','fa-wine-glass','fa-beer-mug-empty','fa-coffee','fa-ice-cream','fa-cake-candles','fa-cookie','fa-carrot','fa-apple-whole','fa-lemon','fa-orange','fa-grape','fa-strawberry','fa-blueberry','fa-drumstick-bite','fa-cheese','fa-egg','fa-bread-slice','fa-hamburger','fa-store','fa-shop','fa-box','fa-archive','fa-trash-can','fa-recycle','fa-tractor','fa-tree-city','fa-feather','fa-bird','fa-crow','fa-peacock','fa-swan','fa-duck','fa-turkey','fa-chicken','fa-moth','fa-bee','fa-ladybug','fa-beetle','fa-scorpion','fa-snake','fa-lizard','fa-turtle','fa-frog','fa-crocodile','fa-skull-crossbones','fa-wand-magic-sparkles','fa-hat-wizard','fa-dungeon','fa-kaaba','fa-mosque','fa-synagogue','fa-star-and-crescent','fa-star-of-david','fa-yin-yang','fa-ufo','fa-clover','fa-joint'
 ];
 const SAFE_ICONS = [...new Set(ICON_OPTIONS.filter(i=>/^fa-/.test(i)))];
 
@@ -141,7 +141,7 @@ function toast(msg, type='ok'){
   setTimeout(() => el.remove(), 4500);
 }
 
-/* ── ALERTA PERSONALIZADO INLINE (login/register/forgot) ── */
+/* ── ALERTA INLINE PERSONALIZADO ── */
 function showAlert(boxId, kind, html){
   const box = document.getElementById(boxId);
   if(!box) return;
@@ -152,15 +152,20 @@ function showAlert(boxId, kind, html){
 }
 function hideAlert(boxId){ const box=document.getElementById(boxId); if(box){ box.classList.add('hidden'); box.innerHTML=''; } }
 
+/* ── MODAL GENÉRICO ── */
 function openModal(title, bodyHTML, footerHTML=''){
   document.getElementById('modal-title').innerHTML = title;
   document.getElementById('modal-body').innerHTML = bodyHTML;
   document.getElementById('modal-footer').innerHTML = footerHTML;
   document.getElementById('modal-root').classList.remove('hidden');
 }
-function closeModal(){ document.getElementById('modal-root').classList.add('hidden'); }
+function closeModal(){
+  document.getElementById('modal-root').classList.add('hidden');
+  /* Garante limpeza total — mata qualquer callback pendente */
+  if(window._modalResolve){ window._modalResolve(null); window._modalResolve=null; }
+}
 
-/* ── CONFIRMAÇÃO PERSONALIZADA (substitui confirm() nativo) ── */
+/* ── CONFIRMAÇÃO PERSONALIZADA (sem alerta nativo) ── */
 function confirmDlg(msg, opts={}){
   const { title='Confirmar', okText='Confirmar', cancelText='Cancelar', danger=false } = opts;
   return new Promise(res => {
@@ -168,18 +173,18 @@ function confirmDlg(msg, opts={}){
       `<p class="text-sm text-muted leading-relaxed">${msg}</p>`,
       `<button class="btn btn-outline btn-sm" id="_cf-cancel">${esc(cancelText)}</button>
        <button class="btn ${danger?'btn-danger':'btn-primary'} btn-sm" id="_cf-ok">${esc(okText)}</button>`);
-    const done = v => { closeModal(); window._cfPending=null; res(v); };
-    document.getElementById('_cf-ok').onclick = ()=>done(true);
-    document.getElementById('_cf-cancel').onclick = ()=>done(false);
-    window._cfPending = done;
+    window._modalResolve = res;
+    document.getElementById('_cf-ok').onclick = ()=>{ window._modalResolve=null; closeModal(); res(true); };
+    document.getElementById('_cf-cancel').onclick = ()=>{ window._modalResolve=null; closeModal(); res(false); };
   });
 }
+
 /* ── PROMPT PERSONALIZADO ── */
 function promptDlg(label, def='', opts={}){
   const { title='Entrada', okText='OK', inputType='text', multiline=false } = opts;
   return new Promise(res => {
     const field = multiline
-      ? `<textarea id="_pf-input" class="input" rows="4" placeholder="${esc(def)}"></textarea>`
+      ? `<textarea id="_pf-input" class="input" rows="4" placeholder="${esc(def)}">${esc(def)}</textarea>`
       : `<input id="_pf-input" class="input" type="${inputType}" value="${esc(def)}" placeholder="${esc(def)}">`;
     openModal(`<i class="fas fa-pen-to-square text-gold-500 mr-2"></i>${esc(title)}`,
       `<label class="field"><span>${esc(label)}</span>${field}</label>`,
@@ -187,10 +192,10 @@ function promptDlg(label, def='', opts={}){
        <button class="btn btn-primary btn-sm" id="_pf-ok">${esc(okText)}</button>`);
     const inp = document.getElementById('_pf-input');
     setTimeout(()=>inp.focus(), 50);
-    const done = v => { closeModal(); res(v); };
-    document.getElementById('_pf-ok').onclick = ()=>done(inp.value.trim());
-    document.getElementById('_pf-cancel').onclick = ()=>done(null);
-    inp.addEventListener('keydown', e=>{ if(e.key==='Enter' && !multiline){ e.preventDefault(); done(inp.value.trim()); } });
+    window._modalResolve = res;
+    document.getElementById('_pf-ok').onclick = ()=>{ const v=inp.value.trim(); window._modalResolve=null; closeModal(); res(v); };
+    document.getElementById('_pf-cancel').onclick = ()=>{ window._modalResolve=null; closeModal(); res(null); };
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter' && !multiline){ e.preventDefault(); const v=inp.value.trim(); window._modalResolve=null; closeModal(); res(v); } });
   });
 }
 
@@ -286,7 +291,6 @@ async function renderHome(c){
     ]);
     return { sections:sections.data||[], subs:subs.data||[], posts:postsMeta.data||[], members:nMembers.count||0, newest:newest.data||[], groups:groups.data||[], ug:allUG.data||[] };
   }, 45_000);
-
   const { sections, subs, posts, members:registeredCount, newest, groups, ug } = bundle;
   const memberCount={}; (ug||[]).forEach(m=>memberCount[m.group_id]=(memberCount[m.group_id]||0)+1);
   let lastChip='<em>nenhum</em>';
@@ -306,15 +310,12 @@ async function renderHome(c){
     {icon:'fa-shield-halved',color:'#0e4433',label:'Sessão segura • expira em 1h'}
   ];
   const myIds=new Set((STATE.groups||[]).map(g=>g.id));
-
   c.innerHTML = `
   <section class="quartel-strip fade-up">
     <div class="qs-glow" aria-hidden="true"></div>
-    <div class="qs-left">
-      <span class="qs-badge"><i class="fas fa-shield-halved"></i></span>
+    <div class="qs-left"><span class="qs-badge"><i class="fas fa-shield-halved"></i></span>
       <div class="qs-txt"><b class="qs-title">Plantão do Quartel</b>
-        <span class="qs-sub"><i class="far fa-clock"></i><span class="qs-clock">--:--:--</span>•<span id="qs-date"></span></span></div>
-    </div>
+        <span class="qs-sub"><i class="far fa-clock"></i><span class="qs-clock">--:--:--</span>•<span id="qs-date"></span></span></div></div>
     <div class="qs-mid">
       <span class="qs-pill"><i class="fas fa-circle qs-on"></i> ${totalOnline} online</span>
       <span class="qs-pill"><i class="fas fa-users"></i> ${registeredCount} efetivo</span>
@@ -327,11 +328,9 @@ async function renderHome(c){
   <section class="hero fade-up">
     <div class="hero-art" aria-hidden="true"><img src="${CONFIG.logoUrl}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
     <div class="hero-inner flex flex-wrap items-center gap-6 justify-between">
-      <div>
-        <p class="text-gold-300 text-xs font-bold tracking-[0.3em] uppercase">Índice do quartel • Habbo BR</p>
+      <div><p class="text-gold-300 text-xs font-bold tracking-[0.3em] uppercase">Índice do quartel • Habbo BR</p>
         <h1 class="font-display text-2xl md:text-3xl font-extrabold mt-1">Bem-vindo, ${esc(STATE.profile.nickname)}</h1>
-        <div class="flex flex-wrap gap-2 mt-3">${(STATE.groups||[]).map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}</div>
-      </div>
+        <div class="flex flex-wrap gap-2 mt-3">${(STATE.groups||[]).map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}</div></div>
     </div>
   </section>
   <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 fade-up">
@@ -371,24 +370,13 @@ async function renderHome(c){
       <button class="st-tab" data-stab="aniversarios"><i class="fas fa-cake-candles"></i> Aniversários</button>
       <button class="st-tab" data-stab="grupos"><i class="fas fa-layer-group"></i> Grupos</button>
     </div>
-    <div class="st-body stab-panel" id="stab-usuarios">
-      Há <strong>${totalOnline}</strong> usuário online :: ${registeredCount} registrado${registeredCount!==1?'s':''}, 0 invisíveis e 0 visitantes<br>
-      Último recruta aprovado: ${lastChip}
-    </div>
-    <div class="st-body stab-panel hidden" id="stab-aniversarios">
-      <p class="st-empty">Nenhum membro festeja o aniversário hoje</p>
-      <p class="st-empty">Nenhum membro festeja o aniversário nos próximos 7 dias</p>
-    </div>
-    <div class="st-body stab-panel hidden" id="stab-grupos">
-      <div class="st-groups-list">
-        ${(groups||[]).map(g => `<a href="#/grupo/${g.id}" class="sg-link"><i class="fas ${g.icon||'fa-shield-halved'}" style="color:${g.color}"></i><span>${esc(g.name)}</span><span class="text-[10px] text-muted">(${memberCount[g.id]||0})</span></a>`).join('') || '<em class="text-muted text-xs">Nenhum grupo cadastrado.</em>'}
-      </div>
-    </div>
-    <div class="st-body st-legend">
-      <strong class="text-famr-800">Legenda:</strong>
-      <div class="flex flex-wrap gap-3 mt-1">
-        ${legend.map(i=>`<span class="inline-flex items-center gap-1.5"><i class="fas ${i.icon}" style="color:${i.color}"></i><span class="text-muted">${esc(i.label)}</span></span>`).join('')}
-      </div>
+    <div class="st-body stab-panel" id="stab-usuarios">Há <strong>${totalOnline}</strong> usuário online :: ${registeredCount} registrado${registeredCount!==1?'s':''}<br>Último recruta aprovado: ${lastChip}</div>
+    <div class="st-body stab-panel hidden" id="stab-aniversarios"><p class="st-empty">Nenhum membro festeja aniversário hoje</p></div>
+    <div class="st-body stab-panel hidden" id="stab-grupos"><div class="st-groups-list">
+      ${(groups||[]).map(g => `<a href="#/grupo/${g.id}" class="sg-link"><i class="fas ${g.icon||'fa-shield-halved'}" style="color:${g.color}"></i><span>${esc(g.name)}</span><span class="text-[10px] text-muted">(${memberCount[g.id]||0})</span></a>`).join('') || '<em class="text-muted text-xs">Nenhum grupo.</em>'}
+    </div></div>
+    <div class="st-body st-legend"><strong class="text-famr-800">Legenda:</strong>
+      <div class="flex flex-wrap gap-3 mt-1">${legend.map(i=>`<span class="inline-flex items-center gap-1.5"><i class="fas ${i.icon}" style="color:${i.color}"></i><span class="text-muted">${esc(i.label)}</span></span>`).join('')}</div>
     </div>
   </section>`;
   startQsClock(); bindHomeTabs();
@@ -410,7 +398,7 @@ function forumRow(s, counts, lastMap){
     <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(s.name)}</b><p class="text-xs text-muted truncate">${esc(s.description||'')}</p></div>
     <div class="w-20 text-center hidden sm:block"><b class="text-sm">${locked?'—':(counts[s.id]||0)}</b><span class="block text-[10px] text-muted uppercase">tópicos</span></div>
     <div class="w-44 hidden md:block text-[11px] text-muted truncate">
-      ${locked ? '<i class="fas fa-lock lock-badge"></i> acesso reservado' : last ? `<i class="fas fa-clock text-gold-500 mr-1"></i>${fmtDate(last.created_at)}<br><span class="ml-4">por <b class="text-famr-700">${esc(last.profiles_view?.nickname||'—')}</b></span>` : 'sem publicações'}
+      ${locked ? '<i class="fas fa-lock lock-badge"></i> reservado' : last ? `<i class="fas fa-clock text-gold-500 mr-1"></i>${fmtDate(last.created_at)}<br><span class="ml-4">por <b class="text-famr-700">${esc(last.profiles_view?.nickname||'—')}</b></span>` : 'sem publicações'}
     </div>
   </a>`;
 }
@@ -438,18 +426,15 @@ async function renderGroupPage(c, groupId){
     </div>
     <p class="text-sm text-muted mt-1">${grp.groups ? 'Subgrupo de <b>'+esc(grp.groups.name)+'</b>' : 'Companhia principal'} • ${list.length} membro(s)</p>
     <div class="flex gap-2 mt-3">
-      ${!isMember && grp.group_type==='open' ? `<button class="btn btn-primary btn-sm" onclick="joinGroup('${grp.id}')"><i class="fas fa-right-to-bracket"></i> Entrar no grupo</button>` : ''}
-      ${isMember && grp.group_type==='open' ? `<button class="btn btn-outline btn-sm" onclick="leaveGroup('${grp.id}')"><i class="fas fa-right-from-bracket"></i> Sair do grupo</button>` : ''}
-      ${grp.group_type==='closed' && !isMember ? `<span class="chip chip-wait"><i class="fas fa-lock"></i> Entrada apenas por convite da liderança</span>` : ''}
-      ${canManage ? `<button class="btn btn-gold btn-sm" onclick="groupMembers('${grp.id}')"><i class="fas fa-user-plus"></i> Gerenciar membros</button>` : ''}
+      ${!isMember && grp.group_type==='open' ? `<button class="btn btn-primary btn-sm" onclick="joinGroup('${grp.id}')"><i class="fas fa-right-to-bracket"></i> Entrar</button>` : ''}
+      ${isMember && grp.group_type==='open' ? `<button class="btn btn-outline btn-sm" onclick="leaveGroup('${grp.id}')"><i class="fas fa-right-from-bracket"></i> Sair</button>` : ''}
+      ${canManage ? `<button class="btn btn-gold btn-sm" onclick="groupMembers('${grp.id}')"><i class="fas fa-user-plus"></i> Gerenciar</button>` : ''}
     </div>
   </div>
   <section class="card overflow-hidden fade-up mt-4">
-    <div class="cat-head"><i class="fas fa-users"></i> Membros efetivos (${list.length})</div>
+    <div class="cat-head"><i class="fas fa-users"></i> Membros (${list.length})</div>
     <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Membro</th><th>Status</th></tr></thead>
-    <tbody>${list.map(m => `<tr>
-      <td><a href="#/perfil/${m.id}" class="font-bold text-famr-700 hover:underline"><i class="fas ${userIconOf(iconByUser[m.id]||[])} mr-2" style="color:${(colorGroupOf(iconByUser[m.id]||[])||{}).color || 'var(--muted)'}"></i>${esc(m.nickname)}</a></td>
-      <td><span class="chip chip-ok">ATIVO</span></td></tr>`).join('') || '<tr><td colspan="2" class="text-center text-muted py-8">Nenhum membro ativo neste grupo.</td></tr>'}</tbody></table></div>
+    <tbody>${list.map(m => `<tr><td><a href="#/perfil/${m.id}" class="font-bold text-famr-700 hover:underline"><i class="fas ${userIconOf(iconByUser[m.id]||[])} mr-2"></i>${esc(m.nickname)}</a></td><td><span class="chip chip-ok">ATIVO</span></td></tr>`).join('') || '<tr><td colspan="2" class="text-center text-muted py-8">Nenhum membro.</td></tr>'}</tbody></table></div>
   </section>`;
 }
 window.joinGroup = async id => { const { error } = await supabase.from('user_groups').insert([{ user_id: STATE.profile.id, group_id: id }]); if(error) return toast('Erro: '+error.message,'err'); toast('Você entrou no grupo.'); reloadSessionGroups(); };
@@ -458,24 +443,13 @@ window.leaveGroup = async id => { await supabase.from('user_groups').delete().eq
 async function loadSessionGroups(userId){
   try{
     const { data, error } = await supabase.rpc('famr_get_my_groups');
-    if(!error && Array.isArray(data)){
-      const gs = sortGroups(data);
-      console.log('[FAMR] grupos via RPC:', gs.map(x=>x.name), '| isAdmin?', gs.some(x=>(x.permissions||[]).includes('admin')));
-      return gs;
-    }
-    if(error) console.warn('[FAMR] RPC famr_get_my_groups falhou, caindo p/ SELECT:', error.message||error);
-  }catch(e){ console.warn('[FAMR] RPC indisponível, caindo p/ SELECT:', e); }
-  const { data: ug, error: ugErr } = await supabase.from('user_groups').select('group_id').eq('user_id', userId);
-  if(ugErr) console.error('[FAMR] fallback user_groups:', ugErr);
+    if(!error && Array.isArray(data)) return sortGroups(data);
+  }catch(e){}
+  const { data: ug } = await supabase.from('user_groups').select('group_id').eq('user_id', userId);
   const gids = (ug||[]).map(r=>r.group_id).filter(Boolean);
-  let groups = [];
-  if(gids.length){
-    const { data: g, error: gErr } = await supabase.from('groups').select('*').in('id', gids);
-    if(gErr) console.error('[FAMR] fallback groups:', gErr);
-    groups = g || [];
-  }
-  console.log('[FAMR] grupos via SELECT:', groups.map(x=>x.name), '| isAdmin?', groups.some(x=>(x.permissions||[]).includes('admin')));
-  return sortGroups(groups);
+  if(!gids.length) return [];
+  const { data: g } = await supabase.from('groups').select('*').in('id', gids);
+  return sortGroups(g||[]);
 }
 async function reloadSessionGroups(){
   STATE.groups = await loadSessionGroups(STATE.profile.id);
@@ -484,7 +458,6 @@ async function reloadSessionGroups(){
   updateUserChip(); route();
 }
 
-/* ══════════ LOADPERMS ══════════ */
 async function loadPerms(){
   const gids = new Set(STATE.groups.map(g=>g.id));
   const rows = await cachedQuery('perms:all', ()=> supabase.from('group_permissions').select('*'), 120_000);
@@ -533,7 +506,7 @@ const secHead = sec => `<div class="flex flex-wrap items-center justify-between 
 /* ══════════ COMPANHIAS ══════════ */
 async function renderCompanhias(c, sec){
   if(!isAdmin() && (STATE.groups||[]).length===0){
-    c.innerHTML = secHead(sec) + `<div class="card card-body text-center py-14 fade-up"><i class="fas fa-user-shield text-4xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2><p class="text-sm text-muted mt-1">Você ainda não pertence a nenhuma companhia. Aguarde o alistamento em um grupo pelo Alto Comando.</p></div>`;
+    c.innerHTML = secHead(sec) + `<div class="card card-body text-center py-14 fade-up"><i class="fas fa-user-shield text-4xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2><p class="text-sm text-muted mt-1">Você ainda não pertence a nenhuma companhia.</p></div>`;
     return;
   }
   const [{ data: groups }, { data: allUG }] = await Promise.all([
@@ -553,7 +526,7 @@ async function renderCompanhias(c, sec){
       <p class="text-xs text-muted mt-1">${cnt[g.id]||0} membro(s)</p>
       ${myIds.has(g.id) ? '<span class="chip chip-ok mt-2"><i class="fas fa-check mr-1"></i>Seu grupo</span>' : ''}
       <a href="#/grupo/${g.id}" class="btn btn-outline btn-sm mt-3"><i class="fas fa-users"></i> Ver membros</a>
-    </div>`).join('') || '<div class="card card-body text-sm text-muted sm:col-span-2 lg:col-span-3 text-center py-10">Nenhuma companhia cadastrada.</div>'}
+    </div>`).join('') || '<div class="card card-body text-sm text-muted col-span-full text-center py-10">Nenhuma companhia.</div>'}
   </div>`;
 }
 
@@ -561,7 +534,7 @@ async function renderCompanhias(c, sec){
 async function renderSubtopic(c, id, page=0){
   const { data: sub } = await supabase.from('subtopics').select('*,sections(name,slug)').eq('id', id).single();
   if(!sub){ c.innerHTML = '<div class="card card-body text-sm text-muted">Subtópico não encontrado.</div>'; return; }
-  if(!canViewSub(sub)){ c.innerHTML = `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2><p class="text-sm text-muted mt-1">Conteúdo exclusivo de grupo específico.</p></div>`; return; }
+  if(!canViewSub(sub)){ c.innerHTML = `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2></div>`; return; }
   window._curSub = sub;
   const offset = page*PAGE_SIZE;
   const { data: posts, count } = await supabase.from('posts')
@@ -580,16 +553,16 @@ async function renderSubtopic(c, id, page=0){
   </div>
   ${canCreateIn(sub) && !sub.is_request_form ? `<form id="new-topic" class="hidden card card-body grid gap-3 fade-up" onsubmit="return newPost(event,'${sub.id}')">
       <input name="title" class="input" placeholder="Título do tópico" required>
-      <textarea name="content" class="input" rows="4" placeholder="Conteúdo da publicação..." required></textarea>
-      <input name="link" class="input" placeholder="Link de anexo (Google Drive) — opcional">
-      <button class="btn btn-gold btn-sm justify-self-start"><i class="fas fa-paper-plane"></i> Publicar tópico</button></form>` : ''}
+      <textarea name="content" class="input" rows="4" placeholder="Conteúdo..." required></textarea>
+      <input name="link" class="input" placeholder="Link de anexo (opcional)">
+      <button class="btn btn-gold btn-sm justify-self-start"><i class="fas fa-paper-plane"></i> Publicar</button></form>` : ''}
   <section class="card overflow-hidden fade-up">
-    <div class="cat-head"><i class="fas fa-inbox"></i> Tópicos de ${esc(sub.name)} <span class="ml-auto text-[10px] normal-case tracking-normal text-gold-300">${count||0} no total</span></div>
+    <div class="cat-head"><i class="fas fa-inbox"></i> Tópicos <span class="ml-auto text-[10px] normal-case tracking-normal text-gold-300">${count||0} no total</span></div>
     <div class="divide-y divide-line">
       ${(posts||[]).map(p => `<div class="topic-row" onclick="openTopic('${p.id}')">
         <span class="forum-ico ${p.pinned?'new':''}"><i class="fas ${p.pinned?'fa-thumbtack':'fa-comment'}"></i></span>
         <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(p.title)}</b><p class="text-[11px] text-muted">por <b class="text-famr-700">${esc(p.profiles_view?.nickname||'—')}</b> • ${fmtDate(p.created_at)}</p></div>
-        <i class="fas fa-chevron-right text-xs text-muted"></i></div>`).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhum tópico publicado ainda.</p>'}
+        <i class="fas fa-chevron-right text-xs text-muted"></i></div>`).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhum tópico ainda.</p>'}
     </div>
     ${totalPages>1 ? `<div class="p-3 flex justify-center gap-2 items-center border-t border-line">
       ${page>0?`<button class="btn btn-outline btn-sm" onclick="renderSubtopic(document.getElementById('content'),'${id}',${page-1})">← Anterior</button>`:''}
@@ -603,16 +576,16 @@ window.openTopic = id => {
   const sub = window._curSub;
   const mine = p.author_id === STATE.profile.id;
   openModal(`<i class="fas fa-comment text-gold-500 mr-2"></i>${esc(p.title)}`,
-    `<div class="text-[11px] text-muted mb-3"><i class="fas fa-user-pen text-gold-500 mr-1"></i>${esc(p.profiles_view?.nickname||'—')} • ${fmtDate(p.created_at)}</div>
+    `<div class="text-[11px] text-muted mb-3">${esc(p.profiles_view?.nickname||'—')} • ${fmtDate(p.created_at)}</div>
      <p class="text-sm whitespace-pre-wrap text-ink">${esc(p.content)}</p>
      ${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm mt-4"><i class="fab fa-google-drive"></i> Abrir anexo</a>` : ''}`,
     `${mine && canEditIn(sub) ? `<button class="btn btn-outline btn-sm mr-auto" onclick="editPost('${p.id}')"><i class="fas fa-pen"></i> Editar</button>` : ''}
-     ${mine || canDeleteIn(sub) ? `<button class="btn btn-danger btn-sm ${mine && canEditIn(sub) ? '' : 'mr-auto'}" onclick="delPost('${p.id}')"><i class="fas fa-trash"></i> Excluir</button>` : ''}
+     ${mine || canDeleteIn(sub) ? `<button class="btn btn-danger btn-sm" onclick="delPost('${p.id}')"><i class="fas fa-trash"></i> Excluir</button>` : ''}
      <button class="btn btn-outline btn-sm" onclick="closeModal()">Fechar</button>`);
 };
 window.editPost = id => {
   const p = window._postsCache?.[id]; if(!p) return;
-  openModal('<i class="fas fa-pen text-gold-500 mr-2"></i>Editar publicação',
+  openModal('<i class="fas fa-pen text-gold-500 mr-2"></i>Editar',
     `<label class="field"><span>Conteúdo</span><textarea id="edit-content" class="input" rows="6">${esc(p.content)}</textarea></label>`,
     `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
      <button class="btn btn-primary btn-sm" onclick="saveEditPost('${id}')"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
@@ -622,38 +595,33 @@ window.saveEditPost = async id => {
   const { error } = await supabase.from('posts').update({ content }).eq('id', id);
   if(error) return toast('Erro: '+error.message,'err');
   await famrLog('POST_EDITADO', { id });
-  invalidate('posts:'); invalidate('home:');
-  closeModal(); toast('Publicação atualizada.'); route();
+  invalidate('posts:'); invalidate('home:'); closeModal(); toast('Atualizado.'); route();
 };
 window.newPost = async function(e, subtopicId){
   e.preventDefault(); const f = e.target;
   const { error } = await supabase.from('posts').insert([{ subtopic_id: subtopicId, title: f.title.value, content: f.content.value, link: f.link.value||null, author_id: STATE.profile.id }]);
   if(error){ toast('Erro: '+error.message,'err'); return false; }
   await famrLog('POST_CRIADO', { subtopicId });
-  invalidate('posts:'); invalidate('home:');
-  toast('Tópico publicado!'); route(); return false;
+  invalidate('posts:'); invalidate('home:'); toast('Publicado!'); route(); return false;
 };
 window.delPost = async function(id){
-  if(!await confirmDlg('Excluir esta publicação? Esta ação não pode ser desfeita.', { title:'Excluir publicação', okText:'Excluir', danger:true })) return;
+  if(!await confirmDlg('Excluir esta publicação?', { title:'Excluir', okText:'Excluir', danger:true })) return;
   await supabase.from('posts').delete().eq('id', id);
   await famrLog('POST_EXCLUIDO', { id });
-  invalidate('posts:'); invalidate('home:');
-  closeModal(); toast('Publicação excluída.'); route();
+  invalidate('posts:'); invalidate('home:'); closeModal(); toast('Excluída.'); route();
 };
 
 /* ══════════ LISTAGEM ══════════ */
 async function renderListagem(c, sec){
   const { data: entries } = await supabase.from('listagem_entries').select('*').order('created_at',{ascending:false}).limit(100);
-  const cats = [...new Set((entries||[]).map(e => e.category))];
   c.innerHTML = secHead(sec) + `
   <div class="card fade-up">
-    <div class="cat-head"><i class="fas fa-list-ul"></i> Registros oficiais ${cats.map(k => `<span class="chip chip-neutral ml-2 normal-case">${esc(k)}</span>`).join('')}</div>
-    <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Registro</th><th>Categoria</th><th>Detalhes</th><th>Origem</th><th>Data</th></tr></thead>
+    <div class="cat-head"><i class="fas fa-list-ul"></i> Registros oficiais</div>
+    <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Registro</th><th>Categoria</th><th>Detalhes</th><th>Data</th></tr></thead>
     <tbody>${(entries||[]).map(e => `<tr>
       <td class="font-bold text-famr-800">${esc(e.title)}</td><td><span class="chip chip-neutral">${esc(e.category)}</span></td>
       <td class="text-xs text-muted">${Object.entries(e.data||{}).map(([k,v])=>`<b>${esc(k)}:</b> ${esc(v)}`).join(' • ')}</td>
-      <td class="text-xs">${e.source_request_id ? '<span class="chip chip-ok"><i class="fas fa-link"></i> requerimento</span>' : '<span class="chip chip-neutral">manual</span>'}</td>
-      <td class="text-xs text-muted">${fmtDate(e.created_at)}</td></tr>`).join('') || '<tr><td colspan="5" class="text-center text-muted py-8">Nenhum registro publicado ainda.</td></tr>'}</tbody></table></div>
+      <td class="text-xs text-muted">${fmtDate(e.created_at)}</td></tr>`).join('') || '<tr><td colspan="4" class="text-center text-muted py-8">Nenhum registro.</td></tr>'}</tbody></table></div>
   </div>`;
 }
 
@@ -665,7 +633,7 @@ async function renderRequerimentos(c, sec){
   <div class="grid lg:grid-cols-3 gap-6">
     <div class="space-y-4 fade-up">
       ${(subs||[]).filter(canViewSub).map(s => `<div class="card card-hover p-5">
-          <div class="flex items-center justify-between"><h3 class="font-display font-bold">${esc(s.name)}</h3></div>
+          <h3 class="font-display font-bold">${esc(s.name)}</h3>
           <p class="text-xs text-muted mt-1">${esc(s.description||'')}</p>
           <button class="btn btn-gold btn-sm mt-3" onclick='openRequestForm(${JSON.stringify(s).replace(/'/g,"&#39;")})'><i class="fas fa-pen-to-square"></i> Abrir protocolo</button>
         </div>`).join('') || '<div class="card card-body text-sm text-muted">Nenhum formulário disponível.</div>'}
@@ -673,9 +641,9 @@ async function renderRequerimentos(c, sec){
     <div class="lg:col-span-2 card fade-up">
       <div class="cat-head"><i class="fas fa-inbox"></i> Meus protocolos</div>
       <div class="divide-y divide-line max-h-[560px] overflow-auto">
-        ${(mine||[]).map(r => `<div class="p-4 flex items-center justify-between gap-3 hover:bg-gold-100/40 transition-colors">
-          <div><p class="font-bold text-sm">${esc(r.title)}</p><p class="text-[11px] text-muted mt-0.5">${esc(r.subtopics?.name||'')} • ${fmtDate(r.created_at)} ${r.review_note?`• <i>"${esc(r.review_note)}"</i>`:''}</p></div>
-          ${statusChip(r.status)}</div>`).join('') || '<p class="p-8 text-center text-sm text-muted">Você ainda não abriu protocolos.</p>'}
+        ${(mine||[]).map(r => `<div class="p-4 flex items-center justify-between gap-3">
+          <div><p class="font-bold text-sm">${esc(r.title)}</p><p class="text-[11px] text-muted">${esc(r.subtopics?.name||'')} • ${fmtDate(r.created_at)}</p></div>
+          ${statusChip(r.status)}</div>`).join('') || '<p class="p-8 text-center text-sm text-muted">Nenhum protocolo.</p>'}
       </div></div>
   </div>`;
 }
@@ -685,39 +653,40 @@ window.openRequestForm = function(sub){
     fields.map(f => `<label class="field"><span>${esc(f.label)}${f.required?' *':''}</span>
       ${f.type==='textarea' ? `<textarea data-f="${esc(f.label)}" data-req="${!!f.required}" class="input" rows="3"></textarea>` : `<input data-f="${esc(f.label)}" data-req="${!!f.required}" class="input" type="${f.type||'text'}">`}</label>`).join(''),
     `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
-     <button class="btn btn-primary btn-sm" onclick="submitRequest('${sub.id}')"><i class="fas fa-paper-plane"></i> Enviar ao CRH</button>`);
+     <button class="btn btn-primary btn-sm" onclick="submitRequest('${sub.id}')"><i class="fas fa-paper-plane"></i> Enviar</button>`);
 };
 window.submitRequest = async function(subtopicId){
   const inputs = [...document.querySelectorAll('#modal-body [data-f]')];
   const data = {}; let ok = true;
   inputs.forEach(i => { data[i.dataset.f] = i.value.trim(); if(i.dataset.req==='true' && !i.value.trim()) ok = false; });
-  if(!ok){ toast('Preencha todos os campos obrigatórios.', 'warn'); return; }
+  if(!ok){ toast('Preencha campos obrigatórios.', 'warn'); return; }
   const title = (Object.values(data)[0] || 'Protocolo') + '';
   const { error } = await supabase.from('requests').insert([{ subtopic_id: subtopicId, author_id: STATE.profile.id, title, form_data: data }]);
-  if(error){ toast('Erro ao enviar: '+error.message, 'err'); return; }
-  closeModal(); toast('Protocolo enviado! Aguarde a análise do CRH/RH.'); route();
+  if(error){ toast('Erro: '+error.message, 'err'); return; }
+  closeModal(); toast('Protocolo enviado!'); route();
 };
 
-/* ══════════ DOCUMENTOS (workspace página cheia + citação colorida) ══════════ */
-let _wsEditor=null, _wsSaving=false, _wsDirty=false;
+/* ═══════════════════════════════════════════════════
+   DOCUMENTOS — WORKSPACE PÁGINA CHEIA (v30.1 REAL)
+   ═══════════════════════════════════════════════════ */
+let _wsDirty=false, _wsSaving=false;
 
 async function renderDocumentos(c, sec){
-  if(!canViewSection(sec)){ c.innerHTML = secHead(sec)+lockCard('documentos'); return; }
-  const canManage = isAdmin() || canCreateIn({section_id:sec.id, allow_posts:true}) || (STATE.perms?.['section:'+sec.id]?.create);
+  if(!canViewSection(sec)){ c.innerHTML = secHead(sec)+lockCard(); return; }
+  const canManage = isAdmin() || (STATE.perms?.['section:'+sec.id]?.create);
   const { data: docs } = await cachedQuery('docs:list', ()=> supabase.from('documents').select('id,title,category,cover_url,updated_at,author_id,profiles_view(nickname)').order('updated_at',{ascending:false}), 30_000);
   c.innerHTML = secHead(sec) + `
   <div class="flex flex-wrap items-center gap-2 mb-4 fade-up">
     ${canManage?`<a href="#/doc-new" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Novo tópico</a>`:''}
-    <input id="doc-q" class="input !py-1.5 w-56 ml-auto" placeholder="Buscar documento..." oninput="filterDocs(this.value)">
+    <input id="doc-q" class="input !py-1.5 w-56 ml-auto" placeholder="Buscar..." oninput="filterDocs(this.value)">
   </div>
   <div id="doc-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up">
-    ${(docs||[]).map(d=>docCard(d, canManage)).join('') || '<div class="card card-body text-sm text-muted sm:col-span-2 lg:col-span-3 text-center py-10">Nenhum documento publicado.</div>'}
+    ${(docs||[]).map(d=>docCard(d, canManage)).join('') || '<div class="card card-body text-sm text-muted col-span-full text-center py-10">Nenhum documento.</div>'}
   </div>`;
-  window._docsCache = docs||[];
 }
-function lockCard(t){ return `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2><p class="text-sm text-muted mt-1">Conteúdo exclusivo (${t}).</p></div>`; }
+function lockCard(){ return `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2></div>`; }
 function docCard(d, canManage){
-  return `<div class="card card-hover overflow-hidden doc-item" data-title="${esc((d.title||'').toLowerCase())}" data-cat="${esc((d.category||'').toLowerCase())}">
+  return `<div class="card card-hover overflow-hidden doc-item" data-title="${esc((d.title||'').toLowerCase())}">
     ${d.cover_url?`<img src="${esc(d.cover_url)}" class="w-full h-32 object-cover" alt="" loading="lazy">`:''}
     <div class="p-4">
       <div class="flex items-start justify-between gap-2">
@@ -736,38 +705,37 @@ function docCard(d, canManage){
 window.filterDocs = q => {
   q=q.toLowerCase().trim();
   document.querySelectorAll('.doc-item').forEach(el=>{
-    const ok=!q || el.dataset.title.includes(q) || (el.dataset.cat||'').includes(q);
-    el.style.display = ok?'':'none';
+    el.style.display = (!q || el.dataset.title.includes(q))?'':'none';
   });
 };
 window.viewDoc = async id => {
   const { data:d } = await supabase.from('documents').select('*,profiles_view(nickname)').eq('id',id).single();
-  if(!d) return toast('Documento não encontrado.','err');
-  openModal(`<i class="fas fa-book-open text-gold-500 mr-2"></i>${esc(d.title)} ${d.category?`<span class="chip chip-neutral ml-1 normal-case">${esc(d.category)}</span>`:''}`,
-    `<div class="text-[11px] text-muted mb-3">por <b>${esc(d.profiles_view?.nickname||'—')}</b> • atualizado ${fmtDate(d.updated_at)}</div>
-     <article class="doc-body !bg-transparent !shadow-none !p-0 !min-h-0">${sanitizeHtml(d.body_html||'')}</article>`,
+  if(!d) return toast('Não encontrado.','err');
+  openModal(`<i class="fas fa-book-open text-gold-500 mr-2"></i>${esc(d.title)}`,
+    `<div class="text-[11px] text-muted mb-3">por <b>${esc(d.profiles_view?.nickname||'—')}</b> • ${fmtDate(d.updated_at)}</div>
+     <article class="doc-body !bg-transparent !shadow-none !p-0 !min-h-0" style="pointer-events:none">${sanitizeHtml(d.body_html||'')}</article>`,
     `<button class="btn btn-outline btn-sm mr-auto" onclick="downloadDoc('${id}')"><i class="fas fa-download"></i> Baixar .doc</button>
      <button class="btn btn-outline btn-sm" onclick="closeModal()">Fechar</button>`);
 };
 window.downloadDoc = async id => {
   const { data:d } = await supabase.from('documents').select('title,body_html').eq('id',id).single();
   if(!d) return;
-  const fullHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
-<head><meta charset="utf-8"><title>${esc(d.title)}</title></head><body>${d.body_html}</body></html>`;
+  const fullHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>${esc(d.title)}</title></head><body>${d.body_html}</body></html>`;
   const blob = new Blob(['\ufeff'+fullHtml], {type:'application/msword'});
   const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=(d.title||'documento').replace(/[^\w\-]+/g,'_')+'.doc'; a.click(); URL.revokeObjectURL(url);
 };
 window.delDoc = async id => {
-  if(!await confirmDlg('Excluir este documento permanentemente?', { title:'Excluir documento', okText:'Excluir', danger:true })) return;
+  if(!await confirmDlg('Excluir este documento permanentemente?', { title:'Excluir', okText:'Excluir', danger:true })) return;
   await supabase.from('documents').delete().eq('id',id);
   await famrLog('DOC_DEL', { id });
-  invalidate('docs:'); closeModal(); toast('Documento excluído.'); route();
+  invalidate('docs:'); closeModal(); toast('Excluído.'); route();
 };
 
+/* ─── WORKSPACE ─── */
 function closeDocWorkspace(){
   const old = document.getElementById('doc-workspace');
   if(old) old.remove();
-  _wsEditor=null; _wsDirty=false; _wsSaving=false;
+  _wsDirty=false; _wsSaving=false;
   document.removeEventListener('keydown', ctrlSaveHandler);
 }
 
@@ -787,20 +755,19 @@ window.renderDocWorkspace = async function(docId){
       <button class="dw-back" onclick="exitDocWorkspace()"><i class="fas fa-arrow-left"></i> Voltar</button>
       <input class="dw-title-in" id="dw-title" placeholder="Título do tópico" value="${esc(d.title)}" maxlength="200">
       <input class="dw-cat-in" id="dw-category" placeholder="Categoria (opcional)" value="${esc(d.category||'')}">
-      <span class="dw-status" id="dw-status">${docId?'carregando...':'novo documento'}</span>
+      <span class="dw-status" id="dw-status">${docId?'carregado':'novo documento'}</span>
       <button class="dw-save" id="dw-save-btn" onclick="saveCurrentDoc('${docId||''}')"><i class="fas fa-floppy-disk"></i> Salvar</button>
     </div>
     <div class="dw-toolbar" id="dw-toolbar"></div>
-    <div class="dw-canvas">
+    <div class="dw-canvas" id="dw-canvas">
       <div class="doc-page">
-        <div class="doc-ruler" id="dw-ruler"></div>
-        <div class="doc-body" id="dw-body" contenteditable="true" spellcheck="false">${d.body_html || '<p class="doc-empty-hint">Comece a escrever seu documento aqui...</p>'}</div>
+        <div class="doc-body" id="dw-body" contenteditable="true" spellcheck="false">${d.body_html || '<p class="doc-empty-hint">Comece a escrever...</p>'}</div>
       </div>
     </div>`;
   document.body.appendChild(ws);
-  buildRuler();
-  initWorkspaceToolbar();
-  wireAutosave();
+  initToolbar();
+  wireEvents();
+  setupImageInteractivity();
   document.getElementById('dw-title').focus();
 };
 
@@ -808,43 +775,44 @@ window.exitDocWorkspace = async function(){
   if(_wsDirty){
     const choice = await new Promise(res => {
       openModal('<i class="fas fa-triangle-exclamation text-gold-500 mr-2"></i>Alterações não salvas',
-        `<p class="text-sm text-muted leading-relaxed">Este documento tem alterações que ainda não foram salvas.<br>O que deseja fazer?</p>`,
+        `<p class="text-sm text-muted">Este documento tem alterações não salvas.</p>`,
         `<button class="btn btn-outline btn-sm" id="_ex-cancel">Continuar editando</button>
          <button class="btn btn-danger btn-sm" id="_ex-discard">Descartar</button>
          <button class="btn btn-primary btn-sm" id="_ex-save">Salvar e sair</button>`);
-      document.getElementById('_ex-save').onclick = ()=>res('save');
-      document.getElementById('_ex-discard').onclick = ()=>res('discard');
-      document.getElementById('_ex-cancel').onclick = ()=>res('cancel');
+      document.getElementById('_ex-save').onclick = ()=>{ closeModal(); res('save'); };
+      document.getElementById('_ex-discard').onclick = ()=>{ closeModal(); res('discard'); };
+      document.getElementById('_ex-cancel').onclick = ()=>{ closeModal(); res('cancel'); };
     });
     if(choice==='cancel') return;
-    if(choice==='save'){ await saveCurrentDoc(location.hash.startsWith('#/doc-edit/')?location.hash.split('/')[2]:''); if(_wsSaving) return; /* aguarda salvar */ }
+    if(choice==='save'){
+      const did = location.hash.startsWith('#/doc-edit/')?location.hash.split('/')[2]:'';
+      await saveCurrentDoc(did);
+      if(_wsSaving) return; /* salvando ainda, espera */
+      if(_wsDirty) return; /* falhou ao salvar, fica */
+    }
   }
   closeDocWorkspace();
-  history.back();
-  setTimeout(()=>{ if(location.hash==='#/doc-new'||location.hash.startsWith('#/doc-edit')) location.hash='#/section/documentos'; }, 50);
+  if(location.hash==='#/doc-new'||location.hash.startsWith('#/doc-edit')) location.hash='#/section/documentos';
+  else history.back();
 };
 
-function buildRuler(){
-  const r = document.getElementById('dw-ruler');
-  if(!r) return;
-  let html='';
-  for(let cm=1; cm<=17; cm++) html += `<span>${cm}</span>`;
-  r.innerHTML = html;
-}
-
-function initWorkspaceToolbar(){
+/* ─── TOOLBAR COMPLETA ─── */
+function initToolbar(){
   const bar = document.getElementById('dw-toolbar');
   const body = document.getElementById('dw-body');
   bar.innerHTML = '';
 
-  const mkSelect = (opts, cmd, label) => {
+  const COLORS_TEXT = ['#000000','#434343','#666666','#999999','#b7b7b7','#cccccc','#efefef','#ffffff','#ff0000','#ff9900','#ffff00','#00ff00','#00ffff','#0000ff','#9900ff','#ff00ff','#e6b8af','#f4cccc','#fce5cd','#fff2cc','#d9ead3','#d0e3e3','#c9daf8','#cfe2f3','#d9d4e8','#ead1dc','#dd7e6b','#ea9999','#f9cb9c','#ffe599','#b6d7a8','#a2c4c9','#a4c2f4','#9fc5e8','#b4a7d6','#d5a6bd','#cc4125','#e06666','#f6b26b','#ffd966','#93c47d','#76a5af','#6d9eeb','#6fa8dc','#8e7cc3','#a64d79','#a61c00','#b84e4e','#d97a4a','#bf9000','#6aa84f','#4c8ea7','#3c78d8','#3d85c6','#674ea7','#7b2e5a'];
+  const COLORS_QUOTE = ['#c9a227','#1a73e8','#ea4335','#34a853','#fbbc04','#9c27b0','#ff5722','#607d8b','#00bcd4','#4caf50'];
+
+  function mkSelect(opts, cmd, label){
     const sel = document.createElement('select');
     sel.className = 'dw-select'; sel.title = label;
     opts.forEach(([val,text])=>{ const o=document.createElement('option'); o.value=val; o.textContent=text; sel.appendChild(o); });
-    sel.onchange = () => { body.focus(); document.execCommand(cmd,false,sel.value); syncToolbarState(); markDirty(); };
+    sel.onchange = () => { body.focus(); execCmd(cmd, sel.value); };
     bar.appendChild(sel); return sel;
-  };
-  const mkBtn = (label, icon, cmd, val=null) => {
+  }
+  function mkBtn(label, icon, cmd, val=null){
     const b = document.createElement('button');
     b.type='button'; b.className='dw-tool'; b.title=label;
     b.innerHTML = `<i class="fas ${icon}"></i>`;
@@ -852,149 +820,309 @@ function initWorkspaceToolbar(){
     b.onclick = () => {
       body.focus();
       if(cmd==='custom'){ val(body); }
-      else { document.execCommand(cmd,false,(typeof val==='string')?val:null); }
-      syncToolbarState(); markDirty();
+      else if(cmd==='formatBlock'){ execCmd('formatBlock', val); }
+      else { execCmd(cmd, (typeof val==='string')?val:null); }
     };
     bar.appendChild(b); return b;
-  };
-  const mkSep = () => { const s=document.createElement('span'); s.className='dw-sep'; bar.appendChild(s); };
-  const mkColor = (label, cmd) => {
-    const inp = document.createElement('input');
-    inp.type='color'; inp.className='dw-color'; inp.title=label; inp.value='#000000';
-    inp.oninput = () => { body.focus(); document.execCommand(cmd,false,inp.value); markDirty(); };
-    bar.appendChild(inp);
-  };
+  }
+  function mkSep(){ const s=document.createElement('span'); s.className='dw-sep'; bar.appendChild(s); }
+  function mkColorPicker(label, cmd, palette){
+    const wrap = document.createElement('div');
+    wrap.style.position='relative'; wrap.style.display='inline-block';
+    const btn = document.createElement('button');
+    btn.className='dw-color-btn'; btn.title=label;
+    btn.innerHTML = `<i class="fas ${cmd==='foreColor'?'fa-font':'fa-highlighter'}"></i><span class="bar" style="background:${cmd==='hiliteColor'?'#fce8b2':'#000'}"></span>`;
+    const pop = document.createElement('div');
+    pop.className='dw-color-pop';
+    const grid = document.createElement('div');
+    grid.className='dw-color-grid';
+    palette.forEach(c=>{
+      const cb = document.createElement('button');
+      cb.style.background=c; cb.title=c;
+      cb.onclick = () => { body.focus(); execCmd(cmd, c); pop.classList.remove('open'); markDirty(); syncState(); };
+      grid.appendChild(cb);
+    });
+    pop.appendChild(grid);
+    btn.onclick = (e) => { e.stopPropagation(); document.querySelectorAll('.dw-color-pop.open').forEach(p=>p.classList.remove('open')); pop.classList.toggle('open'); };
+    wrap.appendChild(btn); wrap.appendChild(pop);
+    bar.appendChild(wrap);
+  }
 
-  mkSelect([
-    ['Arial','Arial'],['Helvetica','Helvetica'],['Tahoma','Tahoma'],['Verdana','Verdana'],
-    ['Georgia','Georgia'],['Times New Roman','Times New Roman'],['Courier New','Courier New'],
-    ['Lucida Console','Lucida Console'],['Segoe UI','Segoe UI'],['Roboto','Roboto']
-  ], 'fontName', 'Fonte');
-  mkSelect([
-    ['1','8pt'],['2','10pt'],['3','12pt'],['4','14pt'],['5','18pt'],['6','24pt'],['7','36pt']
-  ], 'fontSize', 'Tamanho');
+  /* Fonte e tamanho */
+  mkSelect([['Arial','Arial'],['Georgia','Georgia'],['Times New Roman','Times New Roman'],['Courier New','Courier New'],['Verdana','Verdana'],['Tahoma','Tahoma'],['Roboto','Roboto'],['Segoe UI','Segoe UI']], 'fontName', 'Fonte');
+  mkSelect([['1','Pequeno'],['2','Normal'],['3','Médio'],['4','Grande'],['5','Maior'],['6','Enorme'],['7','Gigante']], 'fontSize', 'Tamanho');
   mkSep();
-  mkBtn('Negrito (Ctrl+B)','fa-bold','bold');
-  mkBtn('Itálico (Ctrl+I)','fa-italic','italic');
-  mkBtn('Sublinhado (Ctrl+U)','fa-underline','underline');
+
+  /* Estilo */
+  mkBtn('Negrito','fa-bold','bold');
+  mkBtn('Itálico','fa-italic','italic');
+  mkBtn('Sublinhado','fa-underline','underline');
   mkBtn('Tachado','fa-strikethrough','strikeThrough');
-  mkColor('Cor do texto','foreColor');
-  mkColor('Realce','hiliteColor');
+  mkColorPicker('Cor do texto','foreColor',COLORS_TEXT);
+  mkColorPicker('Realce','hiliteColor',['#fce8b2','#d9ead3','#c9daf8','#ead1dc','#fff2cc','#d0e3e3','#f4cccc','#e0e0e0']);
   mkSep();
-  mkBtn('Alinhar à esquerda','fa-align-left','justifyLeft');
-  mkBtn('Centralizar','fa-align-center','justifyCenter');
-  mkBtn('Alinhar à direita','fa-align-right','justifyRight');
-  mkBtn('Justificar','fa-align-justify','justifyFull');
+
+  /* Alinhamento */
+  mkBtn('Esquerda','fa-align-left','justifyLeft');
+  mkBtn('Centro','fa-align-center','justifyCenter');
+  mkBtn('Direita','fa-align-right','justifyRight');
+  mkBtn('Justificado','fa-align-justify','justifyFull');
   mkSep();
-  mkBtn('Lista com marcadores','fa-list-ul','insertUnorderedList');
-  mkBtn('Lista numerada','fa-list-ol','insertOrderedList');
-  mkBtn('Diminuir recuo','fa-outdent','outdent');
-  mkBtn('Aumentar recuo','fa-indent','indent');
+
+  /* Listas */
+  mkBtn('Marcadores','fa-list-ul','insertUnorderedList');
+  mkBtn('Numerada','fa-list-ol','insertOrderedList');
+  mkBtn('-Recuo','fa-outdent','outdent');
+  mkBtn('+Recuo','fa-indent','indent');
   mkSep();
+
+  /* Blocos */
   mkBtn('Título 1','fa-heading','','formatBlock','<h1>');
   mkBtn('Título 2','fa-heading','','formatBlock','<h2>');
   mkBtn('Título 3','fa-heading','','formatBlock','<h3>');
   mkBtn('Parágrafo','fa-paragraph','','formatBlock','<p>');
 
-  /* ── CITAÇÃO COM COR ESCOLHÍVEL ── */
+  /* Citação com cor */
   const quoteWrap = document.createElement('span');
-  quoteWrap.className = 'dw-quote-wrap';
+  quoteWrap.style.display='inline-flex'; quoteWrap.style.alignItems='center'; quoteWrap.style.gap='2px';
   const quoteBtn = document.createElement('button');
-  quoteBtn.type='button'; quoteBtn.className='dw-tool'; quoteBtn.title='Citação (bloco)';
-  quoteBtn.innerHTML = '<i class="fas fa-quote-left"></i>';
-  quoteBtn.onclick = () => { body.focus(); document.execCommand('formatBlock',false,'blockquote'); syncToolbarState(); markDirty(); };
-  const quoteColor = document.createElement('input');
-  quoteColor.type='color'; quoteColor.className='dw-quote-color'; quoteColor.title='Cor da barra da citação'; quoteColor.value='#c9a227';
-  quoteColor.oninput = () => { applyQuoteColor(quoteColor.value); markDirty(); };
-  quoteWrap.appendChild(quoteBtn); quoteWrap.appendChild(quoteColor);
+  quoteBtn.type='button'; quoteBtn.className='dw-tool'; quoteBtn.title='Citação';
+  quoteBtn.innerHTML='<i class="fas fa-quote-left"></i>';
+  quoteBtn.onclick = () => { body.focus(); execCmd('formatBlock','blockquote'); };
+  const quoteColorSel = document.createElement('select');
+  quoteColorSel.className='dw-select'; quoteColorSel.title='Cor da citação'; quoteColorSel.style.width='42px';
+  COLORS_QUOTE.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent='■'; o.style.color=c; quoteColorSel.appendChild(o); });
+  quoteColorSel.onchange = () => { applyQuoteColor(quoteColorSel.value); };
+  quoteWrap.appendChild(quoteBtn); quoteWrap.appendChild(quoteColorSel);
   bar.appendChild(quoteWrap);
   mkSep();
 
+  /* Sub/Super */
   mkBtn('Subscrito','fa-subscript','subscript');
   mkBtn('Superscrito','fa-superscript','superscript');
   mkSep();
-  mkBtn('Inserir link','fa-link','','custom', async ()=>{
-    const url = await promptDlg('URL do link', '', { title:'Inserir link', okText:'Aplicar' });
-    if(url){ body.focus(); document.execCommand('createLink', false, url); markDirty(); }
+
+  /* Link/Imagem/Emoji */
+  mkBtn('Link','fa-link','','custom', async ()=>{
+    const url = await promptDlg('URL do link','', { title:'Inserir link', okText:'Aplicar' });
+    if(url){ body.focus(); execCmd('createLink', url); markDirty(); }
   });
   mkBtn('Remover link','fa-link-slash','unlink');
-  mkBtn('Inserir imagem','fa-image','','custom',()=>insertImageFromStorage(body));
+  mkBtn('Imagem','fa-image','','custom',()=>insertImage(body));
   mkBtn('Emoji','fa-face-smile','','custom',()=>showEmojiPanel(body));
   mkSep();
-  mkBtn('Linha horizontal','fa-minus','insertHorizontalRule');
-  mkBtn('Limpar formatação','fa-eraser','removeFormat');
-  mkSep();
-  mkBtn('Desfazer (Ctrl+Z)','fa-undo','undo');
-  mkBtn('Refazer (Ctrl+Y)','fa-repeat','redo');
 
-  body.addEventListener('keyup', syncToolbarState);
-  body.addEventListener('mouseup', syncToolbarState);
-  body.addEventListener('input', ()=>{ _wsDirty=true; setStatus('alterações não salvas'); });
+  /* Estrutura */
+  mkBtn('Linha horiz.','fa-minus','insertHorizontalRule');
+  mkBtn('Limpar formato','fa-eraser','removeFormat');
+  mkSep();
+  mkBtn('Desfazer','fa-undo','undo');
+  mkBtn('Refazer','fa-repeat','redo');
+
+  /* Fecha popups de cor ao clicar fora */
+  document.addEventListener('click', e => {
+    if(!e.target.closest('.dw-color-btn')&&!e.target.closest('.dw-color-pop')){
+      document.querySelectorAll('.dw-color-pop.open').forEach(p=>p.classList.remove('open'));
+    }
+  });
 }
 
-/* Aplica cor na barra lateral da citação sob o cursor (ou todas as citações selecionadas) */
+/* Executa comando com fallback seguro */
+function execCmd(cmd, val){
+  try{
+    if(cmd==='formatBlock' && val){
+      /* Chrome precisa de tags sem <> em alguns casos */
+      const tag = val.replace(/[<>]/g,'');
+      document.execCommand('formatBlock', false, '<'+tag+'>');
+    } else {
+      document.execCommand(cmd, false, val||null);
+    }
+  }catch(e){ console.warn('[FAMR] execCmd', cmd, e); }
+  markDirty(); syncState();
+}
+
 function applyQuoteColor(color){
   const body = document.getElementById('dw-body');
   const sel = window.getSelection();
-  let node = sel && sel.anchorNode ? (sel.anchorNode.nodeType===3 ? sel.anchorNode.parentElement : sel.anchorNode) : null;
-  let bq = node ? node.closest('blockquote') : null;
-  if(bq){ bq.style.borderLeftColor = color; return; }
-  /* Nenhuma citação ativa: colore todas as citações do documento */
+  let node = sel?.anchorNode;
+  if(node) node = node.nodeType===3 ? node.parentElement : node;
+  const bq = node?.closest('blockquote');
+  if(bq){ bq.style.borderLeftColor = color; markDirty(); return; }
+  /* Sem citação ativa → aplica em todas */
   body.querySelectorAll('blockquote').forEach(el => el.style.borderLeftColor = color);
+  markDirty();
 }
 
-function syncToolbarState(){
-  document.querySelectorAll('#dw-toolbar .dw-tool').forEach(b=>{
+function syncState(){
+  const bar = document.getElementById('dw-toolbar');
+  if(!bar) return;
+  bar.querySelectorAll('.dw-tool').forEach(b=>{
     const cmd=b.dataset.cmd;
-    if(!cmd || cmd==='custom') return;
+    if(!cmd || cmd==='custom' || cmd==='formatBlock') return;
     try{ b.classList.toggle('is-active', document.queryCommandState(cmd)); }catch(e){}
   });
 }
 function setStatus(txt){ const el=document.getElementById('dw-status'); if(el) el.textContent=txt; }
-function markDirty(){ _wsDirty=true; setStatus('alterações não salvas'); }
+function markDirty(){ _wsDirty=true; setStatus('não salvo'); }
 
-function insertImageFromStorage(body){
+/* ─── INSERIR IMAGEM (upload + wrapper interativo) ─── */
+function insertImage(body){
   const inp = document.createElement('input');
   inp.type='file'; inp.accept='image/*';
   inp.onchange = async () => {
     const f = inp.files[0]; if(!f) return;
-    setStatus('enviando imagem...');
+    setStatus('enviando...');
     const path = `docs-img/${Date.now()}_${f.name.replace(/\s+/g,'_')}`;
     const { error } = await supabase.storage.from('docs-media').upload(path, f, {contentType:f.type});
-    if(error){ setStatus('falha no upload'); return toast('Upload falhou: '+error.message,'err'); }
+    if(error){ setStatus('falha'); return toast('Upload falhou: '+error.message,'err'); }
     const { data:{ publicUrl } } = supabase.storage.from('docs-media').getPublicUrl(path);
     body.focus();
-    document.execCommand('insertImage', false, publicUrl);
-    _wsDirty=true; setStatus('imagem inserida');
+    /* Insere HTML com wrapper */
+    const wrapper = `<div class="img-wrapper" contenteditable="false" data-src="${publicUrl}">
+      <div class="img-toolbar">
+        <button title="Centralizar" onclick="alignImg(this.parentNode.parentNode,'center')"><i class="fas fa-align-center"></i></button>
+        <button title="Esquerda" onclick="alignImg(this.parentNode.parentNode,'left')"><i class="fas fa-align-left"></i></button>
+        <button title="Direita" onclick="alignImg(this.parentNode.parentNode,'right')"><i class="fas fa-align-right"></i></button>
+        <button title="Reduzir" onclick="resizeImg(this.parentNode.parentNode,-20)"><i class="fas fa-minus"></i></button>
+        <button title="Ampliar" onclick="resizeImg(this.parentNode.parentNode,20)"><i class="fas fa-plus"></i></button>
+        <button title="Original" onclick="resizeImg(this.parentNode.parentNode,0)"><i class="fas fa-expand"></i></button>
+        <button title="Remover" onclick="removeImg(this.parentNode.parentNode)"><i class="fas fa-trash"></i></button>
+      </div>
+      <img src="${publicUrl}" alt="${esc(f.name)}" draggable="false">
+      <div class="img-handle nw"></div><div class="img-handle ne"></div>
+      <div class="img-handle sw"></div><div class="img-handle se"></div>
+      <div class="img-handle e"></div><div class="img-handle w"></div>
+    </div><p><br></p>`;
+    document.execCommand('insertHTML', false, wrapper);
+    markDirty(); setStatus('imagem inserida');
   };
   inp.click();
 }
 
+/* Funções globais para os botões do wrapper de imagem */
+window.alignImg = function(wrapper, align){
+  wrapper.style.float = align==='center'?'none':align;
+  wrapper.style.display = align==='center'?'block':'inline-block';
+  wrapper.style.margin = align==='center'?'8px auto':'8px '+(align==='right'?'0 0 8px 12px':'8px 12px 8px 0');
+  markDirty();
+};
+window.resizeImg = function(wrapper, delta){
+  const img = wrapper.querySelector('img');
+  if(!img) return;
+  if(delta===0){ img.style.width=''; img.style.height=''; }
+  else {
+    const w = img.offsetWidth || 300;
+    img.style.width = Math.max(50, w+delta)+'px';
+    img.style.height = 'auto';
+  }
+  markDirty();
+};
+window.removeImg = function(wrapper){
+  wrapper.remove(); markDirty();
+};
+
+/* ─── INTERATIVIDADE DAS IMAGENS (selecionar, redimensionar, mover) ─── */
+function setupImageInteractivity(){
+  const canvas = document.getElementById('dw-canvas');
+  if(!canvas) return;
+  let selectedWrapper = null;
+  let dragHandle = null, startX=0, startY=0, startW=0, startH=0;
+
+  canvas.addEventListener('mousedown', e => {
+    const handle = e.target.closest('.img-handle');
+    const wrapper = e.target.closest('.img-wrapper');
+    if(handle && wrapper){
+      e.preventDefault();
+      dragHandle = handle.className.replace('img-handle ','').trim();
+      startX = e.clientX; startY = e.clientY;
+      const img = wrapper.querySelector('img');
+      startW = img.offsetWidth; startH = img.offsetHeight;
+      selectWrapper(wrapper);
+      return;
+    }
+    if(wrapper){
+      e.preventDefault();
+      selectWrapper(wrapper);
+      return;
+    }
+    deselectAll();
+  });
+
+  document.addEventListener('mousemove', e => {
+    if(!dragHandle || !selectedWrapper) return;
+    const img = selectedWrapper.querySelector('img');
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    if(dragHandle.includes('e') || dragHandle==='se' || dragHandle==='ne'){
+      img.style.width = Math.max(40, startW+dx)+'px';
+      img.style.height = 'auto';
+    }
+    if(dragHandle.includes('w') || dragHandle==='sw' || dragHandle==='nw'){
+      img.style.width = Math.max(40, startW-dx)+'px';
+      img.style.height = 'auto';
+    }
+    if(dragHandle==='se' || dragHandle==='sw'){
+      /* proporção livre apenas largura */
+    }
+  });
+
+  document.addEventListener('mouseup', () => {
+    if(dragHandle){ markDirty(); }
+    dragHandle = null;
+  });
+
+  function selectWrapper(w){
+    deselectAll();
+    selectedWrapper = w;
+    w.classList.add('selected');
+  }
+  function deselectAll(){
+    if(selectedWrapper) selectedWrapper.classList.remove('selected');
+    selectedWrapper = null;
+  }
+
+  /* Delete remove imagem selecionada */
+  document.addEventListener('keydown', e => {
+    if((e.key==='Delete'||e.key==='Backspace') && selectedWrapper){
+      e.preventDefault();
+      selectedWrapper.remove();
+      selectedWrapper = null;
+      markDirty();
+    }
+  });
+}
+
+/* ─── EMOJI PANEL ─── */
 function showEmojiPanel(body){
-  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','','🤩','','🤨','','😑','😶','🙄','','😣','','😮','','😯','😪','😫','🥱','😴','😌','😛','😜','😝','🤤','😒','😓','😔','😕','🙃','','😲','','😖','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','🥵','🥶','😳','🤪','😵','🥴','😠','😡','🤬','😷','🤒','','🤢','🤮','🤧','😇','🥳','🥸','🤠','🤡','🥹','👋','🤚','','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','','🦿','🦵','🦶','👂','🦻','👃','🧠','🫀','🫁','🦷','🦴','👀','️','👅','👄','👶','🧒','','👧','','👱','👨','🧔','','🧓','👴','👵','🙍','🙎','🙅','🙆','💁','','🧏','','🤦','🤷','👮','🕵️','💂','🥷','👷','🤴','👸','👳','','','🤵','👰','🤰','🤱','👼','🎅','🤶','🦸','','🧙','🧚','🧛','🧜','🧝','🧞','🧟','💆','💇','🚶','','🧎','🏃','💃','🕺','️','👯','🧖','','🤸','⛹️','🏋️','🤼','','🚣','','🛀','🛌','👭','','👬','💑','💏','👪','🗣️','','👥','🫂','👣','🦰','🦱','🦳','🦲','🐵','🐒','🦍','','🐶','','🦮','🐩','🐺','🦊','🦝','🐱','🐈','🦁','🐯','🐅','🐆','🐴','🐎','🦄','','🦌','🦬','🐮','🐂','🐃','🐄','🐷','🐖','🐗','🐽','🐏','🐑','🐐','🐪','🐫','🦙','','🐘','🦣','','🦛','','🐁','🐀','🐹','🐰','🐇','🐿️','🦫','🦔','🦇','🐻','🐨','🐼','🦥','🦦','🦨','🦘','🦡','🐾','🦃','🐔','🐓','🐣','🐤','🐥','🐦','🐧','🕊️','🦅','🦆','🦢','🦉','🦤','🪶','','🦚','🦜','🐸','🐊','🐢','🦎','','🐲','🐉','🦕','🦖','🐳','🐋','🐬','🦭','','🐠','🐡','🦈','🐙','🐚','🪸','','🐌','🦋','','🐜','🐝','🪲','','🦗','🪳','🕷️','️','🦂','🦟','🪰','🪱','🦠','💐','🌸','💮','','🏵️','🌹','🥀','','🌻','','🌷','','🪴','','🌳','🌴','🌵','🌾','🌿','☘️','','🍁','','🍃','🪹','','🍇','🍈','🍉','🍊','🍋','🍌','🍍','🥭','','🍏','🍐','🍑','🍒','🍓','🫐','','🍅','🫒','🥥','','🍆','','🥕','','🌶️','','🥒','🥬','','🧄','','🍄','','🫘','','🍞','🥐','🥖','🫓','🥨','🥯','🥞','🧇','','🍖','🍗','🥩','🥓','🍔','🍟','🍕','🌭','','🌮','','🫔','','🧆','🥚','🍳','🥘','🍲','','🥣','🥗','🍿','','🧂','🥫','🍱','','🍙','','🍛','','🍝','','🍢','','🍤','','🥮','','🥟','','🥡','','🦞','','🦑','','🍦','🍧','🍨','🍩','','🎂','🍰','🧁','','🍫','','🍭','','🍯','🍼','🥛','☕','','🍵','🍶','🍾','🍷','🍸','🍹','🍺','🍻','🥂','','🫗','','🧋','','🧉','','🥢','️','🍴','','🔪','','','🌍','','🌏','','🗺️','🗾','🧭','️','⛰️','','🗻','🏕️','🏖️','🏜️','🏝️','️','🏟️','🏛️','️','','🪨','🪵','🛖','🏘️','🏚️','🏠','','🏢','','🏤','🏥','🏦','🏨','','🏪','🏫','🏬','🏭','🏯','🏰','💒','','🗽','⛪','🕌','🛕','🕍','⛩️','🕋','⛲','⛺','','🌃','🏙️','🌄','🌅','🌆','🌇','🌉','♨️','🎠','🛝','🎡','🎢','💈','🎪','🚂','🚃','🚄','🚅','🚆','🚇','🚈','🚉','🚊','🚝','🚞','🚋','🚌','🚍','','🚐','','🚒','','🚔','🚕','🚖','🚗','🚘','🚙','🛻','','🚛','🚜','🏎️','🏍️','🛵','🦽','🦼','🛺','🚲','🛴','🛹','','🚏','🛣️','🛤️','🛢️','','🛞','🚨','🚥','🚦','🛑','','⚓','','⛽','🚢','🛳️','⛴️','🛥️','🚤','🛶','','🛶','🚀','🛸','🛩️','','🛬','🪂','','🚁','','🚠','🚡','🛰️','🚉','🛎️','🧳','','⏳','⌚','⏰','⏱️','⏲️','🕰️','🌡️','️','','🎈','','🎊','','🎏','🎐','🎑','🧧','','🎁','🎗️','🎟️','🎫','🎖️','🏆','🏅','🥇','🥈','🥉','⚽','','🥎','','🏐','🏈','🏉','🎾','🥏','🎳','🏏','🏑','🏒','🥍','','🏸','🥊','🥋','🥅','⛳','⛸️','🎣','🤿','🎽','🎿','🛷','🥌','🎯','🪀','🪁','🎱','🔮','🪄','🧿','','🎮','🕹️','🎰','🎲','🧩','','🪅','🪩','🪆','♠️','♥️','♦️','♣️','♟️','🃏','🀄','🎴','','🖼️','','🧵','🪡','🧶','🪢','👓','🕶️','🥽','','🦺','👔','👕','👖','🧣','🧤','🧥','','👗','👘','🥻','','🩲','','👙','','👛','👜','👝','️','🎒','🩴','👞','👟','🥾','','👠','👡','🩰','','🪖','','👒','🎩','🎓','🧢','⛑️','🪯','💄','💍','💼','🩹','','🩻','🩼','💊','','🩸','🧬','🔬','🔭','📡','💉','🧫','🧪','️','🧹','🪠','🧺','🧻','🚽','','🚿','','🛀','🧼','','🪒','','🪣','🧴','🛎️','🔑','🗝️','🚪','🪑','🛋️','🛏️','','','🪆','️','🪞','🪟','🛍️','🛒','🎁','🎈','🎏','🎀','🪄','🪅','','🎉','🎎','🏆','🎖️','🏅','','🥈','','⚽','','🏈','','','🏓','🏸','🥊','','🎽','','🛼','','⛸️','🥌','🎿','⛷️','🏂','🪂','️','🤼','🤸','⛹️','🤺','🤾','🏌️','🏇','🧘','','🏊','🤽','🚣','🧗','🚵','','🏆','','🥈','','🏅','️','🏵️','🎗️','','🎟️','🎪','🤹','','🩰','🎨','🎬','🎤','🎧','🎼','🎹','🥁','','🎷','','🪗','','🪕','🎻','🎲','♟️','🎯','🎳','🎮','🎰','🧩'];
+  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','🤗','🤩','🤔','🤨','😐','😑','😶','🙄','😏','😣','😥','😮','🤐','','😪','','🥱','😴','😌','😛','😜','😝','🤤','😒','😓','😔','😕','🙃','🤑','😲','🙁','','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','🥵','🥶','😳','🤪','','🥴','','😡','🤬','😷','🤒','🤕','🤢','🤮','🤧','😇','🥳','🥸','🤠','🤡','🥹','⭐','✅','❌','️','📌','💼','❤️','🔥','✨','🎖️','🏅','','🥈','','🏆','⚽','🏀','🏈','⚾','','🏐','🎱','','🏸','','🎯','🎮','🎲','♟️','','🎬','🎤','🎧','🎼','🎹','🥁','','🎺','','🪕','','📚','','📝','✏️','','📌','📍','📒','🗂️','','📂','📅','📆','📇','📈','📉','📊','📋','📌','📍','📎','📏','📐','📑','📒','📓','📔','📕','📖','','📘','','📚','','📜','','📞','','📠','📡','🔋','','💡','','🕯️','🗑️','🛢️','','💵','💴','💶','💷','💰','💳','💎','⚖️','🔧','','⚒️','🛠️','⛏️','🔩','️','🧱','⛓️','🧲','🔫','💣','🧨','🪓','','🗡️','⚔️','🛡️','🚬','⚰️','🪦','️','','🔮','','🧿','','⚗️','🔭','🔬','🕳️','🩹','🩺','💊','💉','🩸','🧬','🦠','🧫','🧪','🌡️','🧹','🪠','🧺','🧻','🚽','','🚿','','🛀','','🪥','🪒','🧽','🪣','','🛎️','','🗝️','🚪','','🛋️','️','🛌','🧸','','🖼️','','🪟','🛍️','🛒','','🎈','','🎀','🪄','🪅','🎊','🎉','🎎','🏆','🎖️','🏅','','🥈','','⚽','','🏈','','🥎','🎾','🏐','🏉','🥏','🎱','🪀','','🏸','🏒','🏑','🥍','','🪃','🥅','','🪁','🏹','🎣','','🥊','🥋','🎽','🛹','🛼','🛷','⛸️','🥌','🎿','⛷️','🏂','🪂','🏋️','🤼','🤸','⛹️','','🤾','🏌️','🏇','🧘','🏄','🏊','🤽','🚣','🧗','🚵','🚴','🏆'];
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:1rem;box-shadow:0 20px 60px -20px rgba(0,0,0,.5);max-width:440px;max-height:340px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(28px,1fr));gap:.25rem';
+  wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#fff;border:1px solid #dadce0;border-radius:12px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);max-width:460px;max-height:360px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:2px';
   emojis.forEach(em=>{
     const b=document.createElement('button');
     b.type='button'; b.textContent=em;
-    b.style.cssText='border:none;background:none;cursor:pointer;font-size:1.2rem;padding:.2rem;border-radius:6px';
-    b.onmouseenter=()=>b.style.background='var(--gold-100)';
+    b.style.cssText='border:none;background:none;cursor:pointer;font-size:1.3rem;padding:3px;border-radius:6px';
+    b.onmouseenter=()=>b.style.background='#e8eaed';
     b.onmouseleave=()=>b.style.background='none';
     b.onclick=()=>{ body.focus(); document.execCommand('insertText',false,em); cleanup(); markDirty(); };
     wrap.appendChild(b);
   });
   const overlay = document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.3)';
+  overlay.style.cssText='position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.2)';
   const cleanup = () => { wrap.remove(); overlay.remove(); };
   overlay.onclick = cleanup;
   document.body.appendChild(overlay);
   document.body.appendChild(wrap);
 }
 
-function wireAutosave(){
+/* ─── EVENTOS ─── */
+function wireEvents(){
+  const body = document.getElementById('dw-body');
+  body.addEventListener('keyup', syncState);
+  body.addEventListener('mouseup', syncState);
+  body.addEventListener('input', ()=>{ _wsDirty=true; setStatus('não salvo'); });
   ['dw-title','dw-category'].forEach(id=>{
     const el=document.getElementById(id);
-    if(el) el.addEventListener('input', ()=>{ _wsDirty=true; setStatus('alterações não salvas'); });
+    if(el) el.addEventListener('input', ()=>{ _wsDirty=true; setStatus('não salvo'); });
   });
   document.addEventListener('keydown', ctrlSaveHandler);
 }
@@ -1012,7 +1140,7 @@ window.saveCurrentDoc = async function(existingId){
   const saveBtn = document.getElementById('dw-save-btn');
   if(!titleEl || !bodyEl) return;
   const title = titleEl.value.trim();
-  if(!title){ toast('O título é obrigatório.','warn'); titleEl.focus(); return; }
+  if(!title){ toast('Título obrigatório.','warn'); titleEl.focus(); return; }
   const category = catEl.value.trim() || null;
   const body_html = bodyEl.innerHTML;
   _wsSaving = true;
@@ -1026,8 +1154,7 @@ window.saveCurrentDoc = async function(existingId){
   if(error){
     _wsSaving = false; saveBtn.disabled = false;
     saveBtn.innerHTML = '<i class="fas fa-floppy-disk"></i> Salvar';
-    setStatus('erro ao salvar');
-    return toast('Erro ao salvar: '+error.message,'err');
+    setStatus('erro'); return toast('Erro: '+error.message,'err');
   }
   await famrLog(existingId?'DOC_UPDATE':'DOC_CREATE', { title, category });
   invalidate('docs:');
@@ -1035,11 +1162,11 @@ window.saveCurrentDoc = async function(existingId){
   saveBtn.disabled = false;
   saveBtn.innerHTML = '<i class="fas fa-check"></i> Salvo';
   setStatus('salvo ✓');
-  toast('Documento salvo com sucesso.');
+  toast('Documento salvo.');
   setTimeout(()=>{
     if(saveBtn.isConnected){
       saveBtn.innerHTML = '<i class="fas fa-floppy-disk"></i> Salvar';
-      setStatus(existingId?'atualizado':'novo documento');
+      setStatus(existingId?'atualizado':'novo');
     }
   }, 2000);
 };
@@ -1053,34 +1180,26 @@ async function renderProfile(c, param){
   let gs = [];
   if(me){ gs = sortGroups(STATE.groups); }
   else {
-    const { data: ug, error: ugErr } = await supabase.from('user_groups').select('group_id').eq('user_id', id);
-    if(ugErr) console.error('[FAMR] perfil → vínculos:', ugErr);
+    const { data: ug } = await supabase.from('user_groups').select('group_id').eq('user_id', id);
     const gids = (ug||[]).map(r => r.group_id).filter(Boolean);
-    if(gids.length){
-      const { data: groups, error: gErr } = await supabase.from('groups').select('*').in('id', gids);
-      if(gErr) console.error('[FAMR] perfil → grupos:', gErr);
-      gs = sortGroups(groups||[]);
-    }
+    if(gids.length){ const { data: groups } = await supabase.from('groups').select('*').in('id', gids); gs = sortGroups(groups||[]); }
   }
   const viewerOk = me || isAdmin();
   gs = gs.filter(g => g.group_type !== 'invisible' || viewerOk || STATE.modGroups?.has(g.id));
   const main = primaryGroupOf(gs);
-  const cg   = colorGroupOf(gs);
+  const cg = colorGroupOf(gs);
   c.innerHTML = `
   <div class="card fade-up overflow-hidden">
     <div class="h-24" style="background:linear-gradient(120deg,#0e4433,#14563f 60%,#c9a227)"></div>
     <div class="p-6 -mt-12">
       <div class="flex flex-wrap items-end gap-4">
         <span class="w-20 h-20 rounded-2xl grid place-items-center text-3xl font-extrabold text-white border-4 border-white shadow-lg" style="background:${cg?.color || '#14563f'}"><i class="fas ${main?.icon || 'fa-user'}"></i></span>
-        <div class="flex-1">
-          <h1 class="font-display text-2xl font-extrabold">${esc(p.nickname)}</h1>
-          <p class="text-xs text-muted">No sistema desde ${fmtDate(p.created_at)} ${me ? `• ${esc(p.email)}` : ''}</p>
-        </div>
+        <div class="flex-1"><h1 class="font-display text-2xl font-extrabold">${esc(p.nickname)}</h1>
+          <p class="text-xs text-muted">Desde ${fmtDate(p.created_at)} ${me ? `• ${esc(p.email)}` : ''}</p></div>
         <span class="chip ${p.status==='active'?'chip-ok':p.status==='pending'?'chip-wait':'chip-no'}">${p.status.toUpperCase()}</span>
         ${p.login_locked ? '<span class="chip chip-no"><i class="fas fa-lock mr-1"></i>BLOQUEADA</span>' : ''}
       </div>
       <div class="flex flex-wrap gap-2 mt-4">${gs.map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}</div>
-      ${gs.length ? `<p class="text-[11px] text-muted mt-3"><i class="fas fa-circle-info mr-1"></i>Grupo prioritário (cor/ícone): <b style="color:${main.color}">${esc(main.name)}</b> — definido pela ordem dos grupos.</p>` : ''}
     </div>
   </div>`;
 }
@@ -1104,7 +1223,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const byUser = {}; (ug||[]).forEach(r => { (byUser[r.user_id] = byUser[r.user_id] || []).push(r.groups); });
       drop.innerHTML = (data||[]).map(u => `<a href="#/perfil/${u.id}" onclick="document.getElementById('search-drop').classList.add('hidden')" class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-famr-100 transition-colors">
         <span class="w-8 h-8 rounded-full bg-famr-700 text-white grid place-items-center text-xs"><i class="fas ${userIconOf(byUser[u.id]||[])}"></i></span>
-        <span class="text-sm font-bold">${esc(u.nickname)}</span></a>`).join('') || '<p class="p-3 text-xs text-muted">Nenhum militar encontrado.</p>';
+        <span class="text-sm font-bold">${esc(u.nickname)}</span></a>`).join('') || '<p class="p-3 text-xs text-muted">Nenhum encontrado.</p>';
       drop.classList.remove('hidden');
     }, 300);
   });
@@ -1138,36 +1257,33 @@ async function tabUsuarios(b){
   if(A.q) q = q.ilike('nickname', `%${A.q}%`);
   const { data, count } = await q; const totalPages = Math.ceil((count||0)/20);
   b.innerHTML = `<div class="card fade-up">
-    <div class="card-head justify-between gap-3 flex-wrap"><h2 class="font-display font-bold text-sm">Militares cadastrados <span class="chip chip-neutral ml-2 normal-case">${count??0}</span></h2>
-      <input class="input !py-1.5 !pl-3 w-56" placeholder="Filtrar nickname..." value="${esc(A.q)}" oninput="A.q=this.value;clearTimeout(window._t);window._t=setTimeout(()=>tabUsuarios(document.getElementById('admin-body')),350)"></div>
+    <div class="card-head justify-between gap-3 flex-wrap"><h2 class="font-display font-bold text-sm">Militares <span class="chip chip-neutral ml-2 normal-case">${count??0}</span></h2>
+      <input class="input !py-1.5 !pl-3 w-56" placeholder="Filtrar..." value="${esc(A.q)}" oninput="A.q=this.value;clearTimeout(window._t);window._t=setTimeout(()=>tabUsuarios(document.getElementById('admin-body')),350)"></div>
     <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Nickname</th><th>Status</th><th>Tentativas</th><th>Desde</th><th class="text-right">Ações</th></tr></thead><tbody>
     ${(data||[]).map(u => `<tr>
       <td class="font-bold">${esc(u.nickname)}</td>
       <td>${u.login_locked ? '<span class="chip chip-no"><i class="fas fa-lock"></i> BLOQUEADO</span>' : `<span class="chip ${u.status==='active'?'chip-ok':u.status==='pending'?'chip-wait':'chip-no'}">${u.status.toUpperCase()}</span>`}</td>
-      <td class="text-xs ${u.failed_logins>0?'text-red-600 font-bold':'text-muted'}">${u.failed_logins||0}/4 ${u.is_invisible?'<i class="fas fa-eye-slash text-gold-500 ml-1"></i>':''}</td>
+      <td class="text-xs ${u.failed_logins>0?'text-red-600 font-bold':'text-muted'}">${u.failed_logins||0}/4</td>
       <td class="text-xs text-muted">${fmtDate(u.created_at)}</td>
       <td class="text-right space-x-1">
-        ${u.login_locked ? `<button class="btn btn-gold btn-sm" onclick="unlockUser('${u.id}')"><i class="fas fa-unlock"></i> Destravar</button>` : ''}
-        ${u.status!=='active'?`<button class="btn btn-primary btn-sm" onclick="setUser('${u.id}','active')"><i class="fas fa-check"></i> Ativar</button>`:''}
-        ${u.status!=='banned'?`<button class="btn btn-danger btn-sm" onclick="setUser('${u.id}','banned')"><i class="fas fa-ban"></i> Banir</button>`:`<button class="btn btn-outline btn-sm" onclick="setUser('${u.id}','pending')"><i class="fas fa-rotate-left"></i> Reativar</button>`}
-        <button class="btn btn-outline btn-sm" onclick="manageGroups('${u.id}','${esc(u.nickname)}')"><i class="fas fa-layer-group"></i> Grupos</button>
-        ${isMaster()?`<button class="btn btn-outline btn-sm" onclick="toggleInvisible('${u.id}',${!u.is_invisible})"><i class="fas fa-eye-slash"></i></button>`:''}
-      </td></tr>`).join('') || '<tr><td colspan="5" class="text-center text-muted py-8">Nada encontrado.</td></tr>'}
+        ${u.login_locked ? `<button class="btn btn-gold btn-sm" onclick="unlockUser('${u.id}')"><i class="fas fa-unlock"></i></button>` : ''}
+        ${u.status!=='active'?`<button class="btn btn-primary btn-sm" onclick="setUser('${u.id}','active')"><i class="fas fa-check"></i></button>`:''}
+        ${u.status!=='banned'?`<button class="btn btn-danger btn-sm" onclick="setUser('${u.id}','banned')"><i class="fas fa-ban"></i></button>`:`<button class="btn btn-outline btn-sm" onclick="setUser('${u.id}','pending')"><i class="fas fa-rotate-left"></i></button>`}
+        <button class="btn btn-outline btn-sm" onclick="manageGroups('${u.id}','${esc(u.nickname)}')"><i class="fas fa-layer-group"></i></button>
+      </td></tr>`).join('') || '<tr><td colspan="5" class="text-center text-muted py-8">Nada.</td></tr>'}
     </tbody></table></div>
-    <div class="p-3 flex justify-center gap-2">${A.page>0?`<button class="btn btn-outline btn-sm" onclick="A.page--;tabUsuarios(document.getElementById('admin-body'))">← Anterior</button>`:''}
-    <span class="text-xs text-muted self-center">Página ${A.page+1}${totalPages>1?` de ${totalPages}`:''}</span>
-    ${(data||[]).length===20?`<button class="btn btn-outline btn-sm" onclick="A.page++;tabUsuarios(document.getElementById('admin-body'))">Próxima →</button>`:''}</div></div>`;
+    <div class="p-3 flex justify-center gap-2">${A.page>0?`<button class="btn btn-outline btn-sm" onclick="A.page--;tabUsuarios(document.getElementById('admin-body'))">←</button>`:''}
+    <span class="text-xs text-muted self-center">Pág ${A.page+1}${totalPages>1?`/${totalPages}`:''}</span>
+    ${(data||[]).length===20?`<button class="btn btn-outline btn-sm" onclick="A.page++;tabUsuarios(document.getElementById('admin-body'))">→</button>`:''}</div></div>`;
 }
 window.setUser = async (id, status) => { const { error } = await supabase.from('profiles').update({ status }).eq('id', id); if(error) return toast('Erro: '+error.message,'err'); await famrLog('USER_STATUS', { id, status }); toast('Status atualizado.'); tabUsuarios(document.getElementById('admin-body')); };
-window.toggleInvisible = async (id, v) => { await supabase.from('profiles').update({ is_invisible: v }).eq('id', id); await famrLog('USER_INVISIBLE', { id, v }); tabUsuarios(document.getElementById('admin-body')); };
-window.unlockUser = async (id) => { const { error } = await supabase.from('profiles').update({ login_locked:false, failed_logins:0 }).eq('id', id); if(error) return toast('Erro: '+error.message,'err'); await famrLog('LOCK_REMOVIDO_ADMIN', { id }); toast('Conta destravada pelo comando.'); tabUsuarios(document.getElementById('admin-body')); };
+window.unlockUser = async (id) => { const { error } = await supabase.from('profiles').update({ login_locked:false, failed_logins:0 }).eq('id', id); if(error) return toast('Erro: '+error.message,'err'); await famrLog('LOCK_REMOVIDO_ADMIN', { id }); toast('Destravada.'); tabUsuarios(document.getElementById('admin-body')); };
 window.manageGroups = async (userId, nick) => {
   const [{ data: all }, { data: mine }] = await Promise.all([
     supabase.from('groups').select('id,name,color,icon,order_index').order('order_index'),
     supabase.from('user_groups').select('group_id').eq('user_id', userId)]);
   const has = new Set((mine||[]).map(m => m.group_id));
   openModal(`<i class="fas fa-layer-group text-gold-500 mr-2"></i>Grupos de ${esc(nick)}`,
-    `<p class="text-xs text-muted mb-2">O primeiro grupo da lista define ícone e cor do militar.</p>` +
     (all||[]).map(g => `<label class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-famr-50 cursor-pointer">
       <input type="checkbox" value="${g.id}" ${has.has(g.id)?'checked':''} class="accent-[#14563f] w-4 h-4">
       <i class="fas ${g.icon||'fa-shield-halved'}" style="color:${g.color}"></i><span class="text-sm font-bold">${esc(g.name)}</span></label>`).join(''),
@@ -1178,41 +1294,36 @@ window.saveGroups = async userId => {
   await supabase.from('user_groups').delete().eq('user_id', userId);
   if(ids.length) await supabase.from('user_groups').insert(ids.map(g => ({ user_id: userId, group_id: g })));
   await famrLog('USER_GROUPS', { userId, ids });
-  invalidate('perms:'); invalidate('home:');
-  closeModal(); toast('Grupos atualizados.');
+  invalidate('perms:'); invalidate('home:'); closeModal(); toast('Salvo.');
 };
 async function tabGrupos(b){
   const { data } = await supabase.from('groups').select('*, groups(name)').order('order_index');
   const { data: ug } = await supabase.from('user_groups').select('group_id').limit(10000);
   const cnt = {}; (ug||[]).forEach(m => cnt[m.group_id] = (cnt[m.group_id]||0)+1);
   b.innerHTML = `<div class="card fade-up">
-    <div class="card-head justify-between"><h2 class="font-display font-bold text-sm">Grupos e subgrupos <span class="chip chip-neutral ml-2 normal-case">ordem = prioridade de cor/ícone</span></h2>
-    <button class="btn btn-gold btn-sm" onclick="groupForm()"><i class="fas fa-plus"></i> Novo grupo</button></div>
-    <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Ordem</th><th>Grupo</th><th>Tipo</th><th>Vínculo</th><th>Membros</th><th class="text-right">Ações</th></tr></thead><tbody>
+    <div class="card-head justify-between"><h2 class="font-display font-bold text-sm">Grupos</h2>
+    <button class="btn btn-gold btn-sm" onclick="groupForm()"><i class="fas fa-plus"></i> Novo</button></div>
+    <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Ordem</th><th>Grupo</th><th>Tipo</th><th>Membros</th><th class="text-right">Ações</th></tr></thead><tbody>
     ${(data||[]).map((g,i,arr) => `<tr>
       <td><button class="ord-btn" onclick="moveGroup('${g.id}',-1)" ${i===0?'disabled':''}><i class="fas fa-chevron-up"></i></button>
           <button class="ord-btn" onclick="moveGroup('${g.id}',1)" ${i===arr.length-1?'disabled':''}><i class="fas fa-chevron-down"></i></button></td>
-      <td><span class="group-dot mr-2" style="background:${g.color}"></span><i class="fas ${g.icon||'fa-shield-halved'} mr-2" style="color:${g.color}"></i><b style="color:${g.color}">${esc(g.name)}</b>${g.apply_color?'<i class="fas fa-palette ml-2 text-gold-500" title="Cor aplicada aos membros"></i>':''}</td>
+      <td><i class="fas ${g.icon||'fa-shield-halved'} mr-2" style="color:${g.color}"></i><b style="color:${g.color}">${esc(g.name)}</b></td>
       <td><span class="chip ${g.group_type==='open'?'chip-ok':g.group_type==='closed'?'chip-wait':'chip-neutral'}">${GROUP_TYPES[g.group_type]||g.group_type}</span></td>
-      <td class="text-xs">${g.groups?esc(g.groups.name):'—'}</td>
       <td class="text-xs font-bold">${cnt[g.id]||0}</td>
       <td class="text-right space-x-1">
-        <button class="btn btn-outline btn-sm" onclick="groupPermissions('${g.id}')" title="Permissões por tópico"><i class="fas fa-key"></i></button>
-        <button class="btn btn-outline btn-sm" onclick="groupMembers('${g.id}')" title="Membros"><i class="fas fa-users"></i></button>
+        <button class="btn btn-outline btn-sm" onclick="groupPermissions('${g.id}')"><i class="fas fa-key"></i></button>
+        <button class="btn btn-outline btn-sm" onclick="groupMembers('${g.id}')"><i class="fas fa-users"></i></button>
         <button class="btn btn-outline btn-sm" onclick="groupForm('${g.id}')"><i class="fas fa-pen"></i></button>
         <button class="btn btn-danger btn-sm" onclick="delGroup('${g.id}')"><i class="fas fa-trash"></i></button></td></tr>`).join('')}
     </tbody></table></div></div>`;
 }
 window.moveGroup = async (id, dir) => {
   const { data } = await supabase.from('groups').select('id,order_index').order('order_index');
-  const i = (data||[]).findIndex(g => g.id === id);
-  const j = i + dir;
+  const i = (data||[]).findIndex(g => g.id === id); const j = i + dir;
   if(i < 0 || j < 0 || j >= data.length) return;
-  const a = data[i], b2 = data[j];
-  await supabase.from('groups').update({ order_index: b2.order_index }).eq('id', a.id);
-  await supabase.from('groups').update({ order_index: a.order_index }).eq('id', b2.id);
-  invalidate('home:');
-  tabGrupos(document.getElementById('admin-body'));
+  await supabase.from('groups').update({ order_index: data[j].order_index }).eq('id', data[i].id);
+  await supabase.from('groups').update({ order_index: data[i].order_index }).eq('id', data[j].id);
+  invalidate('home:'); tabGrupos(document.getElementById('admin-body'));
 };
 window.groupForm = async id => {
   let g = { name:'', color:'#14563f', icon:'fa-shield-halved', apply_color:true, group_type:'open', parent_id:null };
@@ -1220,21 +1331,21 @@ window.groupForm = async id => {
   const { data: all } = await supabase.from('groups').select('id,name').neq('id', id||'').order('order_index');
   openModal(`<i class="fas fa-layer-group text-gold-500 mr-2"></i>${id?'Editar':'Novo'} grupo`, `
     <label class="field"><span>Nome</span><input id="g-name" class="input" value="${esc(g.name)}"></label>
-    <div class="field"><span>Ícone do grupo (usado nos membros)</span>
-      <div class="icon-grid" id="g-icon-grid" style="max-height:280px;overflow:auto">
+    <div class="field"><span>Ícone</span>
+      <div class="icon-grid" id="g-icon-grid" style="max-height:260px;overflow:auto">
         ${SAFE_ICONS.map(ic => `<button type="button" class="icon-opt ${g.icon===ic?'sel':''}" data-icon="${ic}" onclick="pickIcon(this)" title="${ic}"><i class="fas ${ic}"></i></button>`).join('')}
       </div>
       <input type="hidden" id="g-icon" value="${esc(g.icon||'fa-shield-halved')}">
     </div>
     <div class="grid grid-cols-2 gap-3">
       <label class="field"><span>Cor</span><input id="g-color" type="color" class="input !p-1 h-11" value="${g.color}"></label>
-      <label class="field"><span>Tipo do grupo</span><select id="g-type" class="input">
-        <option value="open" ${g.group_type==='open'?'selected':''}>Aberto (membros podem entrar)</option>
-        <option value="closed" ${g.group_type==='closed'?'selected':''}>Fechado (só a liderança adiciona)</option>
-        <option value="invisible" ${g.group_type==='invisible'?'selected':''}>Invisível (não aparece na lista)</option>
+      <label class="field"><span>Tipo</span><select id="g-type" class="input">
+        <option value="open" ${g.group_type==='open'?'selected':''}>Aberto</option>
+        <option value="closed" ${g.group_type==='closed'?'selected':''}>Fechado</option>
+        <option value="invisible" ${g.group_type==='invisible'?'selected':''}>Invisível</option>
       </select></label>
     </div>
-    <label class="flex items-center gap-3 text-sm font-bold"><input id="g-applycolor" type="checkbox" class="w-4 h-4 accent-[#14563f]" ${g.apply_color?'checked':''}> Aplicar a cor aos membros (prioridade pela ordem)</label>
+    <label class="flex items-center gap-3 text-sm font-bold"><input id="g-applycolor" type="checkbox" class="w-4 h-4 accent-[#14563f]" ${g.apply_color?'checked':''}> Aplicar cor aos membros</label>
     <label class="field mt-3"><span>Subgrupo de</span><select id="g-parent" class="input"><option value="">— nenhum —</option>
       ${(all||[]).map(p => `<option value="${p.id}" ${g.parent_id===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label>`,
     `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
@@ -1246,34 +1357,20 @@ window.pickIcon = btn => {
   document.getElementById('g-icon').value = btn.dataset.icon;
 };
 window.saveGroup = async id => {
-  const row = {
-    name: document.getElementById('g-name').value.trim(),
-    color: document.getElementById('g-color').value,
-    icon: document.getElementById('g-icon').value,
-    apply_color: document.getElementById('g-applycolor').checked,
-    group_type: document.getElementById('g-type').value,
-    parent_id: document.getElementById('g-parent').value || null,
-    visible: document.getElementById('g-type').value !== 'invisible'
-  };
-  if(!row.name) return toast('Informe o nome.','warn');
-  let error = null;
+  const row = { name: document.getElementById('g-name').value.trim(), color: document.getElementById('g-color').value, icon: document.getElementById('g-icon').value, apply_color: document.getElementById('g-applycolor').checked, group_type: document.getElementById('g-type').value, parent_id: document.getElementById('g-parent').value || null };
+  if(!row.name) return toast('Nome obrigatório.','warn');
+  let error;
   if(id){ ({ error } = await supabase.from('groups').update(row).eq('id', id)); }
-  else {
-    const { count } = await supabase.from('groups').select('*', { count:'exact', head:true });
-    row.order_index = (count||0)+1;
-    ({ error } = await supabase.from('groups').insert([row]));
-  }
+  else { const { count } = await supabase.from('groups').select('*', { count:'exact', head:true }); row.order_index = (count||0)+1; ({ error } = await supabase.from('groups').insert([row])); }
   if(error) return toast('Erro: '+error.message,'err');
   await famrLog('GROUP_SAVE', row);
-  invalidate('home:'); invalidate('groups:');
-  closeModal(); toast('Grupo salvo.'); tabGrupos(document.getElementById('admin-body'));
+  invalidate('home:'); closeModal(); toast('Grupo salvo.'); tabGrupos(document.getElementById('admin-body'));
 };
 window.delGroup = async id => {
-  if(!await confirmDlg('Excluir grupo? Membros perdem o vínculo e as permissões dele.', { title:'Excluir grupo', okText:'Excluir', danger:true })) return;
+  if(!await confirmDlg('Excluir grupo?', { title:'Excluir', okText:'Excluir', danger:true })) return;
   await supabase.from('groups').delete().eq('id', id);
   await famrLog('GROUP_DEL', { id });
-  invalidate('home:'); invalidate('groups:'); invalidate('perms:');
-  tabGrupos(document.getElementById('admin-body'));
+  invalidate('home:'); invalidate('perms:'); tabGrupos(document.getElementById('admin-body'));
 };
 window.groupPermissions = async gid => {
   const [{ data: secs }, { data: subs }, { data: rows }, { data: grp }] = await Promise.all([
@@ -1285,19 +1382,17 @@ window.groupPermissions = async gid => {
   const cur = {}; (rows||[]).forEach(r => { cur[r.target_type+':'+r.target_id] = r; });
   const cb = (key, field, label) => `<td title="${label}"><input type="checkbox" data-key="${key}" data-f="${field}" ${cur[key]?.[field]?'checked':''}></td>`;
   openModal(`<i class="fas ${grp?.icon||'fa-shield-halved'}" style="color:${grp?.color}"></i> Permissões: ${esc(grp?.name||'')}`,
-    `<p class="text-xs text-muted mb-2">Marque por setor/subtópico: <b>Ver</b>, <b>Criar</b>, <b>Editar</b>, <b>Excluir</b> e <b>Moderador</b>. Linhas sem nenhuma marca = sem acesso (ou público, se nenhum grupo/Todos tiver regra para aquele tópico).</p>
-    <div class="perm-wrap"><table class="perm-matrix">
-      <thead><tr><th>Fórum</th><th>Ver</th><th>Criar</th><th>Editar</th><th>Excluir</th><th>Moderador</th></tr></thead>
-      <tbody>
-      ${(secs||[]).map(s => `
+    `<div class="perm-wrap"><table class="perm-matrix">
+      <thead><tr><th>Fórum</th><th>Ver</th><th>Criar</th><th>Editar</th><th>Excluir</th><th>Mod.</th></tr></thead>
+      <tbody>${(secs||[]).map(s => `
         <tr class="pm-sec"><td><i class="fas ${esc(s.icon)} mr-2"></i>${esc(s.name)}</td>
-          ${cb('section:'+s.id,'can_view','Ver')} ${cb('section:'+s.id,'can_create','Criar')} ${cb('section:'+s.id,'can_edit','Editar')} ${cb('section:'+s.id,'can_delete','Excluir')} ${cb('section:'+s.id,'is_moderator','Moderador')}</tr>
+          ${cb('section:'+s.id,'can_view','V')}${cb('section:'+s.id,'can_create','C')}${cb('section:'+s.id,'can_edit','E')}${cb('section:'+s.id,'can_delete','D')}${cb('section:'+s.id,'is_moderator','M')}</tr>
         ${(subs||[]).filter(x=>x.section_id===s.id).map(x => `
           <tr><td class="pm-sub1"><i class="fas fa-folder-open mr-2 text-muted"></i>${esc(x.name)}</td>
-            ${cb('subtopic:'+x.id,'can_view','Ver')} ${cb('subtopic:'+x.id,'can_create','Criar')} ${cb('subtopic:'+x.id,'can_edit','Editar')} ${cb('subtopic:'+x.id,'can_delete','Excluir')} ${cb('subtopic:'+x.id,'is_moderator','Moderador')}</tr>`).join('')}`).join('')}
+            ${cb('subtopic:'+x.id,'can_view','V')}${cb('subtopic:'+x.id,'can_create','C')}${cb('subtopic:'+x.id,'can_edit','E')}${cb('subtopic:'+x.id,'can_delete','D')}${cb('subtopic:'+x.id,'is_moderator','M')}</tr>`).join('')}`).join('')}
       </tbody></table></div>`,
     `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
-     <button class="btn btn-primary btn-sm" onclick="savePermissions('${gid}')"><i class="fas fa-floppy-disk"></i> Salvar permissões</button>`);
+     <button class="btn btn-primary btn-sm" onclick="savePermissions('${gid}')"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
 };
 window.savePermissions = async gid => {
   const boxes = [...document.querySelectorAll('#modal-body .perm-matrix input[type=checkbox]')];
@@ -1308,14 +1403,10 @@ window.savePermissions = async gid => {
     map[k][b.dataset.f] = b.checked;
   });
   const up = [], del = [];
-  Object.values(map).forEach(r => {
-    const any = r.can_view || r.can_create || r.can_edit || r.can_delete || r.is_moderator;
-    if(any) up.push(r); else del.push(r);
-  });
+  Object.values(map).forEach(r => { (r.can_view||r.can_create||r.can_edit||r.can_delete||r.is_moderator)?up.push(r):del.push(r); });
   if(up.length){ const { error } = await supabase.from('group_permissions').upsert(up, { onConflict:'group_id,target_type,target_id' }); if(error) return toast('Erro: '+error.message,'err'); }
   for(const r of del){ await supabase.from('group_permissions').delete().eq('group_id', gid).eq('target_type', r.target_type).eq('target_id', r.target_id); }
-  invalidate('perms:'); invalidate('home:');
-  closeModal(); toast('Permissões salvas.');
+  invalidate('perms:'); invalidate('home:'); closeModal(); toast('Permissões salvas.');
 };
 window.targetPermissions = async (type, id, name) => {
   const [{ data: grps }, { data: rows }] = await Promise.all([
@@ -1325,17 +1416,15 @@ window.targetPermissions = async (type, id, name) => {
   const cur = {}; (rows||[]).forEach(r => cur[r.group_id] = r);
   const cb = (gid, field, label) => `<td title="${label}"><input type="checkbox" data-g="${gid}" data-f="${field}" ${cur[gid]?.[field]?'checked':''}></td>`;
   const cbAll = (field, label, dis) => `<td title="${label}"><input type="checkbox" data-g="__ALL__" data-f="${field}" ${dis?'disabled':''} ${(!dis&&cur[null]?.[field])?'checked':''}></td>`;
-  openModal(`<i class="fas fa-key text-gold-500 mr-2"></i>Permissões: ${esc(name)} <span class="chip chip-neutral ml-1 normal-case">${type==='section'?'setor':'subtópico'}</span>`,
-    `<p class="text-xs text-muted mb-2">A linha <b>Todos</b> controla o que os militares <b>sem grupo</b> podem fazer. Os demais grupos vêm abaixo; quando um grupo tem regra, ela <b>prevalece sobre Todos</b> para os membros dele. Sem marca em nenhum grupo e nem em Todos = tópico público total.</p>
-     <div class="perm-wrap"><table class="perm-matrix">
+  openModal(`<i class="fas fa-key text-gold-500 mr-2"></i>Permissões: ${esc(name)}`,
+    `<div class="perm-wrap"><table class="perm-matrix">
        <thead><tr><th>Grupo</th><th>Ver</th><th>Criar</th><th>Editar</th><th>Excluir</th><th>Mod.</th></tr></thead>
        <tbody>
-         <tr class="pm-sec"><td><i class="fas fa-users mr-2"></i><b>Todos</b> <span class="text-[10px] text-muted">· usuários sem grupo</span></td>
-           ${cbAll('can_view','Ver')} ${cbAll('can_create','Criar')} ${cbAll('can_edit','Editar')} ${cbAll('can_delete','Excluir')} ${cbAll('is_moderator','Moderador',true)}</tr>
+         <tr class="pm-sec"><td><i class="fas fa-users mr-2"></i><b>Todos</b></td>
+           ${cbAll('can_view','V')}${cbAll('can_create','C')}${cbAll('can_edit','E')}${cbAll('can_delete','D')}${cbAll('is_moderator','M',true)}</tr>
          ${(grps||[]).map(g => `<tr><td><i class="fas ${g.icon||'fa-shield-halved'} mr-2" style="color:${g.color}"></i><b>${esc(g.name)}</b></td>
-           ${cb(g.id,'can_view','Ver')} ${cb(g.id,'can_create','Criar')} ${cb(g.id,'can_edit','Editar')} ${cb(g.id,'can_delete','Excluir')} ${cb(g.id,'is_moderator','Moderador')}</tr>`).join('')}
-       </tbody>
-     </table></div>`,
+           ${cb(g.id,'can_view','V')}${cb(g.id,'can_create','C')}${cb(g.id,'can_edit','E')}${cb(g.id,'can_delete','D')}${cb(g.id,'is_moderator','M')}</tr>`).join('')}
+       </tbody></table></div>`,
     `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
      <button class="btn btn-primary btn-sm" onclick="saveTargetPermissions('${type}','${id}')"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
 };
@@ -1353,14 +1442,10 @@ window.saveTargetPermissions = async (type, id) => {
     map[gid][bx.dataset.f] = bx.checked;
   });
   const up = [], del = [];
-  Object.values(map).forEach(r => {
-    const any = r.can_view||r.can_create||r.can_edit||r.can_delete||r.is_moderator;
-    (any?up:del).push(r);
-  });
+  Object.values(map).forEach(r => { (r.can_view||r.can_create||r.can_edit||r.can_delete||r.is_moderator)?up.push(r):del.push(r); });
   if(up.length){ const { error } = await supabase.from('group_permissions').upsert(up, { onConflict:'group_id,target_type,target_id' }); if(error) return toast('Erro: '+error.message,'err'); }
   for(const r of del){ await supabase.from('group_permissions').delete().eq('group_id', r.group_id).eq('target_type', type).eq('target_id', id); }
-  invalidate('perms:'); invalidate('home:');
-  closeModal(); toast('Permissões salvas.');
+  invalidate('perms:'); invalidate('home:'); closeModal(); toast('Salvo.');
 };
 window.groupMembers = async gid => {
   const [{ data: grp }, { data: mem }] = await Promise.all([
@@ -1370,14 +1455,14 @@ window.groupMembers = async gid => {
   window._gmGroupId = gid;
   const list = (mem||[]).map(m => m.profiles_view).filter(Boolean);
   openModal(`<i class="fas ${grp?.icon||'fa-shield-halved'}" style="color:${grp?.color}"></i> Membros: ${esc(grp?.name||'')}`,
-    `<div class="field"><span>Adicionar militar</span>
-      <div class="input-wrap"><i class="fas fa-magnifying-glass"></i><input id="gm-search" class="input" placeholder="Buscar nickname..." oninput="gmSearch(this.value)"></div>
+    `<div class="field"><span>Adicionar</span>
+      <div class="input-wrap"><i class="fas fa-magnifying-glass"></i><input id="gm-search" class="input" placeholder="Nickname..." oninput="gmSearch(this.value)"></div>
       <div id="gm-results" class="mt-2 space-y-1"></div></div>
-    <div class="field mt-3"><span>Membros atuais (${list.length})</span>
+    <div class="field mt-3"><span>Atuais (${list.length})</span>
       <div id="gm-list" class="space-y-1 max-h-56 overflow-auto">
         ${list.map(m => `<div class="flex items-center justify-between p-2 rounded-lg bg-paper border border-line">
           <span class="text-sm font-bold">${esc(m.nickname)}</span>
-          <button class="btn btn-danger btn-sm" onclick="gmRemove('${gid}','${m.id}')"><i class="fas fa-user-minus"></i></button></div>`).join('') || '<p class="text-xs text-muted">Nenhum membro.</p>'}
+          <button class="btn btn-danger btn-sm" onclick="gmRemove('${gid}','${m.id}')"><i class="fas fa-user-minus"></i></button></div>`).join('') || '<p class="text-xs text-muted">Nenhum.</p>'}
       </div></div>`,
     `<button class="btn btn-outline btn-sm" onclick="closeModal()">Fechar</button>`);
 };
@@ -1387,18 +1472,16 @@ window.gmSearch = async q => {
   const { data } = await supabase.from('profiles_view').select('id,nickname').eq('status','active').neq('nickname','admin master').ilike('nickname', `%${q.trim()}%`).limit(5);
   box.innerHTML = (data||[]).map(u => `<div class="flex items-center justify-between p-2 rounded-lg bg-famr-50 border border-line">
     <span class="text-sm font-bold">${esc(u.nickname)}</span>
-    <button class="btn btn-primary btn-sm" onclick="gmAdd('${window._gmGroupId}','${u.id}')"><i class="fas fa-user-plus"></i></button></div>`).join('') || '<p class="text-xs text-muted">Ninguém encontrado.</p>';
+    <button class="btn btn-primary btn-sm" onclick="gmAdd('${window._gmGroupId}','${u.id}')"><i class="fas fa-user-plus"></i></button></div>`).join('') || '<p class="text-xs text-muted">Ninguém.</p>';
 };
 window.gmAdd = async (gid, uid) => {
   const { error } = await supabase.from('user_groups').insert([{ user_id: uid, group_id: gid }]);
   if(error) return toast('Erro: '+error.message,'err');
-  invalidate('home:');
-  toast('Membro adicionado.'); groupMembers(gid);
+  invalidate('home:'); toast('Adicionado.'); groupMembers(gid);
 };
 window.gmRemove = async (gid, uid) => {
   await supabase.from('user_groups').delete().eq('user_id', uid).eq('group_id', gid);
-  invalidate('home:');
-  toast('Membro removido.'); groupMembers(gid);
+  invalidate('home:'); toast('Removido.'); groupMembers(gid);
 };
 async function tabTopicos(b){
   const [{ data: secs }, { data: subs }, { data: groups }] = await Promise.all([
@@ -1407,7 +1490,7 @@ async function tabTopicos(b){
     supabase.from('groups').select('id,name')]);
   window._groupsCache = groups || [];
   b.innerHTML = `<div class="space-y-4 fade-up">
-    <div class="flex justify-end"><button class="btn btn-gold btn-sm" onclick="sectionForm()"><i class="fas fa-plus"></i> Novo tópico (setor)</button></div>
+    <div class="flex justify-end"><button class="btn btn-gold btn-sm" onclick="sectionForm()"><i class="fas fa-plus"></i> Novo setor</button></div>
     ${(secs||[]).map((s,i,arr) => `<div class="card">
       <div class="cat-head">
         <span class="flex items-center gap-1 mr-2">
@@ -1415,11 +1498,10 @@ async function tabTopicos(b){
           <button class="ord-btn" onclick="moveSection('${s.id}',1)" ${i===arr.length-1?'disabled':''}><i class="fas fa-chevron-down"></i></button>
         </span>
         <i class="fas ${esc(s.icon)}"></i> ${esc(s.name)} <span class="chip chip-neutral ml-2 normal-case">/${esc(s.slug)}</span>
-        ${SLUGS_REQUIRE_GROUP.includes(s.slug) ? '<span class="chip chip-wait ml-1 normal-case"><i class="fas fa-users mr-1"></i>só com grupo</span>' : ''}
         <span class="ml-auto flex gap-1">
-          <button class="btn btn-outline btn-sm" onclick="targetPermissions('section','${s.id}','${esc(s.name)}')" title="Permissões deste setor"><i class="fas fa-key"></i></button>
-          <button class="btn btn-outline btn-sm" onclick="sectionForm('${s.id}')" title="Editar setor"><i class="fas fa-pen"></i></button>
-          <button class="btn btn-outline btn-sm" onclick="subtopicForm('${s.id}')" title="Novo subtópico"><i class="fas fa-plus"></i> Subtópico</button>
+          <button class="btn btn-outline btn-sm" onclick="targetPermissions('section','${s.id}','${esc(s.name)}')"><i class="fas fa-key"></i></button>
+          <button class="btn btn-outline btn-sm" onclick="sectionForm('${s.id}')"><i class="fas fa-pen"></i></button>
+          <button class="btn btn-outline btn-sm" onclick="subtopicForm('${s.id}')"><i class="fas fa-plus"></i> Sub</button>
           <button class="btn btn-danger btn-sm" onclick="delSection('${s.id}')"><i class="fas fa-trash"></i></button>
         </span>
       </div>
@@ -1428,10 +1510,9 @@ async function tabTopicos(b){
           <i class="fas fa-folder-open text-muted"></i><b>${esc(x.name)}</b>
           ${x.required_group_id?`<span class="chip chip-wait"><i class="fas fa-lock"></i> ${esc(x.groups?.name||'')}</span>`:'<span class="chip chip-ok">todos</span>'}
           ${x.is_request_form?'<span class="chip chip-neutral">formulário</span>':''}
-          ${x.auto_listagem_category?`<span class="chip chip-ok">→ listagem: ${esc(x.auto_listagem_category)}</span>`:''}
           <span class="ml-auto flex gap-1">
-            <button class="btn btn-outline btn-sm" onclick="targetPermissions('subtopic','${x.id}','${esc(x.name)}')" title="Permissões deste subtópico"><i class="fas fa-key"></i></button>
-            <button class="btn btn-outline btn-sm" onclick="subtopicForm('${s.id}','${x.id}')" title="Editar subtópico"><i class="fas fa-pen"></i></button>
+            <button class="btn btn-outline btn-sm" onclick="targetPermissions('subtopic','${x.id}','${esc(x.name)}')"><i class="fas fa-key"></i></button>
+            <button class="btn btn-outline btn-sm" onclick="subtopicForm('${s.id}','${x.id}')"><i class="fas fa-pen"></i></button>
             <button class="btn btn-danger btn-sm" onclick="delSubtopic('${x.id}')"><i class="fas fa-trash"></i></button>
           </span>
         </div>`).join('') || '<p class="p-4 text-xs text-muted">Sem subtópicos.</p>'}</div>
@@ -1440,43 +1521,34 @@ async function tabTopicos(b){
 }
 window.moveSection = async (id, dir) => {
   const { data } = await supabase.from('sections').select('id,order_index').order('order_index');
-  const i = (data||[]).findIndex(s => s.id === id);
-  const j = i + dir;
+  const i = (data||[]).findIndex(s => s.id === id); const j = i + dir;
   if(i < 0 || j < 0 || j >= data.length) return;
-  const a = data[i], b2 = data[j];
-  await supabase.from('sections').update({ order_index: b2.order_index }).eq('id', a.id);
-  await supabase.from('sections').update({ order_index: a.order_index }).eq('id', b2.id);
-  invalidate('home:'); invalidate('sections:');
-  tabTopicos(document.getElementById('admin-body'));
+  await supabase.from('sections').update({ order_index: data[j].order_index }).eq('id', data[i].id);
+  await supabase.from('sections').update({ order_index: data[i].order_index }).eq('id', data[j].id);
+  invalidate('home:'); tabTopicos(document.getElementById('admin-body'));
 };
 window.sectionForm = async id => {
   let s = { name:'', slug:'', icon:'fa-folder-open', description:'', required_group_id:null };
   if(id){ const r = await supabase.from('sections').select('*').eq('id', id).single(); if(r.data) s = r.data; }
   openModal(`<i class="fas fa-sitemap text-gold-500 mr-2"></i>${id?'Editar':'Novo'} setor`, `
-    <label class="field"><span>Nome</span><input id="s-name" class="input" value="${esc(s.name)}" placeholder="Ex: Condecorações"></label>
-    <label class="field"><span>Slug (url)</span><input id="s-slug" class="input" value="${esc(s.slug)}" placeholder="condecoracoes"></label>
-    <label class="field"><span>Ícone (FontAwesome)</span><input id="s-icon" class="input" value="${esc(s.icon)}"></label>
-    <label class="field"><span>Descrição</span><textarea id="s-desc" class="input" rows="2">${esc(s.description||'')}</textarea></label>
-    <label class="field"><span>Restrito ao grupo (legado)</span><select id="s-group" class="input"><option value="">— todos —</option>${(window._groupsCache||[]).map(g=>`<option value="${g.id}" ${s.required_group_id===g.id?'selected':''}>${esc(g.name)}</option>`).join('')}</select></label>`,
+    <label class="field"><span>Nome</span><input id="s-name" class="input" value="${esc(s.name)}"></label>
+    <label class="field"><span>Slug</span><input id="s-slug" class="input" value="${esc(s.slug)}"></label>
+    <label class="field"><span>Ícone</span><input id="s-icon" class="input" value="${esc(s.icon)}"></label>
+    <label class="field"><span>Descrição</span><textarea id="s-desc" class="input" rows="2">${esc(s.description||'')}</textarea></label>`,
     `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button><button class="btn btn-primary btn-sm" onclick="saveSection('${id||''}')"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
 };
 window.saveSection = async id => {
-  const row = { name: document.getElementById('s-name').value.trim(), slug: document.getElementById('s-slug').value.trim().toLowerCase().replace(/\s+/g,'-'), icon: document.getElementById('s-icon').value.trim() || 'fa-folder-open', description: document.getElementById('s-desc').value, required_group_id: document.getElementById('s-group').value || null };
-  if(!row.name || !row.slug) return toast('Nome e slug são obrigatórios.','warn');
-  let error = null;
+  const row = { name: document.getElementById('s-name').value.trim(), slug: document.getElementById('s-slug').value.trim().toLowerCase().replace(/\s+/g,'-'), icon: document.getElementById('s-icon').value.trim() || 'fa-folder-open', description: document.getElementById('s-desc').value, required_group_id: null };
+  if(!row.name || !row.slug) return toast('Nome e slug obrigatórios.','warn');
+  let error;
   if(id){ ({ error } = await supabase.from('sections').update(row).eq('id', id)); }
-  else {
-    const { count } = await supabase.from('sections').select('*', { count:'exact', head:true });
-    row.order_index = (count||0)+1;
-    ({ error } = await supabase.from('sections').insert([row]));
-  }
+  else { const { count } = await supabase.from('sections').select('*', { count:'exact', head:true }); row.order_index = (count||0)+1; ({ error } = await supabase.from('sections').insert([row])); }
   if(error) return toast('Erro: '+error.message,'err');
   await famrLog('SECTION_SAVE', row);
-  invalidate('home:'); invalidate('sections:');
-  closeModal(); toast('Setor salvo.'); buildSidebar(); tabTopicos(document.getElementById('admin-body'));
+  invalidate('home:'); closeModal(); toast('Setor salvo.'); buildSidebar(); tabTopicos(document.getElementById('admin-body'));
 };
-window.delSection = async id => { if(await confirmDlg('Excluir setor e todos os subtópicos?', { title:'Excluir setor', okText:'Excluir', danger:true })) { await supabase.from('sections').delete().eq('id', id); invalidate('home:'); invalidate('sections:'); buildSidebar(); tabTopicos(document.getElementById('admin-body')); } };
-window.delSubtopic = async id => { if(await confirmDlg('Excluir subtópico?', { title:'Excluir subtópico', okText:'Excluir', danger:true })) { await supabase.from('subtopics').delete().eq('id', id); invalidate('home:'); tabTopicos(document.getElementById('admin-body')); } };
+window.delSection = async id => { if(await confirmDlg('Excluir setor?', { title:'Excluir', okText:'Excluir', danger:true })) { await supabase.from('sections').delete().eq('id', id); invalidate('home:'); buildSidebar(); tabTopicos(document.getElementById('admin-body')); } };
+window.delSubtopic = async id => { if(await confirmDlg('Excluir subtópico?', { title:'Excluir', okText:'Excluir', danger:true })) { await supabase.from('subtopics').delete().eq('id', id); invalidate('home:'); tabTopicos(document.getElementById('admin-body')); } };
 window.subtopicForm = async (sid, tid) => {
   let t = { name:'', description:'', required_group_id:null, allow_posts:true, is_request_form:false, form_fields:[], auto_listagem_category:null };
   if(tid){ const r = await supabase.from('subtopics').select('*').eq('id', tid).single(); if(r.data) t = r.data; }
@@ -1484,55 +1556,49 @@ window.subtopicForm = async (sid, tid) => {
   openModal(`<i class="fas fa-folder-plus text-gold-500 mr-2"></i>${tid?'Editar':'Novo'} subtópico`, `
     <label class="field"><span>Nome</span><input id="t-name" class="input" value="${esc(t.name)}"></label>
     <label class="field"><span>Descrição</span><textarea id="t-desc" class="input" rows="2">${esc(t.description||'')}</textarea></label>
-    <label class="field"><span>Restrito ao grupo (legado)</span><select id="t-group" class="input"><option value="">— todos —</option>${(window._groupsCache||[]).map(g=>`<option value="${g.id}" ${t.required_group_id===g.id?'selected':''}>${esc(g.name)}</option>`).join('')}</select></label>
     <label class="flex items-center gap-2 text-sm font-bold"><input id="t-posts" type="checkbox" ${t.allow_posts?'checked':''} class="w-4 h-4 accent-[#14563f]"> Permite publicações</label>
-    <label class="flex items-center gap-2 text-sm font-bold"><input id="t-form" type="checkbox" ${t.is_request_form?'checked':''} class="w-4 h-4 accent-[#14563f]"> É formulário de requerimento</label>
-    <label class="field"><span>Campos (um por linha: Nome:tipo → text|textarea|number)</span><textarea id="t-fields" class="input" rows="3" placeholder="Nome da Tag:text&#10;Descrição:textarea">${esc(fieldsText)}</textarea></label>
-    <label class="field"><span>Ao aprovar, publicar na listagem como categoria</span><input id="t-cat" class="input" value="${esc(t.auto_listagem_category||'')}" placeholder="ex: tags"></label>
-    <input type="hidden" id="t-sid" value="${sid}">
-    <input type="hidden" id="t-tid" value="${tid||''}">`,
+    <label class="flex items-center gap-2 text-sm font-bold"><input id="t-form" type="checkbox" ${t.is_request_form?'checked':''} class="w-4 h-4 accent-[#14563f]"> Formulário de requerimento</label>
+    <label class="field"><span>Campos (Nome:tipo)</span><textarea id="t-fields" class="input" rows="3">${esc(fieldsText)}</textarea></label>
+    <input type="hidden" id="t-sid" value="${sid}"><input type="hidden" id="t-tid" value="${tid||''}">`,
     `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button><button class="btn btn-primary btn-sm" onclick="saveSubtopic()"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
 };
 window.saveSubtopic = async () => {
   const tid = document.getElementById('t-tid').value;
   const fields = document.getElementById('t-fields').value.split('\n').filter(Boolean).map(l => { const [label, type] = l.split(':'); return { label: (label||'').trim(), type: (type||'text').trim(), required: true }; }).filter(f => f.label);
-  const row = { section_id: document.getElementById('t-sid').value, name: document.getElementById('t-name').value.trim(), description: document.getElementById('t-desc').value, required_group_id: document.getElementById('t-group').value || null, allow_posts: document.getElementById('t-posts').checked, is_request_form: document.getElementById('t-form').checked, form_fields: fields, auto_listagem_category: document.getElementById('t-cat').value.trim() || null };
-  if(!row.name) return toast('Informe o nome.','warn');
-  let error = null;
+  const row = { section_id: document.getElementById('t-sid').value, name: document.getElementById('t-name').value.trim(), description: document.getElementById('t-desc').value, required_group_id: null, allow_posts: document.getElementById('t-posts').checked, is_request_form: document.getElementById('t-form').checked, form_fields: fields, auto_listagem_category: null };
+  if(!row.name) return toast('Nome obrigatório.','warn');
+  let error;
   if(tid){ ({ error } = await supabase.from('subtopics').update(row).eq('id', tid)); }
   else { ({ error } = await supabase.from('subtopics').insert([row])); }
   if(error) return toast('Erro: '+error.message,'err');
   await famrLog('SUBTOPIC_SAVE', row);
-  invalidate('home:'); invalidate('subs:');
-  closeModal(); toast('Subtópico salvo.'); tabTopicos(document.getElementById('admin-body'));
+  invalidate('home:'); closeModal(); toast('Salvo.'); tabTopicos(document.getElementById('admin-body'));
 };
 async function tabProtocolos(b){
   const { data } = await supabase.from('requests').select('*,profiles_view(nickname),subtopics(name,auto_listagem_category)').eq('status','pending').order('created_at');
-  b.innerHTML = `<div class="card fade-up"><div class="cat-head"><i class="fas fa-inbox"></i> Pendentes de análise (${(data||[]).length})</div>
+  b.innerHTML = `<div class="card fade-up"><div class="cat-head"><i class="fas fa-inbox"></i> Pendentes (${(data||[]).length})</div>
   <div class="divide-y divide-line">${(data||[]).map(r => `<div class="p-4">
     <div class="flex flex-wrap items-center gap-3 justify-between"><div><b class="text-sm">${esc(r.title)}</b> <span class="chip chip-neutral ml-1">${esc(r.subtopics?.name||'')}</span>
-      ${r.subtopics?.auto_listagem_category?`<span class="chip chip-ok">→ vira "${esc(r.subtopics.auto_listagem_category)}" na Listagem</span>`:''}
       <p class="text-[11px] text-muted mt-1">${esc(r.profiles_view?.nickname||'')} • ${fmtDate(r.created_at)}</p></div>
       <div class="space-x-1"><button class="btn btn-primary btn-sm" onclick="review('${r.id}','approved')"><i class="fas fa-check"></i> Aprovar</button><button class="btn btn-danger btn-sm" onclick="review('${r.id}','rejected')"><i class="fas fa-xmark"></i> Reprovar</button></div></div>
-    <div class="mt-3 grid sm:grid-cols-2 gap-2 text-xs bg-famr-50 rounded-lg p-3">${Object.entries(r.form_data||{}).map(([k,v])=>`<p><b class="text-famr-700">${esc(k)}:</b> ${esc(v)}</p>`).join('')}</div></div>`).join('') || '<p class="p-8 text-center text-sm text-muted">Nenhum protocolo pendente. ✦</p>'}</div></div>`;
+    <div class="mt-3 grid sm:grid-cols-2 gap-2 text-xs bg-famr-50 rounded-lg p-3">${Object.entries(r.form_data||{}).map(([k,v])=>`<p><b class="text-famr-700">${esc(k)}:</b> ${esc(v)}</p>`).join('')}</div></div>`).join('') || '<p class="p-8 text-center text-sm text-muted">Nenhum pendente.</p>'}</div></div>`;
 }
 window.review = async (id, status) => {
   if(status === 'approved') return doReview(id, 'approved', '');
-  const note = await promptDlg('Motivo da reprovação (opcional)', '', { title:'Reprovar protocolo', okText:'Reprovar', multiline:true });
-  if(note===null) return; /* cancelou */
+  const note = await promptDlg('Motivo (opcional)', '', { title:'Reprovar', okText:'Reprovar', multiline:true });
+  if(note===null) return;
   doReview(id, 'rejected', note);
 };
-window.doReview = async (id, status, note) => { const { error } = await supabase.rpc('review_request', { req_id: id, new_status: status, note: note || null }); if(error) return toast('Erro: '+error.message,'err'); await famrLog('REVIEW_REQUEST', { req_id:id, new_status:status, note }); invalidate('home:'); closeModal(); toast(status==='approved' ? 'Aprovado! Registro publicado na Listagem automaticamente.' : 'Protocolo reprovado.'); tabProtocolos(document.getElementById('admin-body')); };
+window.doReview = async (id, status, note) => { const { error } = await supabase.rpc('review_request', { req_id: id, new_status: status, note: note || null }); if(error) return toast('Erro: '+error.message,'err'); await famrLog('REVIEW_REQUEST', { req_id:id, new_status:status, note }); invalidate('home:'); closeModal(); toast(status==='approved'?'Aprovado!':'Reprovado.'); tabProtocolos(document.getElementById('admin-body')); };
 
-/* ══════════ LOGS PT + IP ══════════ */
 async function tabLogs(b){
-  const from = A.page*30; 
+  const from = A.page*30;
   const { data } = await supabase.from('logs').select('created_at,action,actor_name,details,ip').order('created_at',{ascending:false}).range(from, from+29);
-  b.innerHTML = `<div class="card fade-up"><div class="cat-head"><i class="fas fa-scroll"></i> Logs de ações e logins</div>
+  b.innerHTML = `<div class="card fade-up"><div class="cat-head"><i class="fas fa-scroll"></i> Logs</div>
   <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Data</th><th>Ação</th><th>Autor</th><th>Detalhes</th><th>IP</th></tr></thead><tbody>
   ${(data||[]).map(l => `<tr>
     <td class="text-xs text-muted whitespace-nowrap">${fmtDate(l.created_at)}</td>
-    <td><span class="chip ${l.action==='LOGIN'?'chip-ok':(l.action.includes('DEL')||l.action.includes('BAN')||l.action.includes('BLOQ'))?'chip-no':'chip-wait'}">${esc(ptAction(l.action))}</span></td>
+    <td><span class="chip ${l.action==='LOGIN'?'chip-ok':(l.action.includes('DEL')||l.action.includes('BAN'))?'chip-no':'chip-wait'}">${esc(ptAction(l.action))}</span></td>
     <td class="text-xs font-bold">${esc(l.actor_name||'sistema')}</td>
     <td class="text-[11px] text-muted max-w-md truncate" title="${esc(JSON.stringify(l.details))}">${esc(ptDetails(l.details, l.action))}</td>
     <td class="text-xs font-mono text-muted">${esc(l.ip || '—')}</td>
@@ -1542,43 +1608,36 @@ async function tabLogs(b){
 async function tabConfig(b){
   const m = STATE.settings.maintenance || { enabled:false, message:'' }; const a = STATE.settings.announcement || { text:'' };
   b.innerHTML = `<div class="grid md:grid-cols-2 gap-4 fade-up">
-    <div class="card"><div class="cat-head"><i class="fas fa-screwdriver-wrench"></i> Modo manutenção</div><div class="card-body space-y-3">
-      <label class="flex items-center gap-3 text-sm font-bold"><input id="c-maint" type="checkbox" class="w-5 h-5 accent-[#c9a227]" ${m.enabled?'checked':''}> Sistema em manutenção (bloqueia não-admins)</label>
-      <label class="field"><span>Mensagem exibida</span><input id="c-maint-msg" class="input" value="${esc(m.message||'')}"></label>
+    <div class="card"><div class="cat-head"><i class="fas fa-screwdriver-wrench"></i> Manutenção</div><div class="card-body space-y-3">
+      <label class="flex items-center gap-3 text-sm font-bold"><input id="c-maint" type="checkbox" class="w-5 h-5 accent-[#c9a227]" ${m.enabled?'checked':''}> Ativar manutenção</label>
+      <label class="field"><span>Mensagem</span><input id="c-maint-msg" class="input" value="${esc(m.message||'')}"></label>
       <button class="btn btn-primary btn-sm" onclick="saveMaint()"><i class="fas fa-floppy-disk"></i> Salvar</button></div></div>
-    <div class="card"><div class="cat-head"><i class="fas fa-bullhorn"></i> Aviso do comando (home)</div><div class="card-body space-y-3">
+    <div class="card"><div class="cat-head"><i class="fas fa-bullhorn"></i> Aviso home</div><div class="card-body space-y-3">
       <textarea id="c-ann" class="input" rows="4">${esc(a.text||'')}</textarea>
-      <button class="btn btn-gold btn-sm" onclick="saveAnn()"><i class="fas fa-floppy-disk"></i> Publicar aviso</button></div></div>
+      <button class="btn btn-gold btn-sm" onclick="saveAnn()"><i class="fas fa-floppy-disk"></i> Publicar</button></div></div>
   </div>`;
 }
-window.saveMaint = async () => { const value = { enabled: document.getElementById('c-maint').checked, message: document.getElementById('c-maint-msg').value }; await supabase.from('settings').upsert({ key:'maintenance', value }); STATE.settings.maintenance = value; await famrLog('MANUTENCAO', value); toast('Configuração salva.'); document.getElementById('maintenance-banner').classList.toggle('hidden', !value.enabled); };
-window.saveAnn = async () => { const value = { text: document.getElementById('c-ann').value }; await supabase.from('settings').upsert({ key:'announcement', value }); STATE.settings.announcement = value; await famrLog('AVISO', value); toast('Aviso publicado na home.'); };
+window.saveMaint = async () => { const value = { enabled: document.getElementById('c-maint').checked, message: document.getElementById('c-maint-msg').value }; await supabase.from('settings').upsert({ key:'maintenance', value }); STATE.settings.maintenance = value; await famrLog('MANUTENCAO', value); toast('Salvo.'); document.getElementById('maintenance-banner').classList.toggle('hidden', !value.enabled); };
+window.saveAnn = async () => { const value = { text: document.getElementById('c-ann').value }; await supabase.from('settings').upsert({ key:'announcement', value }); STATE.settings.announcement = value; await famrLog('AVISO', value); toast('Aviso publicado.'); };
 
 function sanitizeHtml(h){ return String(h||'').replace(/<script[\s\S]*?<\/script>/gi,'').replace(/on\w+="[^"]*"/gi,'').replace(/on\w+='[^']*'/gi,''); }
 
-/* ══════════ famrLog: Edge Function com fallback rpc ══════════ */
+/* ══════════ famrLog: Edge Function com fallback ══════════ */
 async function famrLog(action, details={}){
   try{
     const fnUrl = CONFIG.supabaseUrl + '/functions/v1/log-action';
     const { data:{ session } } = await supabase.auth.getSession();
-    const res = await fetch(fnUrl, {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'apikey': CONFIG.supabaseAnonKey,
-        ...(session?.access_token ? { 'Authorization':'Bearer '+session.access_token } : {})
-      },
-      body: JSON.stringify({ action, details })
-    });
+    const headers = { 'Content-Type':'application/json', 'apikey': CONFIG.supabaseAnonKey };
+    if(session?.access_token) headers['Authorization'] = 'Bearer ' + session.access_token;
+    const res = await fetch(fnUrl, { method:'POST', headers, body: JSON.stringify({ action, details }) });
     if(res.ok) return;
     throw new Error('HTTP '+res.status);
   }catch(e){
-    /* fallback: RPC antigo (sem IP) — nunca trava a operação */
     try{ await supabase.rpc('log_action', { action, details }); }catch(_){}
   }
 }
 
-/* ══════════ ENTER SYSTEM PARALELIZADO ══════════ */
+/* ══════════ ENTER SYSTEM ══════════ */
 async function enterSystem(userId){
   if(window._famrRecovery){ showScreen('screen-reset'); return; }
   const [profRes, groups, setsRes] = await Promise.all([
@@ -1589,10 +1648,9 @@ async function enterSystem(userId){
   const profile = profRes.data;
   if(profRes.error || !profile){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Perfil não encontrado.', 'err'); return; }
   if(profile.status==='banned'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta BANIDA.', 'err'); return; }
-  if(profile.status==='pending'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta ainda não ativada.', 'warn'); return; }
-  if(profile.login_locked){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('<i class="fas fa-lock mr-1"></i> Conta BLOQUEADA.', 'err'); return; }
-  STATE.profile = profile;
-  STATE.groups  = groups;
+  if(profile.status==='pending'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta não ativada.', 'warn'); return; }
+  if(profile.login_locked){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta BLOQUEADA.', 'err'); return; }
+  STATE.profile = profile; STATE.groups = groups;
   (setsRes.data||[]).forEach(s => STATE.settings[s.key] = s.value);
   await loadPerms();
   if(STATE.settings.maintenance?.enabled && !isAdmin()){
@@ -1600,7 +1658,7 @@ async function enterSystem(userId){
     showScreen('screen-maintenance'); return;
   }
   startWatchdog(); showScreen('shell');
-  try{ await buildSidebar(); }catch(e){ console.error('[FAMR] sidebar:', e); }
+  try{ await buildSidebar(); }catch(e){}
   if(!location.hash || location.hash==='#') location.hash='#/home';
-  try{ await route(); }catch(e){ console.error('[FAMR] route:', e); }
+  try{ await route(); }catch(e){}
 }
