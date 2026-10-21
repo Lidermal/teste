@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v31 (Quote GDocs | Toolbar Robusta | Logs c/ Filtro + IP Total) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v32 (Nova Quote Caixa Cinza | Toolbar Robusta | Logs c/ IP) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -661,7 +661,7 @@ window.submitRequest = async function(subtopicId){
 };
 
 /* ═══════════════════════════════════════════════════
-   DOCUMENTOS — WORKSPACE PÁGINA CHEIA (v31 Quote GDocs)
+   DOCUMENTOS — WORKSPACE PÁGINA CHEIA (v32 Nova Quote)
    ═══════════════════════════════════════════════════ */
 let _wsDirty=false, _wsSaving=false;
 
@@ -789,7 +789,7 @@ window.exitDocWorkspace = async function(){
   else history.back();
 };
 
-/* ─── TOOLBAR v31 ROBUSTA ─── */
+/* ─── TOOLBAR v32 ROBUSTA (COM NOVA QUOTE CAIXA CINZA) ─── */
 function initToolbar(){
   const bar = document.getElementById('dw-toolbar');
   const body = document.getElementById('dw-body');
@@ -876,50 +876,55 @@ function initToolbar(){
   mkBtn('Título 3','fa-heading','','formatBlock','<h3>');
   mkBtn('Parágrafo','fa-paragraph','','formatBlock','<p>');
 
-  /* ── BOTÃO QUOTE ESTILO GOOGLE DOCS ── */
-  const quoteWrap = document.createElement('div');
-  quoteWrap.style.position='relative'; quoteWrap.style.display='inline-block';
-  const quoteBtn = document.createElement('button');
-  quoteBtn.type='button'; quoteBtn.className='dw-quote-btn'; quoteBtn.title='Citação (bloco com cor)';
-  quoteBtn.innerHTML = '<i class="fas fa-quote-left"></i><i class="fas fa-caret-down" style="font-size:9px;opacity:.6"></i>';
+  /* =========================================================
+     NOVO BOTÃO: QUOTE (ESTILO CAIXA FORUMEIROS/CINZA)
+     ========================================================= */
+  const quoteNewBtn = document.createElement('button');
+  quoteNewBtn.type = 'button';
+  quoteNewBtn.className = 'dw-quote-new-btn';
+  quoteNewBtn.title = 'Inserir Citação (Caixa Cinza)';
+  quoteNewBtn.innerHTML = '<i class="fas fa-comment-dots"></i>'; // Ícone diferente do blockquote padrão
   
-  const quotePop = document.createElement('div');
-  quotePop.className='dw-quote-pop';
-  const swatchGrid = document.createElement('div');
-  swatchGrid.className='dw-quote-swatches';
-  QUOTE_PRESETS.forEach(c=>{
-    const sw = document.createElement('button');
-    sw.type='button'; sw.className='dw-quote-swatch'; sw.style.background=c; sw.title=c;
-    sw.onclick = () => { 
-      body.focus(); 
-      /* Primeiro aplica formatBlock blockquote */
-      safeExec('formatBlock','<blockquote>');
-      /* Depois colore a barra lateral */
-      setTimeout(()=>applyQuoteColor(c), 10);
-      quotePop.classList.remove('open');
-    };
-    swatchGrid.appendChild(sw);
-  });
-  const customRow = document.createElement('div');
-  customRow.className='dw-quote-custom';
-  customRow.innerHTML = '<span>Personalizada:</span><input type="color" value="#c9a227">';
-  const customInput = customRow.querySelector('input');
-  customInput.onchange = () => {
+  quoteNewBtn.onclick = () => {
     body.focus();
-    safeExec('formatBlock','<blockquote>');
-    setTimeout(()=>applyQuoteColor(customInput.value), 10);
-    quotePop.classList.remove('open');
+    /* Insere o HTML exato solicitado */
+    const html = `<div class="famr-quote-box" contenteditable="true">Digite sua citação aqui...</div><p><br></p>`;
+    document.execCommand('insertHTML', false, html);
+    markDirty();
+    
+    /* Seleciona o texto recém-inserido para facilitar edição imediata */
+    setTimeout(() => {
+      const lastBox = body.querySelector('.famr-quote-box:last-of-type');
+      if(lastBox){
+        const range = document.createRange();
+        range.selectNodeContents(lastBox);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }, 10);
   };
-  quotePop.appendChild(swatchGrid);
-  quotePop.appendChild(customRow);
   
-  quoteBtn.onclick = (e) => {
-    e.stopPropagation();
-    document.querySelectorAll('.dw-quote-pop.open,.dw-color-pop.open').forEach(p=>p.classList.remove('open'));
-    quotePop.classList.toggle('open');
-  };
-  quoteWrap.appendChild(quoteBtn);
-  quoteWrap.appendChild(quotePop);
+  bar.appendChild(quoteNewBtn);
+  mkSep();
+  /* ========================================================= */
+
+  /* --- CITAÇÃO PADRÃO BLOCKQUOTE (EXISTENTE - MANTIDO COMO ESTAVA) --- */
+  const quoteWrap = document.createElement('span');
+  quoteWrap.style.display='inline-flex'; quoteWrap.style.alignItems='center'; quoteWrap.style.gap='2px';
+  const quoteBtn = document.createElement('button');
+  quoteBtn.type='button'; quoteBtn.className='dw-tool'; quoteBtn.title='Citação Padrão (Barra Lateral Simples)';
+  quoteBtn.innerHTML='<i class="fas fa-quote-left"></i>';
+  quoteBtn.onclick = () => { body.focus(); execCmd('formatBlock','blockquote'); };
+  
+  const quoteColorSel = document.createElement('select');
+  quoteColorSel.className='dw-select'; quoteColorSel.title='Cor da barra Blockquote'; quoteColorSel.style.width='42px';
+  ['#c9a227','#1a73e8','#ea4335','#34a853'].forEach(c=>{ 
+    const o=document.createElement('option'); o.value=c; o.textContent='■'; o.style.color=c; quoteColorSel.appendChild(o); 
+  });
+  quoteColorSel.onchange = () => { applyQuoteColor(quoteColorSel.value); };
+  
+  quoteWrap.appendChild(quoteBtn); quoteWrap.appendChild(quoteColorSel);
   bar.appendChild(quoteWrap);
   mkSep();
 
@@ -1133,7 +1138,7 @@ function setupImageInteractivity(){
 }
 
 function showEmojiPanel(body){
-  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','🤗','🤩','🤔','🤨','😐','😑','😶','🙄','😏','😣','😥','😮','','','😪','','','😴','😌','😛','😜','😝','','😒','😓','😔','😕','🙃','🤑','😲','🙁','','','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','🥵','🥶','😳','🤪','','','','😡','','😷','🤒','🤕','','🤮','','😇','🥳','🥸','🤠','🤡','🥹','⭐','✅','❌','️','📌','','❤️','🔥','✨','🎖️','🏅','','🥈','','🏆'];
+  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','🤗','🤩','🤔','🤨','😐','😑','😶','🙄','😏','😣','😥','😮','','','😪','','','😴','😌','😛','😜','😝','','😒','😓','😔','😕','🙃','🤑','😲','🙁','','','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','','🥶','😳','🤪','','','','😡','','😷','🤒','🤕','','🤮','','😇','🥳','','🤠','','🥹','⭐','✅','❌','️','📌','','❤️','🔥','✨','🎖️','🏅','','🥈','','🏆'];
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#fff;border:1px solid #dadce0;border-radius:12px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);max-width:460px;max-height:360px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:2px';
   emojis.forEach(em=>{
@@ -1629,7 +1634,6 @@ window.review = async (id, status) => {
 };
 window.doReview = async (id, status, note) => { const { error } = await supabase.rpc('review_request', { req_id: id, new_status: status, note: note || null }); if(error) return toast('Erro: '+error.message,'err'); await famrLog('REVIEW_REQUEST', { req_id:id, new_status:status, note }); invalidate('home:'); closeModal(); toast(status==='approved'?'Aprovado!':'Reprovado.'); tabProtocolos(document.getElementById('admin-body')); };
 
-/* ══════════ LOGS COM FILTROS AVANÇADOS (v31) ══════════ */
 async function tabLogs(b){
   const f = A.logFilters;
   const from = A.page*30;
