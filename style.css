@@ -494,3 +494,25 @@ select.input,textarea.input{padding-left:.9rem}
   .doc-ruler{padding:0 24px}
   .dw-cat-in{display:none}
 }
+
+/* ══════════ ALERTAS PERSONALIZADOS (v30) ══════════ */
+.alert-box{display:flex;align-items:flex-start;gap:.7rem;border-radius:12px;padding:.8rem 1rem;font-size:.86rem;font-weight:700;line-height:1.35;animation:fadeUp .3s both;border:1px solid transparent}
+.alert-box i{font-size:1.05rem;margin-top:1px;flex-shrink:0}
+.alert-ok{background:#e5f5eb;border-color:#bfe3cd;color:#176b45}
+.alert-err{background:#fdecec;border-color:#f3c1c1;color:#b3261e}
+.alert-warn{background:var(--gold-100);border-color:#ecd9a0;color:#8a6d12}
+.alert-info{background:#eef4fb;border-color:#cfe0f3;color:#1e40af}
+:root[data-theme="dark"] .alert-ok{background:#0f2a1c;border-color:#1d4a31;color:#7fe0a8}
+:root[data-theme="dark"] .alert-err{background:#2a1414;border-color:#4a2020;color:#ff9b9b}
+:root[data-theme="dark"] .alert-warn{background:#241f10;border-color:#4a3d18;color:#e6c65c}
+:root[data-theme="dark"] .alert-info{background:#0e2236;border-color:#1d3a5a;color:#9cc4ff}
+
+/* Botão de login em carregamento */
+.btn-auth-loading{opacity:.85;pointer-events:none}
+.spin-sm{display:inline-block;width:.95rem;height:.95rem;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ══════════ CONTROLE DE CITAÇÃO NA TOOLBAR (v30) ══ */
+.dw-quote-wrap{display:inline-flex;align-items:center;gap:.15rem}
+.dw-quote-color{width:1.5rem;height:2rem;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:1px;cursor:pointer}
+.doc-body blockquote{transition:border-color .15s}
