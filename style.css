@@ -1,4 +1,4 @@
-/* ══════════ FAMR • TEMA CERIMONIAL v33 (Quote Limpa | Colar HTML | Editor Robusto) ══════════ */
+/* ══════════ FAMR • TEMA CERIMONIAL v40 (Visualização Página Inteira | Grupos Gradiente | CSS Isolado Persistente) ══════════ */
 :root{
   --green-900:#0b3d2c; --green-800:#0e4433; --green-700:#14563f; --green-600:#1a6b4f;
   --gold-600:#a8861d; --gold-500:#c9a227; --gold-300:#e6c65c; --gold-100:#faf3dc;
@@ -31,7 +31,7 @@ body{font-family:'Manrope',sans-serif;background:var(--paper);color:var(--ink)}
   radial-gradient(700px 500px at 100% 110%, rgba(20,86,63,.14), transparent 55%),
   var(--paper);}
 
-/* ── Campos ── */
+/* ── Campos ─ */
 .field{display:block}
 .field>span{display:block;font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem}
 .input-wrap{position:relative;display:flex;align-items:center}
@@ -640,3 +640,269 @@ select.input,textarea.input{padding-left:.9rem}
 :root[data-theme="dark"] .cm-textarea{ background:#0d1512;border-color:#2a3440;color:#e8edf2; }
 .cm-footer{ padding:1rem 1.5rem;background:#f8f9fa;border-top:1px solid #dadce0;display:flex;justify-content:flex-end;gap:.5rem; }
 :root[data-theme="dark"] .cm-footer{ background:#1c232b;border-color:#2a3440; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VISUALIZAÇÃO PÁGINA-INTEIRA (ESTILO FÓRUM CLÁSSICO COM PERFIL À ESQUERDA)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.doc-view-page {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px -8px var(--shadow);
+}
+
+/* Header do Documento/Tópico */
+.doc-view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  color: #fff;
+  flex-wrap: wrap;
+}
+.dvh-brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+.dvh-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.3));
+}
+.dvh-titles {
+  min-width: 0;
+}
+.dvh-title {
+  font-family: 'Sora', sans-serif;
+  font-weight: 800;
+  font-size: 1.25rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dvh-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: .75rem;
+  opacity: .9;
+  margin-top: .25rem;
+}
+.dvh-actions {
+  display: flex;
+  gap: .5rem;
+  flex-shrink: 0;
+}
+.dvh-actions .btn {
+  background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.3);
+  color: #fff;
+}
+.dvh-actions .btn:hover {
+  background: rgba(255,255,255,.25);
+}
+
+/* Corpo em duas colunas */
+.doc-view-body {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 0;
+}
+@media (max-width: 768px) {
+  .doc-view-body {
+    grid-template-columns: 1fr;
+  }
+  .doc-view-profile {
+    border-right: none !important;
+    border-bottom: 1px solid var(--line);
+    padding: 1rem !important;
+  }
+}
+
+/* Perfil à Esquerda */
+.doc-view-profile {
+  background: var(--paper);
+  border-right: 1px solid var(--line);
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: .75rem;
+}
+.dv-author-name {
+  font-family: 'Sora', sans-serif;
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--green-800);
+}
+.dv-author-status {
+  font-size: .65rem;
+  font-weight: 800;
+  letter-spacing: .1em;
+  color: #22c55e;
+  background: #e5f5eb;
+  padding: .15rem .5rem;
+  border-radius: 999px;
+  border: 1px solid #bfe3cd;
+}
+.dv-author-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--surface);
+  box-shadow: 0 4px 12px -4px var(--shadow);
+  background: var(--surface);
+}
+.dv-author-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.dv-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #fff;
+  background: var(--green-700);
+}
+.dv-author-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: .4rem .8rem;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all .15s;
+}
+.dv-author-btn:hover {
+  border-color: var(--green-600);
+  color: var(--green-700);
+}
+.dv-author-stats {
+  font-size: .7rem;
+  color: var(--muted);
+  margin-top: .5rem;
+}
+.dv-author-stats b {
+  color: var(--ink);
+}
+
+/* Conteúdo à Direita */
+.doc-view-content {
+  padding: 1.5rem 2rem;
+  min-height: 400px;
+  position: relative;
+}
+.dvc-timestamp {
+  font-size: .7rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  padding-bottom: .5rem;
+  border-bottom: 1px dashed var(--line);
+}
+.dvc-isolated {
+  line-height: 1.7;
+  font-size: .95rem;
+  color: var(--ink);
+}
+.dvc-post-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.7;
+  font-size: .95rem;
+}
+.dvc-cover {
+  margin: 1.5rem 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.dvc-cover img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.dvc-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  font-size: .7rem;
+  color: var(--muted);
+}
+
+/* Modo Escuro para Visualização */
+:root[data-theme="dark"] .doc-view-page {
+  background: var(--surface);
+  border-color: var(--line);
+}
+:root[data-theme="dark"] .doc-view-header {
+  background: linear-gradient(135deg, #0a1812, #0e241a) !important;
+}
+:root[data-theme="dark"] .doc-view-profile {
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+:root[data-theme="dark"] .dv-author-name {
+  color: var(--green-700);
+}
+:root[data-theme="dark"] .dv-author-status {
+  background: #0f2a1c;
+  border-color: #1d4a31;
+  color: #7fe0a8;
+}
+:root[data-theme="dark"] .dv-author-btn {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+:root[data-theme="dark"] .dvc-timestamp {
+  border-color: var(--line);
+}
+:root[data-theme="dark"] .dvc-footer {
+  border-color: var(--line);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GRUPOS COM SUPORTE A GRADIENTE
+   ═══════════════════════════════════════════════════════════════════════════ */
+/* O JS já aplica o background dinamicamente via style inline usando groupBg() 
+   Este CSS garante que elementos específicos respeitem isso e tenham transições suaves */
+.forum-ico[style*="gradient"],
+.chip[style*="gradient"],
+.dv-author-avatar[style*="gradient"] {
+  transition: background .3s ease;
+}
+
+/* Preview de gradiente no formulário de grupo */
+#g-preview {
+  border-radius: 12px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: .9rem;
+  text-shadow: 0 1px 3px rgba(0,0,0,.4);
+  box-shadow: 0 4px 12px -4px rgba(0,0,0,.3);
+  transition: background .3s ease;
+}
