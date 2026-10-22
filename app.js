@@ -1,69 +1,67 @@
-/* ══════════ FAMR • APP.JS COMPLETO v41 (Grupo Prioritário | Paginação Respostas | Doc Hierárquico | Form Custom) ══════════ */
-
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* ══════════ FAMR • APP.JS COMPLETO v42 (RBAC Chefia | Fix Pendentes | Doc Hierárquico | Form Custom) ══════════ */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
 const statusChip = s => s==='approved' ? '<span class="chip chip-ok">APROVADO</span>' : s==='rejected' ? '<span class="chip chip-no">REPROVADO</span>' : '<span class="chip chip-wait">EM ANÁLISE</span>';
-
 const ICON_OPTIONS = [
-  'fa-shield-halved','fa-shield','fa-star','fa-medal','fa-award','fa-crown','fa-flag','fa-bullhorn','fa-gavel','fa-scale-balanced','fa-hand-fist','fa-crosshairs','fa-eye','fa-binoculars','fa-anchor','fa-life-ring','fa-fire-extinguisher','fa-dove','fa-feather-pointed',
-  'fa-user-shield','fa-users','fa-user-tie','fa-user-secret','fa-person-military-rifle','fa-user-doctor','fa-user-nurse','fa-person-dress','fa-child','fa-people-group','fa-address-card','fa-id-badge','fa-id-card','fa-signature',
-  'fa-tree','fa-leaf','fa-seedling','fa-mountain-sun','fa-water','fa-snowflake','fa-sun','fa-moon','fa-cloud','fa-bolt','fa-fire','fa-wind','fa-dragon','fa-paw','fa-dog','fa-cat','fa-horse','fa-falcon','fa-owl','fa-bug','fa-spider',
-  'fa-plane','fa-helicopter','fa-truck-fast','fa-truck','fa-car','fa-bus','fa-ship','fa-train','fa-motorcycle','fa-bicycle','fa-cart-shopping','fa-boxes-stacked','fa-warehouse','fa-oil-can','fa-gas-pump','fa-wrench','fa-screwdriver-wrench','fa-tools','fa-hammer','fa-puzzle-piece','fa-gears','fa-industry',
-  'fa-comment','fa-comments','fa-envelope','fa-paper-plane','fa-phone','fa-video','fa-microphone','fa-rss','fa-satellite-dish','fa-tower-broadcast',
-  'fa-book-open','fa-book','fa-scroll','fa-file-lines','fa-file-signature','fa-folder-open','fa-folder','fa-graduation-cap','fa-school','fa-pen','fa-pencil','fa-pen-to-square','fa-clipboard-list','fa-clipboard-check','fa-list-check','fa-bookmark','fa-quote-left',
-  'fa-coins','fa-money-bill-wave','fa-chart-pie','fa-chart-line','fa-chart-column','fa-calculator','fa-percent','fa-sack-dollar',
-  'fa-heart','fa-heart-pulse','fa-staff-snake','fa-pills','fa-syringe','fa-hand-holding-medical','fa-crutch',
-  'fa-laptop-code','fa-desktop','fa-mobile-screen','fa-server','fa-database','fa-network-wired','fa-wifi','fa-lock','fa-unlock','fa-key','fa-user-lock','fa-mask','fa-ghost','fa-robot','fa-brain','fa-lightbulb','fa-flask','fa-vial','fa-atom','fa-magnet','fa-gamepad','fa-chess-knight','fa-chess-rook','fa-chess-queen','fa-chess-bishop','fa-chess-pawn','fa-gem','fa-ring','fa-hourglass-half','fa-stopwatch','fa-clock','fa-calendar-days','fa-map-location-dot','fa-compass','fa-route','fa-road','fa-building-shield','fa-city','fa-monument','fa-archway','fa-place-of-worship','fa-church','fa-bible','fa-earth-americas','fa-earth-europe','fa-earth-asia','fa-globe','fa-satellite','fa-rocket','fa-meteor','fa-comet','fa-star-half-stroke','fa-certificate','fa-stamp','fa-ticket','fa-tags','fa-tag','fa-bell','fa-volume-high','fa-print','fa-scissors','fa-paperclip','fa-thumbtack','fa-pushpin','fa-magnifying-glass','fa-filter','fa-sort','fa-diagram-project','fa-sitemap','fa-layer-group','fa-cubes','fa-cube','fa-dice','fa-palette','fa-fill-drip','fa-font','fa-heading','fa-paragraph','fa-align-left','fa-align-center','fa-align-right','fa-align-justify','fa-list-ul','fa-list-ol','fa-quote-right','fa-code','fa-terminal','fa-trophy','fa-ranking-star','fa-flag-checkered','fa-parachute-box','fa-basketball','fa-football','fa-baseball','fa-volleyball','fa-table-tennis-paddle-ball','fa-bowling-ball','fa-golf-ball-tee','fa-hockey-puck','fa-futbol','fa-running','fa-dumbbell','fa-person-swimming','fa-sailboat','fa-broom','fa-first-aid','fa-kit-medical','fa-prescription','fa-tablets','fa-mortar-pestle','fa-utensils','fa-mug-hot','fa-wine-glass','fa-beer-mug-empty','fa-coffee','fa-ice-cream','fa-cake-candles','fa-cookie','fa-carrot','fa-apple-whole','fa-lemon','fa-orange','fa-grape','fa-strawberry','fa-blueberry','fa-drumstick-bite','fa-cheese','fa-egg','fa-bread-slice','fa-hamburger','fa-store','fa-shop','fa-box','fa-archive','fa-trash-can','fa-recycle','fa-tractor','fa-tree-city','fa-feather','fa-bird','fa-crow','fa-peacock','fa-swan','fa-duck','fa-turkey','fa-chicken','fa-moth','fa-bee','fa-ladybug','fa-beetle','fa-scorpion','fa-snake','fa-lizard','fa-turtle','fa-frog','fa-crocodile','fa-skull-crossbones','fa-wand-magic-sparkles','fa-hat-wizard','fa-dungeon','fa-kaaba','fa-mosque','fa-synagogue','fa-star-and-crescent','fa-star-of-david','fa-yin-yang','fa-ufo','fa-clover','fa-joint'
+'fa-shield-halved','fa-shield','fa-star','fa-medal','fa-award','fa-crown','fa-flag','fa-bullhorn','fa-gavel','fa-scale-balanced','fa-hand-fist','fa-crosshairs','fa-eye','fa-binoculars','fa-anchor','fa-life-ring','fa-fire-extinguisher','fa-dove','fa-feather-pointed',
+'fa-user-shield','fa-users','fa-user-tie','fa-user-secret','fa-person-military-rifle','fa-user-doctor','fa-user-nurse','fa-person-dress','fa-child','fa-people-group','fa-address-card','fa-id-badge','fa-id-card','fa-signature',
+'fa-tree','fa-leaf','fa-seedling','fa-mountain-sun','fa-water','fa-snowflake','fa-sun','fa-moon','fa-cloud','fa-bolt','fa-fire','fa-wind','fa-dragon','fa-paw','fa-dog','fa-cat','fa-horse','fa-falcon','fa-owl','fa-bug','fa-spider',
+'fa-plane','fa-helicopter','fa-truck-fast','fa-truck','fa-car','fa-bus','fa-ship','fa-train','fa-motorcycle','fa-bicycle','fa-cart-shopping','fa-boxes-stacked','fa-warehouse','fa-oil-can','fa-gas-pump','fa-wrench','fa-screwdriver-wrench','fa-tools','fa-hammer','fa-puzzle-piece','fa-gears','fa-industry',
+'fa-comment','fa-comments','fa-envelope','fa-paper-plane','fa-phone','fa-video','fa-microphone','fa-rss','fa-satellite-dish','fa-tower-broadcast',
+'fa-book-open','fa-book','fa-scroll','fa-file-lines','fa-file-signature','fa-folder-open','fa-folder','fa-graduation-cap','fa-school','fa-pen','fa-pencil','fa-pen-to-square','fa-clipboard-list','fa-clipboard-check','fa-list-check','fa-bookmark','fa-quote-left',
+'fa-coins','fa-money-bill-wave','fa-chart-pie','fa-chart-line','fa-chart-column','fa-calculator','fa-percent','fa-sack-dollar',
+'fa-heart','fa-heart-pulse','fa-staff-snake','fa-pills','fa-syringe','fa-hand-holding-medical','fa-crutch',
+'fa-laptop-code','fa-desktop','fa-mobile-screen','fa-server','fa-database','fa-network-wired','fa-wifi','fa-lock','fa-unlock','fa-key','fa-user-lock','fa-mask','fa-ghost','fa-robot','fa-brain','fa-lightbulb','fa-flask','fa-vial','fa-atom','fa-magnet','fa-gamepad','fa-chess-knight','fa-chess-rook','fa-chess-queen','fa-chess-bishop','fa-chess-pawn','fa-gem','fa-ring','fa-hourglass-half','fa-stopwatch','fa-clock','fa-calendar-days','fa-map-location-dot','fa-compass','fa-route','fa-road','fa-building-shield','fa-city','fa-monument','fa-archway','fa-place-of-worship','fa-church','fa-bible','fa-earth-americas','fa-earth-europe','fa-earth-asia','fa-globe','fa-satellite','fa-rocket','fa-meteor','fa-comet','fa-star-half-stroke','fa-certificate','fa-stamp','fa-ticket','fa-tags','fa-tag','fa-bell','fa-volume-high','fa-print','fa-scissors','fa-paperclip','fa-thumbtack','fa-pushpin','fa-magnifying-glass','fa-filter','fa-sort','fa-diagram-project','fa-sitemap','fa-layer-group','fa-cubes','fa-cube','fa-dice','fa-palette','fa-fill-drip','fa-font','fa-heading','fa-paragraph','fa-align-left','fa-align-center','fa-align-right','fa-align-justify','fa-list-ul','fa-list-ol','fa-quote-right','fa-code','fa-terminal','fa-trophy','fa-ranking-star','fa-flag-checkered','fa-parachute-box','fa-basketball','fa-football','fa-baseball','fa-volleyball','fa-table-tennis-paddle-ball','fa-bowling-ball','fa-golf-ball-tee','fa-hockey-puck','fa-futbol','fa-running','fa-dumbbell','fa-person-swimming','fa-sailboat','fa-broom','fa-first-aid','fa-kit-medical','fa-prescription','fa-tablets','fa-mortar-pestle','fa-utensils','fa-mug-hot','fa-wine-glass','fa-beer-mug-empty','fa-coffee','fa-ice-cream','fa-cake-candles','fa-cookie','fa-carrot','fa-apple-whole','fa-lemon','fa-orange','fa-grape','fa-strawberry','fa-blueberry','fa-drumstick-bite','fa-cheese','fa-egg','fa-bread-slice','fa-hamburger','fa-store','fa-shop','fa-box','fa-archive','fa-trash-can','fa-recycle','fa-tractor','fa-tree-city','fa-feather','fa-bird','fa-crow','fa-peacock','fa-swan','fa-duck','fa-turkey','fa-chicken','fa-moth','fa-bee','fa-ladybug','fa-beetle','fa-scorpion','fa-snake','fa-lizard','fa-turtle','fa-frog','fa-crocodile','fa-skull-crossbones','fa-wand-magic-sparkles','fa-hat-wizard','fa-dungeon','fa-kaaba','fa-mosque','fa-synagogue','fa-star-and-crescent','fa-star-of-david','fa-yin-yang','fa-ufo','fa-clover','fa-joint'
 ];
-const SAFE_ICONS = [...new Set(ICON_OPTIONS.filter(i=>/^fa-/.test(i)))];
-
+const SAFE_ICONS = [...new Set(ICON_OPTIONS.filter(i => /^fa-/.test(i)))];
 const GROUP_TYPES = { open:'ABERTO', closed:'FECHADO', invisible:'INVISÍVEL' };
 const SLUGS_REQUIRE_GROUP = ['companhias'];
 const DOC_TYPES = { general:'GERAL', request:'REQUERIMENTO', listing:'LISTAGEM' };
 
 /* ══════════ TRADUÇÃO DE LOGS PT ══════════ */
 const ACTION_PT = {
-  LOGIN:'Login', LOGOUT:'Logout', REGISTRO:'Cadastro', USER_STATUS:'Alteração de status',
-  USER_INVISIBLE:'Visibilidade alterada', LOCK_REMOVIDO_ADMIN:'Desbloqueio administrativo',
-  SENHA_LINK_ENVIADO:'Link de senha enviado', SENHA_REDEFINIDA:'Senha redefinida',
-  POST_CRIADO:'Publicação criada', POST_EDITADO:'Publicação editada', POST_EXCLUIDO:'Publicação excluída',
-  SECTION_SAVE:'Setor salvo', SUBTOPIC_SAVE:'Subtópico salvo',
-  GROUP_SAVE:'Grupo salvo', GROUP_DEL:'Grupo excluído', USER_GROUPS:'Grupos de usuário alterados',
-  MANUTENCAO:'Modo manutenção', AVISO:'Aviso publicado', REVIEW_REQUEST:'Análise de protocolo',
-  DOC_CREATE:'Documento criado', DOC_UPDATE:'Documento atualizado', DOC_DEL:'Documento excluído',
-  DOC_PAGE_SAVE:'Página salva', DOC_PAGE_DEL:'Página excluída',
-  REPLY_POSTED:'Resposta enviada'
+LOGIN:'Login', LOGOUT:'Logout', REGISTRO:'Cadastro', USER_STATUS:'Alteração de status',
+USER_INVISIBLE:'Visibilidade alterada', LOCK_REMOVIDO_ADMIN:'Desbloqueio administrativo',
+SENHA_LINK_ENVIADO:'Link de senha enviado', SENHA_REDEFINIDA:'Senha redefinida',
+POST_CRIADO:'Publicação criada', POST_EDITADO:'Publicação editada', POST_EXCLUIDO:'Publicação excluída',
+SECTION_SAVE:'Setor salvo', SUBTOPIC_SAVE:'Subtópico salvo',
+GROUP_SAVE:'Grupo salvo', GROUP_DEL:'Grupo excluído', USER_GROUPS:'Grupos de usuário alterados',
+MANUTENCAO:'Modo manutenção', AVISO:'Aviso publicado', REVIEW_REQUEST:'Análise de protocolo',
+DOC_CREATE:'Documento criado', DOC_UPDATE:'Documento atualizado', DOC_DEL:'Documento excluído',
+DOC_PAGE_SAVE:'Página salva', DOC_PAGE_DEL:'Página excluída',
+REPLY_POSTED:'Resposta enviada'
 };
 function ptAction(a){ return ACTION_PT[a] || a; }
 function shortId(s){ return String(s||'').slice(0,8)+'…'; }
-function truncate(s,n){ return String(s||'').length>n ? String(s).slice(0,n)+'…' : String(s||''); }
+function truncate(s,n){ return String(s||'').length > n ? String(s).slice(0,n)+'…' : String(s||''); }
 function statusLabel(s){ return ({active:'ativo', pending:'pendente', banned:'banido', approved:'aprovado', rejected:'reprovado'})[s] || s; }
 function ptDetails(d, action){
   if(!d) return '—';
   const out = [];
-  if(action==='USER_STATUS' && d.id)   out.push(`usuário ${shortId(d.id)} → ${statusLabel(d.status)}`);
-  else if(action==='USER_INVISIBLE')  out.push(`usuário ${shortId(d.id)} ficou ${d.v?'oculto':'visível'}`);
+  if(action==='USER_STATUS' && d.bulk) out.push(`aprovação em massa: ${d.count} usuário(s) → ${statusLabel(d.status)}`);
+  else if(action==='USER_STATUS' && d.id) out.push(`usuário ${shortId(d.id)} → ${statusLabel(d.status)}`);
+  else if(action==='USER_INVISIBLE') out.push(`usuário ${shortId(d.id)} ficou ${d.v?'oculto':'visível'}`);
   else if(action==='LOCK_REMOVIDO_ADMIN') out.push(`conta ${shortId(d.id)} destravada`);
-  else if(action==='POST_CRIADO')     out.push(`subtópico ${shortId(d.subtopicId||d.id)}`);
+  else if(action==='POST_CRIADO') out.push(`subtópico ${shortId(d.subtopicId||d.id)}`);
   else if(action==='POST_EDITADO'||action==='POST_EXCLUIDO') out.push(`publicação ${shortId(d.id)}`);
-  else if(action==='GROUP_SAVE')      out.push(`grupo "${d.name||'?'}" (${d.group_type||'?'} · ordem ${d.order_index??'-'}${d.is_priority?' · PRIORITÁRIO':''})`);
-  else if(action==='GROUP_DEL')       out.push(`grupo ${shortId(d.id)}`);
-  else if(action==='USER_GROUPS')     out.push(`usuário ${shortId(d.userId)} recebeu ${Array.isArray(d.ids)?d.ids.length+' grupo(s)':d.ids}`);
-  else if(action==='SECTION_SAVE')    out.push(`setor "${d.name||'?'}" (/ ${d.slug||'?'})`);
-  else if(action==='SUBTOPIC_SAVE')   out.push(`subtópico "${d.name||'?'}"`);
-  else if(action==='MANUTENCAO')      out.push(`manutenção ${d.enabled?'ATIVADA':'desativada'}${d.message?` · msg: "${truncate(d.message,40)}"`:''}`);
-  else if(action==='AVISO')           out.push(d.text ? `aviso: "${truncate(d.text,60)}"` : 'aviso removido');
+  else if(action==='GROUP_SAVE') out.push(`grupo "${d.name||'?'}" (${d.group_type||'?'} · ordem ${d.order_index??'-'}${d.is_priority?' · PRIORITÁRIO':''}${d.is_admin?' · CHEFIA':''})`);
+  else if(action==='GROUP_DEL') out.push(`grupo ${shortId(d.id)}`);
+  else if(action==='USER_GROUPS') out.push(`usuário ${shortId(d.userId)} recebeu ${Array.isArray(d.ids)?d.ids.length+' grupo(s)':d.ids}`);
+  else if(action==='SECTION_SAVE') out.push(`setor "${d.name||'?'}" (/${d.slug||'?'})`);
+  else if(action==='SUBTOPIC_SAVE') out.push(`subtópico "${d.name||'?'}"`);
+  else if(action==='MANUTENCAO') out.push(`manutenção ${d.enabled?'ATIVADA':'desativada'}${d.message?` · msg: "${truncate(d.message,40)}"`:''}`);
+  else if(action==='AVISO') out.push(d.text ? `aviso: "${truncate(d.text,60)}"` : 'aviso removido');
   else if(action==='SENHA_LINK_ENVIADO') out.push(`nickname: ${d.nick||'?'}`);
-  else if(action==='REVIEW_REQUEST')  out.push(`protocolo ${shortId(d.req_id)} → ${statusLabel(d.new_status)}${d.note?` · motivo: "${truncate(d.note,40)}"`:''}`);
-  else if(action==='DOC_CREATE')      out.push(`documento "${d.title||'?'}"${d.category?` (${d.category})`:''}${d.doc_type?` [${DOC_TYPES[d.doc_type]||d.doc_type}]`:''}${d.page_name?` · página: ${d.page_name}`:''}`);
-  else if(action==='DOC_UPDATE')      out.push(`documento "${d.title||'?'}" atualizado`);
-  else if(action==='DOC_DEL')         out.push(`documento ${shortId(d.id)} excluído`);
-  else if(action==='DOC_PAGE_SAVE')   out.push(`página "${d.name||'?'}" (${d.slug||'?'})`);
-  else if(action==='DOC_PAGE_DEL')    out.push(`página ${shortId(d.id)} excluída`);
-  else if(action==='REPLY_POSTED')    out.push(`resposta em ${shortId(d.postId||d.docId)}`);
-  else if(action==='LOGIN')           out.push(`autenticação de ${d.nick||STATE.profile?.nickname||'usuário'}`);
-  else if(action==='LOGOUT')          out.push(`saída de ${d.nick||STATE.profile?.nickname||'usuário'}`);
-  else { Object.entries(d).forEach(([k,v])=>out.push(`${k}: ${typeof v==='object'?JSON.stringify(v):v}`)); }
+  else if(action==='REVIEW_REQUEST') out.push(`protocolo ${shortId(d.req_id)} → ${statusLabel(d.new_status)}${d.note?` · motivo: "${truncate(d.note,40)}"`:''}`);
+  else if(action==='DOC_CREATE') out.push(`documento "${d.title||'?'}"${d.category?` (${d.category})`:''}${d.doc_type?` [${DOC_TYPES[d.doc_type]||d.doc_type}]`:''}${d.page_name?` · página: ${d.page_name}`:''}`);
+  else if(action==='DOC_UPDATE') out.push(`documento "${d.title||'?'}" atualizado`);
+  else if(action==='DOC_DEL') out.push(`documento ${shortId(d.id)} excluído`);
+  else if(action==='DOC_PAGE_SAVE') out.push(`página "${d.name||'?'}" (${d.slug||'?'})`);
+  else if(action==='DOC_PAGE_DEL') out.push(`página ${shortId(d.id)} excluída`);
+  else if(action==='REPLY_POSTED') out.push(`resposta em ${shortId(d.postId||d.docId)}`);
+  else if(action==='LOGIN') out.push(`autenticação de ${d.nick||STATE.profile?.nickname||'usuário'}`);
+  else if(action==='LOGOUT') out.push(`saída de ${d.nick||STATE.profile?.nickname||'usuário'}`);
+  else { Object.entries(d).forEach(([k,v]) => out.push(`${k}: ${typeof v==='object'?JSON.stringify(v):v}`)); }
   return out.join(' · ') || '—';
 }
 
@@ -79,7 +77,7 @@ async function cachedQuery(key, factory, ttl=60_000){
 const PAGE_SIZE = 25;
 const REPLIES_PER_PAGE = 10;
 
-/* ══════════ HELPERS GRUPO (COM PRIORIDADE E GRADIENTE) ══════════ */
+/* ══════════ HELPERS GRUPO (COM PRIORIDADE, CHEFIA E GRADIENTE) ══════════ */
 function groupBg(g){
   if(!g) return '#14563f';
   if(g.color_mode === 'gradient' && g.color_end){
@@ -96,28 +94,32 @@ function groupBorder(g){
 function groupChip(g){
   if(!g) return '<span class="chip chip-neutral">Geral</span>';
   const bg = g.color_mode === 'gradient' && g.color_end ? `${g.color}22` : `${g.color}18`;
-  return `<span class="chip" style="background:${bg};color:${g.color};border:1px solid ${groupBorder(g)}"><i class="fas ${g.icon||'fa-shield-halved'}"></i> ${esc(g.name)}${g.is_priority?' <i class="fas fa-crown text-[9px]" title="Prioritário"></i>':''}</span>`;
+  return `<span class="chip" style="background:${bg};color:${g.color};border:1px solid ${groupBorder(g)}"><i class="fas ${g.icon||'fa-shield-halved'}"></i> ${esc(g.name)}${g.is_priority?' <i class="fas fa-crown text-[9px]" title="Prioritário"></i>':''}${g.is_admin?' <i class="fas fa-user-shield text-[9px] text-red-600" title="Chefia"></i>':''}</span>`;
 }
 function sortGroups(list){ return [...(list||[])].sort((a,b)=>(a.order_index||0)-(b.order_index||0)); }
-
-/** Retorna o grupo PRIORITÁRIO (maior is_priority=true na sequência de order_index) */
 function priorityGroupOf(list){
   const sorted = sortGroups(list);
-  /* Primeiro procura por is_priority marcando qual tem maior peso */
   let best = null;
   for(const g of sorted){
     if(g.is_priority){
-      if(!best || (g.priority_level||0) >= (best.priority_level||0)){
-        best = g;
-      }
+      if(!best || (g.priority_level||0) >= (best.priority_level||0)) best = g;
     }
   }
-  /* Se nenhum marcado como prioritário, usa o primeiro da lista */
   return best || sorted[0] || null;
 }
 function primaryGroupOf(list){ return priorityGroupOf(list); }
 function colorGroupOf(list){ return sortGroups(list).find(g => g.apply_color) || null; }
 function userIconOf(list){ return priorityGroupOf(list)?.icon || 'fa-user'; }
+
+/* ══════════ v42 FIX: isAdmin() POR GRUPO (RBAC) ══════════
+   Espelha famr_is_admin() do SQL:
+   - membro de QUALQUER grupo com is_admin=true = admin
+   - fallback vital: nickname 'admin master' sempre admin (anti-lockout) */
+function isAdmin(){
+  if(!STATE.profile) return false;
+  if(STATE.profile.nickname === 'admin master') return true;
+  return (STATE.groups || []).some(g => g.is_admin === true);
+}
 
 /* ══════════ PERMISSÕES ESTRITAS ══════════ */
 function permOf(type,id){ return STATE.perms?.[type+':'+id] || null; }
@@ -172,7 +174,6 @@ window.toggleTheme = function(){
   try{ localStorage.setItem('famr-theme', dark?'light':'dark'); }catch(e){}
   applyThemeIcon();
 };
-
 function toast(msg, type='ok'){
   const el = document.createElement('div');
   el.className = 'toast ' + (type==='ok'?'':type);
@@ -180,7 +181,6 @@ function toast(msg, type='ok'){
   document.getElementById('toast-root').appendChild(el);
   setTimeout(() => el.remove(), 4500);
 }
-
 function showAlert(boxId, kind, html){
   const box = document.getElementById(boxId);
   if(!box) return;
@@ -190,7 +190,6 @@ function showAlert(boxId, kind, html){
   box.classList.remove('hidden');
 }
 function hideAlert(boxId){ const box=document.getElementById(boxId); if(box){ box.classList.add('hidden'); box.innerHTML=''; } }
-
 function openModal(title, bodyHTML, footerHTML=''){
   document.getElementById('modal-title').innerHTML = title;
   document.getElementById('modal-body').innerHTML = bodyHTML;
@@ -201,17 +200,15 @@ function closeModal(){
   document.getElementById('modal-root').classList.add('hidden');
   if(window._modalResolve){ window._modalResolve(null); window._modalResolve=null; }
 }
-
 function confirmDlg(msg, opts={}){
   const { title='Confirmar', okText='Confirmar', cancelText='Cancelar', danger=false } = opts;
   return new Promise(res => {
     openModal(`<i class="fas fa-triangle-exclamation ${danger?'text-red-500':'text-gold-500'} mr-2"></i>${esc(title)}`,
       `<p class="text-sm text-muted leading-relaxed">${msg}</p>`,
-      `<button class="btn btn-outline btn-sm" id="_cf-cancel">${esc(cancelText)}</button>
-       <button class="btn ${danger?'btn-danger':'btn-primary'} btn-sm" id="_cf-ok">${esc(okText)}</button>`);
+      `<button class="btn btn-outline btn-sm" id="_cf-cancel">${esc(cancelText)}</button> <button class="btn ${danger?'btn-danger':'btn-primary'} btn-sm" id="_cf-ok">${esc(okText)}</button>`);
     window._modalResolve = res;
-    document.getElementById('_cf-ok').onclick = ()=>{ window._modalResolve=null; closeModal(); res(true); };
-    document.getElementById('_cf-cancel').onclick = ()=>{ window._modalResolve=null; closeModal(); res(false); };
+    document.getElementById('_cf-ok').onclick = () => { window._modalResolve=null; closeModal(); res(true); };
+    document.getElementById('_cf-cancel').onclick = () => { window._modalResolve=null; closeModal(); res(false); };
   });
 }
 function promptDlg(label, def='', opts={}){
@@ -222,17 +219,15 @@ function promptDlg(label, def='', opts={}){
       : `<input id="_pf-input" class="input" type="${inputType}" value="${esc(def)}" placeholder="${esc(def)}">`;
     openModal(`<i class="fas fa-pen-to-square text-gold-500 mr-2"></i>${esc(title)}`,
       `<label class="field"><span>${esc(label)}</span>${field}</label>`,
-      `<button class="btn btn-outline btn-sm" id="_pf-cancel">Cancelar</button>
-       <button class="btn btn-primary btn-sm" id="_pf-ok">${esc(okText)}</button>`);
+      `<button class="btn btn-outline btn-sm" id="_pf-cancel">Cancelar</button> <button class="btn btn-primary btn-sm" id="_pf-ok">${esc(okText)}</button>`);
     const inp = document.getElementById('_pf-input');
-    setTimeout(()=>inp.focus(), 50);
+    setTimeout(() => inp.focus(), 50);
     window._modalResolve = res;
-    document.getElementById('_pf-ok').onclick = ()=>{ const v=inp.value.trim(); window._modalResolve=null; closeModal(); res(v); };
-    document.getElementById('_pf-cancel').onclick = ()=>{ window._modalResolve=null; closeModal(); res(null); };
-    inp.addEventListener('keydown', e=>{ if(e.key==='Enter' && !multiline){ e.preventDefault(); const v=inp.value.trim(); window._modalResolve=null; closeModal(); res(v); } });
+    document.getElementById('_pf-ok').onclick = () => { const v=inp.value.trim(); window._modalResolve=null; closeModal(); res(v); };
+    document.getElementById('_pf-cancel').onclick = () => { window._modalResolve=null; closeModal(); res(null); };
+    inp.addEventListener('keydown', e => { if(e.key==='Enter' && !multiline){ e.preventDefault(); const v=inp.value.trim(); window._modalResolve=null; closeModal(); res(v); } });
   });
 }
-
 function updateUserChip(){
   if(!STATE.profile) return;
   const nick = STATE.profile.nickname || '—';
@@ -245,7 +240,6 @@ function updateUserChip(){
   if(gp){ gp.textContent = main ? main.name : 'Sem grupo'; if(main) gp.style.color = main.color; }
   if(av){ av.textContent = nick.charAt(0).toUpperCase(); av.style.background = groupBg(cg); }
 }
-
 function startQsClock(){
   if(window._qsTimer){ clearInterval(window._qsTimer); window._qsTimer = null; }
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
@@ -271,9 +265,7 @@ async function route(){
   if(window._qsTimer){ clearInterval(window._qsTimer); window._qsTimer = null; }
   const c = document.getElementById('content');
   if(!c) return;
-  
   forceFullWidthContent();
-
   if(page==='doc-new'){ renderDocWorkspace(null, subParam); return; }
   if(page==='doc-edit'){ renderDocWorkspace(param, subParam); return; }
   if(page==='doc-page'){ await renderDocPage(c, param); return; }
@@ -323,16 +315,13 @@ async function buildSidebar(){
   if(!nav) return;
   const { data: sections } = await supabase.from('sections').select('*').order('order_index');
   STATE.sections = sections || [];
-  let html = `<a class="nav-item" data-key="home" href="#/home"><i class="fas fa-house"></i> Início</a>
-              <div class="nav-sep">Tópicos oficiais</div>`;
+  let html = `<a class="nav-item" data-key="home" href="#/home"><i class="fas fa-house"></i> Início</a><div class="nav-sep">Tópicos oficiais</div>`;
   for(const s of STATE.sections){
     if(!canSeeSection(s)) continue;
     html += `<a class="nav-item" data-key="section/${s.slug}" href="#/section/${s.slug}"><i class="fas ${esc(s.icon||'fa-folder')}"></i> ${esc(s.name)}</a>`;
   }
-  html += `<div class="nav-sep">Minha conta</div>
-           <a class="nav-item" data-key="perfil/me" href="#/perfil/me"><i class="fas fa-id-badge"></i> Meu perfil</a>`;
-  if(isAdmin()) html += `<div class="nav-sep">Comando</div>
-           <a class="nav-item" data-key="admin" href="#/admin"><i class="fas fa-sliders"></i> Painel Admin</a>`;
+  html += `<div class="nav-sep">Minha conta</div><a class="nav-item" data-key="perfil/me" href="#/perfil/me"><i class="fas fa-id-badge"></i> Meu perfil</a>`;
+  if(isAdmin()) html += `<div class="nav-sep">Comando</div><a class="nav-item" data-key="admin" href="#/admin"><i class="fas fa-sliders"></i> Painel Admin</a>`;
   nav.innerHTML = html;
   updateUserChip(); applyThemeIcon();
   if(STATE.settings.maintenance?.enabled && isAdmin()) document.getElementById('maintenance-banner').classList.remove('hidden');
@@ -340,14 +329,15 @@ async function buildSidebar(){
 
 /* ══════════ HOME ══════════ */
 async function renderHome(c){
-  const bundle = await cachedQuery('home:data', async ()=>{
+  const bundle = await cachedQuery('home:data', async () => {
     const [sections, subs, postsMeta, nMembers, newest, groups, allUG, recentDocs] = await Promise.all([
       supabase.from('sections').select('id,name,icon,slug,order_index,required_group_id').order('order_index'),
       supabase.from('subtopics').select('id,name,description,section_id,required_group_id,is_request_form,allow_posts').order('order_index'),
       supabase.from('posts').select('id,subtopic_id,title,created_at,profiles_view(nickname)').order('created_at',{ascending:false}).limit(500),
       supabase.from('profiles_view').select('*',{count:'exact',head:true}).eq('status','active').neq('nickname','admin master'),
       supabase.from('profiles_view').select('id,nickname,created_at').eq('status','active').eq('is_invisible',false).neq('nickname','admin master').order('created_at',{ascending:false}).limit(5),
-      supabase.from('groups').select('id,name,color,color_end,color_mode,gradient_angle,icon,apply_color,group_type,order_index,parent_id,is_priority,priority_level').neq('group_type','invisible').order('order_index'),
+      /* v42: is_admin incluído no select */
+      supabase.from('groups').select('id,name,color,color_end,color_mode,gradient_angle,icon,apply_color,group_type,order_index,parent_id,is_priority,priority_level,is_admin').neq('group_type','invisible').order('order_index'),
       supabase.from('user_groups').select('group_id').limit(10000),
       supabase.from('documents').select('id,title,category,updated_at,cover_url,doc_type,profiles_view(nickname)').order('updated_at',{ascending:false}).limit(8)
     ]);
@@ -357,14 +347,14 @@ async function renderHome(c){
   const memberCount={}; (ug||[]).forEach(m=>memberCount[m.group_id]=(memberCount[m.group_id]||0)+1);
   let lastChip='<em>nenhum</em>';
   if(newest?.[0]){
-    const ic = userIconOf((await cachedQuery('lastug:'+newest[0].id, ()=> supabase.from('user_groups').select('groups(id,icon,order_index,apply_color,is_priority)').eq('user_id',newest[0].id), 120_000)).data||[]);
+    const ic = userIconOf((await cachedQuery('lastug:'+newest[0].id, () => supabase.from('user_groups').select('groups(id,icon,order_index,apply_color,is_priority)').eq('user_id',newest[0].id), 120_000)).data||[]);
     lastChip=`<span class="sg-link"><i class="fas ${ic}"></i> ${esc(newest[0].nickname)}</span>`;
   }
   const counts={},lastMap={};
   (posts||[]).forEach(p=>{counts[p.subtopic_id]=(counts[p.subtopic_id]||0)+1;if(!lastMap[p.subtopic_id])lastMap[p.subtopic_id]=p;});
   const visibleSubs=(subs||[]).filter(s=>canViewSub(s));
   const totalOnline=1, pubs=(posts||[]).length;
-  const ann=(STATE.settings.announcement&&STATE.settings.announcement.text)?STATE.settings.announcement.text.trim():'';
+  const ann=(STATE.settings.announcement && STATE.settings.announcement.text)?STATE.settings.announcement.text.trim():'';
   const legend=[
     {icon:'fa-comments',color:'#14563f',label:'Tópico aberto para publicação'},
     {icon:'fa-lock',color:'#c9a227',label:'Conteúdo reservado a companhia'},
@@ -373,54 +363,52 @@ async function renderHome(c){
   ];
   const myIds=new Set((STATE.groups||[]).map(g=>g.id));
   c.innerHTML = `
-  <section class="quartel-strip fade-up">
-    <div class="qs-glow" aria-hidden="true"></div>
-    <div class="qs-left"><span class="qs-badge"><i class="fas fa-shield-halved"></i></span>
-      <div class="qs-txt"><b class="qs-title">Plantão do Quartel</b>
-        <span class="qs-sub"><i class="far fa-clock"></i><span class="qs-clock">--:--:--</span>•<span id="qs-date"></span></span></div></div>
-    <div class="qs-mid">
-      <span class="qs-pill"><i class="fas fa-circle qs-on"></i> ${totalOnline} online</span>
-      <span class="qs-pill"><i class="fas fa-users"></i> ${registeredCount} efetivo</span>
-      <span class="qs-pill"><i class="fas fa-comments"></i> ${pubs} publicações</span>
-      <span class="qs-pill"><i class="fas ${priorityGroupOf(STATE.groups)?.icon || 'fa-id-badge'}"></i> ${esc(STATE.profile.nickname)}</span>
-    </div>
-    ${ann ? `<div class="qs-notice" title="${esc(ann)}"><i class="fas fa-bullhorn"></i><span>${esc(ann)}</span></div>` : ``}
-    <div class="qs-emblem"><img src="${CONFIG.logoUrl}" alt="" loading="lazy" onerror="this.parentElement.classList.add('qs-emblem-empty')"></div>
-  </section>
-  <section class="hero fade-up">
-    <div class="hero-art" aria-hidden="true"><img src="${CONFIG.logoUrl}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
-    <div class="hero-inner flex flex-wrap items-center gap-6 justify-between">
-      <div><p class="text-gold-300 text-xs font-bold tracking-[0.3em] uppercase">Índice do quartel • Habbo BR</p>
-        <h1 class="font-display text-2xl md:text-3xl font-extrabold mt-1">Bem-vindo, ${esc(STATE.profile.nickname)}</h1>
-        <div class="flex flex-wrap gap-2 mt-3">${(STATE.groups||[]).map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}</div></div>
-    </div>
-  </section>
-  <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 fade-up">
-    <div class="stat-tile"><span class="forum-ico"><i class="fas fa-users"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Efetivo ativo</p><p class="font-display text-xl font-extrabold text-famr-800">${registeredCount}</p></div></div>
-    <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-comments"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Publicações</p><p class="font-display text-xl font-extrabold text-famr-800">${pubs}+</p></div></div>
-    <div class="stat-tile"><span class="forum-ico"><i class="fas fa-folder-open"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Subtópicos</p><p class="font-display text-xl font-extrabold text-famr-800">${visibleSubs.length}</p></div></div>
-    <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-user-plus"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Mais recente</p><p class="font-display text-sm font-extrabold text-famr-800 truncate">${esc(newest?.[0]?.nickname || '—')}</p></div></div>
-  </section>
-
-  ${(recentDocs||[]).length ? `
-  <section class="card overflow-hidden fade-up">
-    <div class="cat-head"><i class="fas fa-file-lines"></i> Documentos Recentes
-      <a href="#/section/documentos" class="ml-auto text-[10px] font-bold text-gold-300 hover:text-white normal-case tracking-normal">ver todos →</a></div>
-    <div class="divide-y divide-line">
-      ${(recentDocs||[]).map(d => `<a href="#/doc-view/${d.id}" class="forum-row">
-        <span class="forum-ico ${d.doc_type==='request'?'new':''}"><i class="fas ${d.doc_type==='request'?'fa-file-signature':'fa-file-alt'}"></i></span>
-        <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(d.title)}</b>
-          <p class="text-xs text-muted">por <b class="text-famr-700">${esc(d.profiles_view?.nickname||'—')}</b> • ${fmtDate(d.updated_at)}${d.category?` • <span class="chip chip-neutral ml-1">${esc(d.category)}</span>`:''}${d.doc_type?` <span class="chip ${d.doc_type==='request'?'chip-wait':'chip-ok'} ml-1">${DOC_TYPES[d.doc_type]||d.doc_type}</span>`:''}</p></div>
-        <i class="fas fa-chevron-right text-xs text-muted"></i></a>`).join('')}
-    </div>
-  </section>` : ''}
-
-  ${(sections||[]).map(sec => {
+<section class="quartel-strip fade-up">
+  <div class="qs-glow" aria-hidden="true"></div>
+  <div class="qs-left"><span class="qs-badge"><i class="fas fa-shield-halved"></i></span>
+    <div class="qs-txt"><b class="qs-title">Plantão do Quartel</b>
+      <span class="qs-sub"><i class="far fa-clock"></i> <span class="qs-clock">--:--:--</span> • <span id="qs-date"></span></span></div></div>
+  <div class="qs-mid">
+    <span class="qs-pill"><i class="fas fa-circle qs-on"></i> ${totalOnline} online</span>
+    <span class="qs-pill"><i class="fas fa-users"></i> ${registeredCount} efetivo</span>
+    <span class="qs-pill"><i class="fas fa-comments"></i> ${pubs} publicações</span>
+    <span class="qs-pill"><i class="fas ${priorityGroupOf(STATE.groups)?.icon || 'fa-id-badge'}"></i> ${esc(STATE.profile.nickname)}</span>
+  </div>
+  ${ann ? `<div class="qs-notice" title="${esc(ann)}"><i class="fas fa-bullhorn"></i> <span>${esc(ann)}</span></div>` : ``}
+  <div class="qs-emblem"><img src="${CONFIG.logoUrl}" alt="" loading="lazy" onerror="this.parentElement.classList.add('qs-emblem-empty')"></div>
+</section>
+<section class="hero fade-up">
+  <div class="hero-art" aria-hidden="true"><img src="${CONFIG.logoUrl}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>
+  <div class="hero-inner flex flex-wrap items-center gap-6 justify-between">
+    <div><p class="text-gold-300 text-xs font-bold tracking-[0.3em] uppercase">Índice do quartel • Habbo BR</p>
+      <h1 class="font-display text-2xl md:text-3xl font-extrabold mt-1">Bem-vindo, ${esc(STATE.profile.nickname)}</h1>
+      <div class="flex flex-wrap gap-2 mt-3">${(STATE.groups||[]).map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}</div></div>
+  </div>
+</section>
+<section class="grid grid-cols-2 lg:grid-cols-4 gap-3 fade-up">
+  <div class="stat-tile"><span class="forum-ico"><i class="fas fa-users"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Efetivo ativo</p><p class="font-display text-xl font-extrabold text-famr-800">${registeredCount}</p></div></div>
+  <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-comments"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Publicações</p><p class="font-display text-xl font-extrabold text-famr-800">${pubs}+</p></div></div>
+  <div class="stat-tile"><span class="forum-ico"><i class="fas fa-folder-open"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Subtópicos</p><p class="font-display text-xl font-extrabold text-famr-800">${visibleSubs.length}</p></div></div>
+  <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-user-plus"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Mais recente</p><p class="font-display text-sm font-extrabold text-famr-800 truncate">${esc(newest?.[0]?.nickname || '—')}</p></div></div>
+</section>
+${(recentDocs||[]).length ? `
+<section class="card overflow-hidden fade-up">
+  <div class="cat-head"><i class="fas fa-file-lines"></i> Documentos Recentes
+    <a href="#/section/documentos" class="ml-auto text-[10px] font-bold text-gold-300 hover:text-white normal-case tracking-normal">ver todos →</a></div>
+  <div class="divide-y divide-line">
+    ${(recentDocs||[]).map(d => `<a href="#/doc-view/${d.id}" class="forum-row">
+      <span class="forum-ico ${d.doc_type==='request'?'new':''}"><i class="fas ${d.doc_type==='request'?'fa-file-signature':'fa-file-alt'}"></i></span>
+      <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(d.title)}</b>
+        <p class="text-xs text-muted">por <b class="text-famr-700">${esc(d.profiles_view?.nickname||'—')}</b> • ${fmtDate(d.updated_at)}${d.category?` • <span class="chip chip-neutral ml-1">${esc(d.category)}</span>`:''}${d.doc_type?` <span class="chip ${d.doc_type==='request'?'chip-wait':'chip-ok'} ml-1">${DOC_TYPES[d.doc_type]||d.doc_type}</span>`:''}</p></div>
+      <i class="fas fa-chevron-right text-xs text-muted"></i></a>`).join('')}
+  </div>
+</section>` : ''}
+${(sections||[]).map(sec => {
     if(!canSeeSection(sec)) return '';
     if(sectionNeedsGroup(sec)){
       const grows = (groups||[]).map(g => `<a href="#/grupo/${g.id}" class="forum-row">
         <span class="forum-ico" style="background:${groupBg(g)};color:#fff"><i class="fas ${g.icon||'fa-shield-halved'}"></i></span>
-        <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(g.name)}${g.is_priority?' <i class="fas fa-crown text-gold-500 text-[10px] ml-1"></i>':''}</b>
+        <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(g.name)}${g.is_priority?' <i class="fas fa-crown text-gold-500 text-[10px] ml-1"></i>':''}${g.is_admin?' <i class="fas fa-user-shield text-red-500 text-[10px] ml-1" title="Chefia"></i>':''}</b>
           <p class="text-xs text-muted">${GROUP_TYPES[g.group_type]||''} • ${memberCount[g.id]||0} membro(s)</p></div>
         ${myIds.has(g.id)?'<span class="chip chip-ok">SEU GRUPO</span>':''}
         <i class="fas fa-chevron-right text-xs text-muted"></i></a>`).join('');
@@ -440,21 +428,21 @@ async function renderHome(c){
       </div>
     </section>`;
   }).join('')}
-  <section class="stats-tabs fade-up">
-    <div class="st-head">
-      <button class="st-tab active" data-stab="usuarios"><i class="fas fa-users"></i> Usuários</button>
-      <button class="st-tab" data-stab="aniversarios"><i class="fas fa-cake-candles"></i> Aniversários</button>
-      <button class="st-tab" data-stab="grupos"><i class="fas fa-layer-group"></i> Grupos</button>
-    </div>
-    <div class="st-body stab-panel" id="stab-usuarios">Há <strong>${totalOnline}</strong> usuário online :: ${registeredCount} registrado${registeredCount!==1?'s':''}<br>Último recruta aprovado: ${lastChip}</div>
-    <div class="st-body stab-panel hidden" id="stab-aniversarios"><p class="st-empty">Nenhum membro festeja aniversário hoje</p></div>
-    <div class="st-body stab-panel hidden" id="stab-grupos"><div class="st-groups-list">
-      ${(groups||[]).map(g => `<a href="#/grupo/${g.id}" class="sg-link"><i class="fas ${g.icon||'fa-shield-halved'}" style="color:${g.color}"></i><span>${esc(g.name)}${g.is_priority?' 👑':''}</span><span class="text-[10px] text-muted">(${memberCount[g.id]||0})</span></a>`).join('') || '<em class="text-muted text-xs">Nenhum grupo.</em>'}
-    </div></div>
-    <div class="st-body st-legend"><strong class="text-famr-800">Legenda:</strong>
-      <div class="flex flex-wrap gap-3 mt-1">${legend.map(i=>`<span class="inline-flex items-center gap-1.5"><i class="fas ${i.icon}" style="color:${i.color}"></i><span class="text-muted">${esc(i.label)}</span></span>`).join('')}</div>
-    </div>
-  </section>`;
+<section class="stats-tabs fade-up">
+  <div class="st-head">
+    <button class="st-tab active" data-stab="usuarios"><i class="fas fa-users"></i> Usuários</button>
+    <button class="st-tab" data-stab="aniversarios"><i class="fas fa-cake-candles"></i> Aniversários</button>
+    <button class="st-tab" data-stab="grupos"><i class="fas fa-layer-group"></i> Grupos</button>
+  </div>
+  <div class="st-body stab-panel" id="stab-usuarios">Há <strong>${totalOnline}</strong> usuário online :: ${registeredCount} registrado${registeredCount!==1?'s':''}<br>Último recruta aprovado: ${lastChip}</div>
+  <div class="st-body stab-panel hidden" id="stab-aniversarios"><p class="st-empty">Nenhum membro festeja aniversário hoje</p></div>
+  <div class="st-body stab-panel hidden" id="stab-grupos"><div class="st-groups-list">
+    ${(groups||[]).map(g => `<a href="#/grupo/${g.id}" class="sg-link"><i class="fas ${g.icon||'fa-shield-halved'}" style="color:${g.color}"></i> <span>${esc(g.name)}${g.is_priority?' 👑':''}${g.is_admin?' 🛡️':''}</span> <span class="text-[10px] text-muted">(${memberCount[g.id]||0})</span></a>`).join('') || '<em class="text-muted text-xs">Nenhum grupo.</em>'}
+  </div></div>
+  <div class="st-body st-legend"><strong class="text-famr-800">Legenda: </strong>
+    <div class="flex flex-wrap gap-3 mt-1">${legend.map(i=>`<span class="inline-flex items-center gap-1.5"><i class="fas ${i.icon}" style="color:${i.color}"></i> <span class="text-muted">${esc(i.label)}</span></span>`).join('')}</div>
+  </div>
+</section>`;
   startQsClock(); bindHomeTabs();
 }
 function bindHomeTabs(){
@@ -471,8 +459,8 @@ function forumRow(s, counts, lastMap){
   const ico = locked ? 'fa-lock' : s.is_request_form ? 'fa-file-signature' : 'fa-comments';
   return `<a href="${locked?'#':'#/sub/'+s.id}" class="forum-row ${locked?'opacity-70 cursor-not-allowed':''}" ${locked?'onclick="return false"':''}>
     <span class="forum-ico ${locked?'lock':s.is_request_form?'new':''}"><i class="fas ${ico}"></i></span>
-    <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(s.name)}</b><p class="text-xs text-muted truncate">${esc(s.description||'')}</p></div>
-    <div class="w-20 text-center hidden sm:block"><b class="text-sm">${locked?'—':(counts[s.id]||0)}</b><span class="block text-[10px] text-muted uppercase">tópicos</span></div>
+    <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(s.name)}</b> <p class="text-xs text-muted truncate">${esc(s.description||'')}</p></div>
+    <div class="w-20 text-center hidden sm:block"><b class="text-sm">${locked?'—':(counts[s.id]||0)}</b> <span class="block text-[10px] text-muted uppercase">tópicos</span></div>
     <div class="w-44 hidden md:block text-[11px] text-muted truncate">
       ${locked ? '<i class="fas fa-lock lock-badge"></i> reservado' : last ? `<i class="fas fa-clock text-gold-500 mr-1"></i>${fmtDate(last.created_at)}<br><span class="ml-4">por <b class="text-famr-700">${esc(last.profiles_view?.nickname||'—')}</b></span>` : 'sem publicações'}
     </div>
@@ -492,101 +480,87 @@ async function getAuthorInfo(userId){
   const gs = (userGroups||[]).map(r=>r.groups).filter(Boolean);
   return { profile: profile||{}, groups: gs, messageCount: postCount||0 };
 }
-
 function renderAuthorPanel(info){
   const pg = priorityGroupOf(info.groups);
-  const cg = colorGroupOf(info.groups);
   return `
-  <aside class="doc-view-profile">
-    <div class="dv-author-name">${esc(info.profile.nickname||'Autor')}</div>
-    <div class="dv-author-status">ONLINE</div>
-    <div class="dv-author-avatar">
-      ${pg ? `<img src="${CONFIG.logoUrl}" alt="" onerror="this.parentElement.innerHTML='<div class=&quot;dv-avatar-placeholder&quot; style=&quot;background:${groupBg(pg)}&quot;>${esc((info.profile.nickname||'A')[0].toUpperCase())}</div>'">` 
-            : `<div class="dv-avatar-placeholder">${esc((info.profile.nickname||'A')[0].toUpperCase())}</div>`}
-    </div>
-    ${pg ? `<div class="dv-author-btn" style="background:${groupBg(pg)};color:#fff;border:none">
-      <i class="fas ${pg.icon||'fa-shield-halved'} mr-1"></i>${esc(pg.name)}${pg.is_priority?' <i class="fas fa-crown ml-1 text-[10px]"></i>':''}
-    </div>` : `<div class="dv-author-btn"><i class="fas fa-user mr-1"></i>Sem grupo</div>`}
-    <div class="dv-author-stats">
-      <span>Mensagens:</span> <b>${info.messageCount}</b>
-    </div>
-  </aside>`;
+<aside class="doc-view-profile">
+  <div class="dv-author-name">${esc(info.profile.nickname||'Autor')}</div>
+  <div class="dv-author-status">ONLINE</div>
+  <div class="dv-author-avatar">
+    ${pg ? `<img src="${CONFIG.logoUrl}" alt="" onerror="this.parentElement.innerHTML='<div class=&quot;dv-avatar-placeholder&quot; style=&quot;background:${groupBg(pg)}&quot;>${esc((info.profile.nickname||'A')[0].toUpperCase())}</div>'">`
+         : `<div class="dv-avatar-placeholder">${esc((info.profile.nickname||'A')[0].toUpperCase())}</div>`}
+  </div>
+  ${pg ? `<div class="dv-author-btn" style="background:${groupBg(pg)};color:#fff;border:none">
+    <i class="fas ${pg.icon||'fa-shield-halved'} mr-1"></i>${esc(pg.name)}${pg.is_priority?' <i class="fas fa-crown ml-1 text-[10px]"></i>':''}${pg.is_admin?' <i class="fas fa-user-shield ml-1 text-[10px]"></i>':''}
+  </div>` : `<div class="dv-author-btn"><i class="fas fa-user mr-1"></i>Sem grupo</div>`}
+  <div class="dv-author-stats">
+    <span>Mensagens: </span><b>${info.messageCount}</b>
+  </div>
+</aside>`;
 }
-
 async function renderDocViewPage(c, docId){
   const { data:d } = await supabase.from('documents').select('*,profiles_view(*)').eq('id',docId).single();
   if(!d){ c.innerHTML = '<div class="card card-body text-sm text-muted">Documento não encontrado.</div>'; return; }
-  
   const authorInfo = await getAuthorInfo(d.author_id);
   const canManage = isAdmin();
-  
-  /* Carrega respostas se houver tabela replies */
-  const { data: replies } = await supabase.from('post_replies').select('*,profiles_view(nickname)').eq('parent_doc_id', docId).order('created_at',{ascending:true}).limit(REPLIES_PER_PAGE*2);
+  const { data: replies } = await supabase.from('post_replies').select('*,profiles_view(nickname)').eq('parent_doc_id', docId).order('created_at',{ascending:true}).limit(REPLIES_PER_PAGE*50);
+  const rp = window._docReplyPage || 0;
   const replyPages = Math.ceil(((replies||[]).length)/REPLIES_PER_PAGE) || 1;
-  
+  const pageReplies = (replies||[]).slice(rp*REPLIES_PER_PAGE, rp*REPLIES_PER_PAGE+REPLIES_PER_PAGE);
   c.innerHTML = `
-  <div class="fade-up">
-    <p class="text-xs text-muted mb-3"><a href="#/section/documentos" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>Documentos Principais</a> / <b>${esc(d.title)}</b></p>
-    
-    <div class="doc-view-page">
-      <div class="doc-view-header" style="background:linear-gradient(135deg,#0e4433,#14563f)">
-        <div class="dvh-brand">
-          <img src="${CONFIG.logoUrl}" alt="" onerror="this.style.display='none'" class="dvh-logo">
-          <div class="dvh-titles">
-            <h1 class="dvh-title">${esc(d.title)}</h1>
-            <p class="dvh-meta">
-              <span><i class="fas fa-user-tie mr-1"></i>${esc(authorInfo.profile.nickname||'—')}</span>
-              <span><i class="far fa-clock mr-1"></i>${fmtDate(d.updated_at)}</span>
-              ${d.category?`<span><i class="fas fa-tag mr-1"></i>${esc(d.category)}</span>`:''}
-              ${d.doc_type?`<span class="chip ${d.doc_type==='request'?'chip-wait':'chip-ok'}">${DOC_TYPES[d.doc_type]||d.doc_type}</span>`:''}
-            </p>
-          </div>
-        </div>
-        <div class="dvh-actions">
-          ${canManage?`<a href="#/doc-edit/${d.id}" class="btn btn-gold btn-sm"><i class="fas fa-pen"></i> Editar</a>`:''}
-          <button class="btn btn-outline btn-sm" onclick="downloadDoc('${d.id}')"><i class="fas fa-download"></i> Baixar</button>
+<div class="fade-up">
+  <p class="text-xs text-muted mb-3"><a href="#/section/documentos" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>Documentos Principais</a> / <b>${esc(d.title)}</b></p>
+  <div class="doc-view-page">
+    <div class="doc-view-header" style="background:linear-gradient(135deg,#0e4433,#14563f)">
+      <div class="dvh-brand">
+        <img src="${CONFIG.logoUrl}" alt="" onerror="this.style.display='none'" class="dvh-logo">
+        <div class="dvh-titles">
+          <h1 class="dvh-title">${esc(d.title)}</h1>
+          <p class="dvh-meta">
+            <span><i class="fas fa-user-tie mr-1"></i>${esc(authorInfo.profile.nickname||'—')}</span>
+            <span><i class="far fa-clock mr-1"></i>${fmtDate(d.updated_at)}</span>
+            ${d.category?`<span><i class="fas fa-tag mr-1"></i>${esc(d.category)}</span>`:''}
+            ${d.doc_type?`<span class="chip ${d.doc_type==='request'?'chip-wait':'chip-ok'}">${DOC_TYPES[d.doc_type]||d.doc_type}</span>`:''}
+          </p>
         </div>
       </div>
-      
-      <div class="doc-view-body">
-        ${renderAuthorPanel(authorInfo)}
-        
-        <article class="doc-view-content">
-          <div class="dvc-timestamp">${fmtDate(d.updated_at)}</div>
-          <div class="dvc-isolated" style="pointer-events:auto">${sanitizeHtmlPreservingStyles(d.body_html||'')}</div>
-          
-          ${d.cover_url ? `<figure class="dvc-cover"><img src="${esc(d.cover_url)}" alt=""></figure>` : ''}
-          
-          <footer class="dvc-footer">
-            <span><i class="fas fa-hashtag mr-1"></i>#${esc(d.id.slice(0,8))}</span>
-            ${canManage?`<button class="btn btn-danger btn-sm" onclick="delDoc('${d.id}')"><i class="fas fa-trash"></i> Excluir</button>`:''}
-          </footer>
-          
-          <!-- RESPOSTAS / REQUERIMENTOS -->
-          ${d.doc_type !== 'listing' ? `
-          <section class="reply-section mt-6">
-            <div class="cat-head"><i class="fas fa-reply-all"></i> Respostas <span class="ml-auto text-[10px] normal-case tracking-normal text-gold-300">${(replies||[]).length} resposta(s)</span></div>
-            <div class="reply-list divide-y divide-line">
-              ${(replies||[]).slice(0, REPLIES_PER_PAGE).map(r => replyCard(r)).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhuma resposta ainda.</p>'}
-            </div>
-            ${replyPages > 1 ? `<div class="p-3 flex justify-center gap-2 border-t border-line">
-              <span class="text-xs text-muted">Página 1 de ${replyPages}</span>
-              <button class="btn btn-outline btn-sm" disabled>Próxima →</button>
-            </div>` : ''}
-            
-            <!-- FORMULÁRIO DE NOVA RESPOSTA -->
-            <form class="reply-form card card-body mt-4" onsubmit="return submitReply(event,'${d.id}','doc')">
-              <label class="field"><span>Sua resposta</span>
-                <textarea name="content" class="input" rows="3" placeholder="Escreva sua resposta..." required></textarea></label>
-              <button class="btn btn-primary btn-sm"><i class="fas fa-paper-plane"></i> Enviar Resposta</button>
-            </form>
-          </section>` : ''}
-        </article>
+      <div class="dvh-actions">
+        ${canManage?`<a href="#/doc-edit/${d.id}" class="btn btn-gold btn-sm"><i class="fas fa-pen"></i> Editar</a>`:''}
+        <button class="btn btn-outline btn-sm" onclick="downloadDoc('${d.id}')"><i class="fas fa-download"></i> Baixar</button>
       </div>
     </div>
-  </div>`;
+    <div class="doc-view-body">
+      ${renderAuthorPanel(authorInfo)}
+      <article class="doc-view-content">
+        <div class="dvc-timestamp">${fmtDate(d.updated_at)}</div>
+        <div class="dvc-isolated" style="pointer-events:auto">${sanitizeHtmlPreservingStyles(d.body_html||'')}</div>
+        ${d.cover_url ? `<figure class="dvc-cover"><img src="${esc(d.cover_url)}" alt=""></figure>` : ''}
+        <footer class="dvc-footer">
+          <span><i class="fas fa-hashtag mr-1"></i>#${esc(d.id.slice(0,8))}</span>
+          ${canManage?`<button class="btn btn-danger btn-sm" onclick="delDoc('${d.id}')"><i class="fas fa-trash"></i> Excluir</button>`:''}
+        </footer>
+        ${d.doc_type !== 'listing' ? `
+        <section class="reply-section">
+          <div class="cat-head"><i class="fas fa-reply-all"></i> Respostas <span class="ml-auto text-[10px] normal-case tracking-normal text-gold-300">${(replies||[]).length} resposta(s)</span></div>
+          <div class="reply-list divide-y divide-line">
+            ${pageReplies.map(r => replyCard(r)).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhuma resposta ainda.</p>'}
+          </div>
+          ${replyPages > 1 ? `<div class="reply-pagination">
+            <button class="rp-btn" ${rp===0?'disabled':''} onclick="window._docReplyPage=${rp-1};renderDocViewPage(document.getElementById('content'),'${d.id}')">‹</button>
+            ${Array.from({length:replyPages},(_,i)=>`<button class="rp-btn ${i===rp?'active':''}" onclick="window._docReplyPage=${i};renderDocViewPage(document.getElementById('content'),'${d.id}')">${i+1}</button>`).join('')}
+            <button class="rp-btn" ${rp>=replyPages-1?'disabled':''} onclick="window._docReplyPage=${rp+1};renderDocViewPage(document.getElementById('content'),'${d.id}')">›</button>
+          </div>` : ''}
+          <form class="reply-form card card-body mt-4" onsubmit="return submitReply(event,'${d.id}','doc')">
+            <label class="field"><span>Sua resposta</span>
+              <textarea name="content" class="input" rows="3" placeholder="Escreva sua resposta..." required></textarea></label>
+            <button class="btn btn-primary btn-sm"><i class="fas fa-paper-plane"></i> Enviar Resposta</button>
+          </form>
+        </section>` : ''}
+      </article>
+    </div>
+  </div>
+</div>`;
 }
-
 function replyCard(r){
   return `<div class="reply-item p-4">
     <div class="flex items-start gap-3">
@@ -599,116 +573,92 @@ function replyCard(r){
     </div>
   </div>`;
 }
-
 window.submitReply = async function(e, parentId, parentType){
   e.preventDefault();
   const f = e.target;
   const content = f.content.value.trim();
   if(!content) return toast('Escreva algo.','warn');
-  
-  const payload = { 
-    parent_id: parentId, 
-    parent_type: parentType, 
-    content, 
-    author_id: STATE.profile.id 
-  };
-  
+  const payload = { parent_id: parentId, parent_type: parentType, content, author_id: STATE.profile.id };
   const { error } = await supabase.from('post_replies').insert([payload]);
   if(error) return toast('Erro: '+error.message,'err');
-  
-  await famrLog('REPLY_POSTED', { postId: parentId, docId: parentType==='doc'?parentId:null });
+  await famrLog('REPLY_POSTED', { postId: parentType==='post'?parentId:null, docId: parentType==='doc'?parentId:null });
   invalidate('docs:'); invalidate('posts:'); invalidate('home:');
   toast('Resposta enviada!');
   f.reset();
-  /* Recarrega a página */
-  if(parentType==='doc') location.reload();
-  else location.reload();
+  location.reload();
   return false;
 };
-
 async function renderPostViewPage(c, postId){
   const { data:p } = await supabase.from('posts').select('*,profiles_view(*),subtopics(name,section_id,sections(name,slug))').eq('id',postId).single();
   if(!p){ c.innerHTML = '<div class="card card-body text-sm text-muted">Publicação não encontrada.</div>'; return; }
-  
   const authorInfo = await getAuthorInfo(p.author_id);
   const mine = p.author_id === STATE.profile.id;
   const canEdit = mine && canEditIn({section_id:p.subtopics?.section_id, id:p.subtopic_id});
   const canDel = mine || canDeleteIn({section_id:p.subtopics?.section_id, id:p.subtopic_id});
-  
-  /* Carrega respostas */
-  const { data: replies } = await supabase.from('post_replies').select('*,profiles_view(nickname)').eq('parent_post_id', postId).order('created_at',{ascending:true}).limit(REPLIES_PER_PAGE*2);
+  const { data: replies } = await supabase.from('post_replies').select('*,profiles_view(nickname)').eq('parent_post_id', postId).order('created_at',{ascending:true}).limit(REPLIES_PER_PAGE*50);
+  const rp = window._postReplyPage || 0;
   const replyPages = Math.ceil(((replies||[]).length)/REPLIES_PER_PAGE) || 1;
-  
+  const pageReplies = (replies||[]).slice(rp*REPLIES_PER_PAGE, rp*REPLIES_PER_PAGE+REPLIES_PER_PAGE);
   c.innerHTML = `
-  <div class="fade-up">
-    <p class="text-xs text-muted mb-3">
-      <a href="#/section/${p.subtopics?.sections?.slug}" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>${esc(p.subtopics?.sections?.name||'')}</a> / 
-      <a href="#/sub/${p.subtopic_id}" class="text-famr-700 font-bold hover:underline">${esc(p.subtopics?.name||'')}</a> / 
-      <b>${esc(p.title)}</b>
-    </p>
-    
-    <div class="doc-view-page">
-      <div class="doc-view-header" style="background:linear-gradient(135deg,#0e4433,#14563f)">
-        <div class="dvh-brand">
-          <span class="forum-ico"><i class="fas fa-comment"></i></span>
-          <div class="dvh-titles">
-            <h1 class="dvh-title">${esc(p.title)}</h1>
-            <p class="dvh-meta">
-              <span><i class="fas fa-user-tie mr-1"></i>${esc(authorInfo.profile.nickname||'—')}</span>
-              <span><i class="far fa-clock mr-1"></i>${fmtDate(p.created_at)}</span>
-            </p>
-          </div>
-        </div>
-        <div class="dvh-actions">
-          ${canEdit?`<button class="btn btn-outline btn-sm" onclick="editPostInline('${p.id}')"><i class="fas fa-pen"></i> Editar</button>`:''}
-          ${canDel?`<button class="btn btn-danger btn-sm" onclick="delPost('${p.id}')"><i class="fas fa-trash"></i> Excluir</button>`:''}
+<div class="fade-up">
+  <p class="text-xs text-muted mb-3">
+    <a href="#/section/${p.subtopics?.sections?.slug}" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>${esc(p.subtopics?.sections?.name||'')}</a> /
+    <a href="#/sub/${p.subtopic_id}" class="text-famr-700 font-bold hover:underline">${esc(p.subtopics?.name||'')}</a> /
+    <b>${esc(p.title)}</b>
+  </p>
+  <div class="doc-view-page">
+    <div class="doc-view-header" style="background:linear-gradient(135deg,#0e4433,#14563f)">
+      <div class="dvh-brand">
+        <span class="forum-ico"><i class="fas fa-comment"></i></span>
+        <div class="dvh-titles">
+          <h1 class="dvh-title">${esc(p.title)}</h1>
+          <p class="dvh-meta">
+            <span><i class="fas fa-user-tie mr-1"></i>${esc(authorInfo.profile.nickname||'—')}</span>
+            <span><i class="far fa-clock mr-1"></i>${fmtDate(p.created_at)}</span>
+          </p>
         </div>
       </div>
-      
-      <div class="doc-view-body">
-        ${renderAuthorPanel(authorInfo)}
-        
-        <article class="doc-view-content">
-          <div class="dvc-timestamp">${fmtDate(p.created_at)}</div>
-          <div class="dvc-post-text">${esc(p.content)}</div>
-          ${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm mt-4"><i class="fab fa-google-drive"></i> Abrir anexo</a>` : ''}
-          <footer class="dvc-footer">
-            <span><i class="fas fa-hashtag mr-1"></i>#${esc(p.id.slice(0,8))}</span>
-          </footer>
-          
-          <!-- RESPOSTAS -->
-          <section class="reply-section mt-6">
-            <div class="cat-head"><i class="fas fa-reply-all"></i> Respostas <span class="ml-auto text-[10px] normal-case tracking-normal text-gold-300">${(replies||[]).length} resposta(s)</span></div>
-            <div class="reply-list divide-y divide-line">
-              ${(replies||[]).slice(0, REPLIES_PER_PAGE).map(r => replyCard(r)).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhuma resposta ainda.</p>'}
-            </div>
-            ${replyPages > 1 ? `<div class="p-3 flex justify-center gap-2 border-t border-line">
-              <span class="text-xs text-muted">Página 1 de ${replyPages}</span>
-              <button class="btn btn-outline btn-sm" disabled>Próxima →</button>
-            </div>` : ''}
-            
-            <form class="reply-form card card-body mt-4" onsubmit="return submitReply(event,'${p.id}','post')">
-              <label class="field"><span>Sua resposta</span>
-                <textarea name="content" class="input" rows="3" placeholder="Escreva sua resposta..." required></textarea></label>
-              <button class="btn btn-primary btn-sm"><i class="fas fa-paper-plane"></i> Enviar Resposta</button>
-            </form>
-          </section>
-        </article>
+      <div class="dvh-actions">
+        ${canEdit?`<button class="btn btn-outline btn-sm" onclick="editPostInline('${p.id}')"><i class="fas fa-pen"></i> Editar</button>`:''}
+        ${canDel?`<button class="btn btn-danger btn-sm" onclick="delPost('${p.id}')"><i class="fas fa-trash"></i> Excluir</button>`:''}
       </div>
     </div>
-  </div>`;
+    <div class="doc-view-body">
+      ${renderAuthorPanel(authorInfo)}
+      <article class="doc-view-content">
+        <div class="dvc-timestamp">${fmtDate(p.created_at)}</div>
+        <div class="dvc-post-text">${esc(p.content)}</div>
+        ${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm mt-4"><i class="fab fa-google-drive"></i> Abrir anexo</a>` : ''}
+        <footer class="dvc-footer">
+          <span><i class="fas fa-hashtag mr-1"></i>#${esc(p.id.slice(0,8))}</span>
+        </footer>
+        <section class="reply-section">
+          <div class="cat-head"><i class="fas fa-reply-all"></i> Respostas <span class="ml-auto text-[10px] normal-case tracking-normal text-gold-300">${(replies||[]).length} resposta(s)</span></div>
+          <div class="reply-list divide-y divide-line">
+            ${pageReplies.map(r => replyCard(r)).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhuma resposta ainda.</p>'}
+          </div>
+          ${replyPages > 1 ? `<div class="reply-pagination">
+            <button class="rp-btn" ${rp===0?'disabled':''} onclick="window._postReplyPage=${rp-1};renderPostViewPage(document.getElementById('content'),'${p.id}')">‹</button>
+            ${Array.from({length:replyPages},(_,i)=>`<button class="rp-btn ${i===rp?'active':''}" onclick="window._postReplyPage=${i};renderPostViewPage(document.getElementById('content'),'${p.id}')">${i+1}</button>`).join('')}
+            <button class="rp-btn" ${rp>=replyPages-1?'disabled':''} onclick="window._postReplyPage=${rp+1};renderPostViewPage(document.getElementById('content'),'${p.id}')">›</button>
+          </div>` : ''}
+          <form class="reply-form card card-body mt-4" onsubmit="return submitReply(event,'${p.id}','post')">
+            <label class="field"><span>Sua resposta</span>
+              <textarea name="content" class="input" rows="3" placeholder="Escreva sua resposta..." required></textarea></label>
+            <button class="btn btn-primary btn-sm"><i class="fas fa-paper-plane"></i> Enviar Resposta</button>
+          </form>
+        </section>
+      </article>
+    </div>
+  </div>
+</div>`;
 }
-
 window.editPostInline = id => {
   const ta = document.querySelector('.dvc-post-text');
   if(!ta) return;
   const current = ta.innerText;
   const wrap = document.createElement('div');
-  wrap.innerHTML = `<textarea id="ep-inline" class="input w-full" rows="8">${esc(current)}</textarea>
-                    <div class="mt-2 flex gap-2">
-                      <button class="btn btn-primary btn-sm" id="ep-save"><i class="fas fa-floppy-disk"></i> Salvar</button>
-                      <button class="btn btn-outline btn-sm" id="ep-cancel">Cancelar</button>
-                    </div>`;
+  wrap.innerHTML = `<textarea id="ep-inline" class="input w-full" rows="8">${esc(current)}</textarea><div class="mt-2 flex gap-2"><button class="btn btn-primary btn-sm" id="ep-save"><i class="fas fa-floppy-disk"></i> Salvar</button><button class="btn btn-outline btn-sm" id="ep-cancel">Cancelar</button></div>`;
   ta.replaceWith(wrap);
   document.getElementById('ep-cancel').onclick = () => location.reload();
   document.getElementById('ep-save').onclick = async () => {
@@ -735,35 +685,36 @@ async function renderGroupPage(c, groupId){
   const isMember = STATE.groups.some(g => g.id === groupId);
   const canManage = isModOf(groupId);
   c.innerHTML = `
-  <div class="fade-up">
-    <p class="text-xs text-muted mb-2"><a href="#/home" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>Início</a> / <b>${esc(grp.name)}</b></p>
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="font-display text-xl md:text-2xl font-extrabold text-famr-900">
-        <span class="inline-block w-9 h-9 rounded-lg align-middle mr-2" style="background:${groupBg(grp)}"></span>
-        ${esc(grp.name)}
-        ${grp.is_priority ? '<i class="fas fa-crown text-gold-500 ml-2 text-sm" title="Grupo Prioritário"></i>' : ''}
-      </h1>
-      <div class="flex gap-2">
-        <span class="chip ${grp.group_type==='open'?'chip-ok':grp.group_type==='closed'?'chip-wait':'chip-neutral'}">${GROUP_TYPES[grp.group_type]||grp.group_type}</span>
-        ${grp.is_priority ? '<span class="chip chip-wait"><i class="fas fa-crown mr-1"></i>Prioritário</span>' : ''}
-      </div>
-    </div>
-    <p class="text-sm text-muted mt-1">${grp.groups ? 'Subgrupo de <b>'+esc(grp.groups.name)+'</b>' : 'Companhia principal'} • ${list.length} membro(s)</p>
-    <div class="flex gap-2 mt-3">
-      ${!isMember && grp.group_type==='open' ? `<button class="btn btn-primary btn-sm" onclick="joinGroup('${grp.id}')"><i class="fas fa-right-to-bracket"></i> Entrar</button>` : ''}
-      ${isMember && grp.group_type==='open' ? `<button class="btn btn-outline btn-sm" onclick="leaveGroup('${grp.id}')"><i class="fas fa-right-from-bracket"></i> Sair</button>` : ''}
-      ${canManage ? `<button class="btn btn-gold btn-sm" onclick="groupMembers('${grp.id}')"><i class="fas fa-user-plus"></i> Gerenciar</button>` : ''}
+<div class="fade-up">
+  <p class="text-xs text-muted mb-2"><a href="#/home" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>Início</a> / <b>${esc(grp.name)}</b></p>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h1 class="font-display text-xl md:text-2xl font-extrabold text-famr-900">
+      <span class="inline-block w-9 h-9 rounded-lg align-middle mr-2" style="background:${groupBg(grp)}"></span>
+      ${esc(grp.name)}
+      ${grp.is_priority ? '<i class="fas fa-crown text-gold-500 ml-2 text-sm" title="Grupo Prioritário"></i>' : ''}
+      ${grp.is_admin ? '<i class="fas fa-user-shield text-red-500 ml-1 text-sm" title="Grupo de Chefia"></i>' : ''}
+    </h1>
+    <div class="flex gap-2">
+      <span class="chip ${grp.group_type==='open'?'chip-ok':grp.group_type==='closed'?'chip-wait':'chip-neutral'}">${GROUP_TYPES[grp.group_type]||grp.group_type}</span>
+      ${grp.is_priority ? '<span class="chip chip-wait"><i class="fas fa-crown mr-1"></i>Prioritário</span>' : ''}
+      ${grp.is_admin ? '<span class="chip chip-no"><i class="fas fa-user-shield mr-1"></i>Chefia</span>' : ''}
     </div>
   </div>
-  <section class="card overflow-hidden fade-up mt-4">
-    <div class="cat-head"><i class="fas fa-users"></i> Membros (${list.length})</div>
-    <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Membro</th><th>Status</th></tr></thead>
+  <p class="text-sm text-muted mt-1">${grp.groups ? 'Subgrupo de <b>'+esc(grp.groups.name)+'</b>' : 'Companhia principal'} • ${list.length} membro(s)</p>
+  <div class="flex gap-2 mt-3">
+    ${!isMember && grp.group_type==='open' ? `<button class="btn btn-primary btn-sm" onclick="joinGroup('${grp.id}')"><i class="fas fa-right-to-bracket"></i> Entrar</button>` : ''}
+    ${isMember && grp.group_type==='open' ? `<button class="btn btn-outline btn-sm" onclick="leaveGroup('${grp.id}')"><i class="fas fa-right-from-bracket"></i> Sair</button>` : ''}
+    ${canManage ? `<button class="btn btn-gold btn-sm" onclick="groupMembers('${grp.id}')"><i class="fas fa-user-plus"></i> Gerenciar</button>` : ''}
+  </div>
+</div>
+<section class="card overflow-hidden fade-up mt-4">
+  <div class="cat-head"><i class="fas fa-users"></i> Membros (${list.length})</div>
+  <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Membro</th><th>Status</th></tr></thead>
     <tbody>${list.map(m => `<tr><td><a href="#/perfil/${m.id}" class="font-bold text-famr-700 hover:underline"><i class="fas ${userIconOf(iconByUser[m.id]||[])} mr-2"></i>${esc(m.nickname)}</a></td><td><span class="chip chip-ok">ATIVO</span></td></tr>`).join('') || '<tr><td colspan="2" class="text-center text-muted py-8">Nenhum membro.</td></tr>'}</tbody></table></div>
-  </section>`;
+</section>`;
 }
 window.joinGroup = async id => { const { error } = await supabase.from('user_groups').insert([{ user_id: STATE.profile.id, group_id: id }]); if(error) return toast('Erro: '+error.message,'err'); toast('Você entrou no grupo.'); reloadSessionGroups(); };
 window.leaveGroup = async id => { await supabase.from('user_groups').delete().eq('user_id', STATE.profile.id).eq('group_id', id); toast('Você saiu do grupo.'); reloadSessionGroups(); };
-
 async function loadSessionGroups(userId){
   try{
     const { data, error } = await supabase.rpc('famr_get_my_groups');
@@ -781,7 +732,6 @@ async function reloadSessionGroups(){
   invalidate('perms:'); invalidate('home:');
   updateUserChip(); route();
 }
-
 async function loadPerms(){
   const gids = new Set(STATE.groups.map(g=>g.id));
   const rows = await cachedQuery('perms:all', ()=> supabase.from('group_permissions').select('*'), 120_000);
@@ -817,15 +767,15 @@ async function renderSection(c, slug){
   const counts = {}, lastMap = {};
   (posts||[]).forEach(p => { counts[p.subtopic_id]=(counts[p.subtopic_id]||0)+1; if(!lastMap[p.subtopic_id]) lastMap[p.subtopic_id]=p; });
   c.innerHTML = secHead(sec) + `
-  <section class="card overflow-hidden fade-up">
-    <div class="cat-head"><i class="fas ${esc(sec.icon)}"></i> ${esc(sec.name)}</div>
-    <div class="divide-y divide-line">${(subs||[]).filter(canViewSub).map(s => forumRow(s, counts, lastMap)).join('') || '<p class="p-5 text-sm text-muted text-center">Nenhum subtópico.</p>'}</div>
-  </section>`;
+<section class="card overflow-hidden fade-up">
+  <div class="cat-head"><i class="fas ${esc(sec.icon)}"></i> ${esc(sec.name)}</div>
+  <div class="divide-y divide-line">${(subs||[]).filter(canViewSub).map(s => forumRow(s, counts, lastMap)).join('') || '<p class="p-5 text-sm text-muted text-center">Nenhum subtópico.</p>'}</div>
+</section>`;
 }
 const secHead = sec => `<div class="flex flex-wrap items-center justify-between gap-3 fade-up">
-  <div><p class="text-xs font-bold tracking-[0.3em] uppercase text-gold-600">Setor</p>
-  <h1 class="font-display text-2xl md:text-3xl font-extrabold text-famr-900"><i class="fas ${esc(sec.icon)} text-gold-500 mr-2"></i>${esc(sec.name)}</h1>
-  <p class="text-sm text-muted mt-1">${esc(sec.description||'')}</p></div><div class="star-row text-sm">★★★★</div></div>`;
+<div><p class="text-xs font-bold tracking-[0.3em] uppercase text-gold-600">Setor</p>
+<h1 class="font-display text-2xl md:text-3xl font-extrabold text-famr-900"><i class="fas ${esc(sec.icon)} text-gold-500 mr-2"></i>${esc(sec.name)}</h1>
+<p class="text-sm text-muted mt-1">${esc(sec.description||'')}</p></div><div class="star-row text-sm">★★★★</div></div>`;
 
 /* ══════════ COMPANHIAS ══════════ */
 async function renderCompanhias(c, sec){
@@ -834,27 +784,28 @@ async function renderCompanhias(c, sec){
     return;
   }
   const [{ data: groups }, { data: allUG }] = await Promise.all([
-    supabase.from('groups').select('id,name,color,color_end,color_mode,gradient_angle,icon,group_type,order_index,parent_id,is_priority,priority_level').neq('group_type','invisible').order('order_index'),
+    supabase.from('groups').select('id,name,color,color_end,color_mode,gradient_angle,icon,group_type,order_index,parent_id,is_priority,priority_level,is_admin').neq('group_type','invisible').order('order_index'),
     supabase.from('user_groups').select('group_id').limit(10000)
   ]);
   const cnt = {}; (allUG||[]).forEach(m => cnt[m.group_id] = (cnt[m.group_id]||0)+1);
   const myIds = new Set((STATE.groups||[]).map(g=>g.id));
   c.innerHTML = secHead(sec) + `
-  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up">
-    ${(groups||[]).map(g => `<div class="card card-hover p-5">
-      <div class="flex items-center justify-between">
-        <span class="forum-ico" style="background:${groupBg(g)};color:#fff"><i class="fas ${g.icon||'fa-shield-halved'}"></i></span>
-        <div class="flex gap-1">
-          <span class="chip ${g.group_type==='open'?'chip-ok':g.group_type==='closed'?'chip-wait':'chip-neutral'}">${GROUP_TYPES[g.group_type]||g.group_type}</span>
-          ${g.is_priority?'<span class="chip chip-wait"><i class="fas fa-crown mr-1"></i>PRIORITÁRIO</span>':''}
-        </div>
+<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up">
+  ${(groups||[]).map(g => `<div class="card card-hover p-5">
+    <div class="flex items-center justify-between">
+      <span class="forum-ico" style="background:${groupBg(g)};color:#fff"><i class="fas ${g.icon||'fa-shield-halved'}"></i></span>
+      <div class="flex gap-1">
+        <span class="chip ${g.group_type==='open'?'chip-ok':g.group_type==='closed'?'chip-wait':'chip-neutral'}">${GROUP_TYPES[g.group_type]||g.group_type}</span>
+        ${g.is_priority?'<span class="chip chip-wait"><i class="fas fa-crown mr-1"></i>PRIORITÁRIO</span>':''}
+        ${g.is_admin?'<span class="chip chip-no"><i class="fas fa-user-shield mr-1"></i>CHEFIA</span>':''}
       </div>
-      <h3 class="font-bold mt-3" style="color:${g.color}">${esc(g.name)}</h3>
-      <p class="text-xs text-muted mt-1">${cnt[g.id]||0} membro(s)</p>
-      ${myIds.has(g.id) ? '<span class="chip chip-ok mt-2"><i class="fas fa-check mr-1"></i>Seu grupo</span>' : ''}
-      <a href="#/grupo/${g.id}" class="btn btn-outline btn-sm mt-3"><i class="fas fa-users"></i> Ver membros</a>
-    </div>`).join('') || '<div class="card card-body text-sm text-muted col-span-full text-center py-10">Nenhuma companhia.</div>'}
-  </div>`;
+    </div>
+    <h3 class="font-bold mt-3" style="color:${g.color}">${esc(g.name)}</h3>
+    <p class="text-xs text-muted mt-1">${cnt[g.id]||0} membro(s)</p>
+    ${myIds.has(g.id) ? '<span class="chip chip-ok mt-2"><i class="fas fa-check mr-1"></i>Seu grupo</span>' : ''}
+    <a href="#/grupo/${g.id}" class="btn btn-outline btn-sm mt-3"><i class="fas fa-users"></i> Ver membros</a>
+  </div>`).join('') || '<div class="card card-body text-sm text-muted col-span-full text-center py-10">Nenhuma companhia.</div>'}
+</div>`;
 }
 
 /* ══════════ SUBTÓPICO COM PAGINAÇÃO DE RESPOSTAS ══════════ */
@@ -870,33 +821,33 @@ async function renderSubtopic(c, id, page=0){
   window._postsCache = Object.fromEntries((posts||[]).map(p => [p.id, p]));
   const totalPages = Math.ceil((count||0)/PAGE_SIZE);
   c.innerHTML = `
-  <div class="fade-up">
-    <p class="text-xs text-muted mb-2"><a href="#/section/${sub.sections?.slug}" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>${esc(sub.sections?.name||'')}</a> / <b>${esc(sub.name)}</b></p>
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="font-display text-xl md:text-2xl font-extrabold text-famr-900"><i class="fas fa-comments text-gold-500 mr-2"></i>${esc(sub.name)}</h1>
-      ${sub.is_request_form ? `<button class="btn btn-gold btn-sm" onclick='openRequestForm(${JSON.stringify(sub).replace(/'/g,"&#39;")})'><i class="fas fa-pen-to-square"></i> Abrir protocolo</button>`
-        : canCreateIn(sub) ? `<button class="btn btn-primary btn-sm" onclick="document.getElementById('new-topic').classList.toggle('hidden')"><i class="fas fa-plus"></i> Novo tópico</button>` : ''}
-    </div>
+<div class="fade-up">
+  <p class="text-xs text-muted mb-2"><a href="#/section/${sub.sections?.slug}" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>${esc(sub.sections?.name||'')}</a> / <b>${esc(sub.name)}</b></p>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h1 class="font-display text-xl md:text-2xl font-extrabold text-famr-900"><i class="fas fa-comments text-gold-500 mr-2"></i>${esc(sub.name)}</h1>
+    ${sub.is_request_form ? `<button class="btn btn-gold btn-sm" onclick='openRequestForm(${JSON.stringify(sub).replace(/'/g, "&#39;")})'><i class="fas fa-pen-to-square"></i> Abrir protocolo</button>`
+      : canCreateIn(sub) ? `<button class="btn btn-primary btn-sm" onclick="document.getElementById('new-topic').classList.toggle('hidden')"><i class="fas fa-plus"></i> Novo tópico</button>` : ''}
   </div>
-  ${canCreateIn(sub) && !sub.is_request_form ? `<form id="new-topic" class="hidden card card-body grid gap-3 fade-up" onsubmit="return newPost(event,'${sub.id}')">
-      <input name="title" class="input" placeholder="Título do tópico" required>
-      <textarea name="content" class="input" rows="4" placeholder="Conteúdo..." required></textarea>
-      <input name="link" class="input" placeholder="Link de anexo (opcional)">
-      <button class="btn btn-gold btn-sm justify-self-start"><i class="fas fa-paper-plane"></i> Publicar</button></form>` : ''}
-  <section class="card overflow-hidden fade-up">
-    <div class="cat-head"><i class="fas fa-inbox"></i> Tópicos <span class="ml-auto text-[10px] normal-case tracking-normal text-gold-300">${count||0} no total</span></div>
-    <div class="divide-y divide-line">
-      ${(posts||[]).map(p => `<div class="topic-row" onclick="location.hash='#/post-view/${p.id}'">
-        <span class="forum-ico ${p.pinned?'new':''}"><i class="fas ${p.pinned?'fa-thumbtack':'fa-comment'}"></i></span>
-        <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(p.title)}</b><p class="text-[11px] text-muted">por <b class="text-famr-700">${esc(p.profiles_view?.nickname||'—')}</b> • ${fmtDate(p.created_at)}</p></div>
-        <i class="fas fa-chevron-right text-xs text-muted"></i></div>`).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhum tópico ainda.</p>'}
-    </div>
-    ${totalPages>1 ? `<div class="p-3 flex justify-center gap-2 items-center border-t border-line">
-      ${page>0?`<button class="btn btn-outline btn-sm" onclick="renderSubtopic(document.getElementById('content'),'${id}',${page-1})">← Anterior</button>`:''}
-      <span class="text-xs text-muted">Página ${page+1}/${totalPages}</span>
-      ${page<totalPages-1?`<button class="btn btn-outline btn-sm" onclick="renderSubtopic(document.getElementById('content'),'${id}',${page+1})">Próxima →</button>`:''}
-    </div>` : ''}
-  </section>`;
+</div>
+${canCreateIn(sub) && !sub.is_request_form ? `<form id="new-topic" class="hidden card card-body grid gap-3 fade-up" onsubmit="return newPost(event,'${sub.id}')">
+  <input name="title" class="input" placeholder="Título do tópico" required>
+  <textarea name="content" class="input" rows="4" placeholder="Conteúdo..." required></textarea>
+  <input name="link" class="input" placeholder="Link de anexo (opcional)">
+  <button class="btn btn-gold btn-sm justify-self-start"><i class="fas fa-paper-plane"></i> Publicar</button></form>` : ''}
+<section class="card overflow-hidden fade-up">
+  <div class="cat-head"><i class="fas fa-inbox"></i> Tópicos <span class="ml-auto text-[10px] normal-case tracking-normal text-gold-300">${count||0} no total</span></div>
+  <div class="divide-y divide-line">
+    ${(posts||[]).map(p => `<div class="topic-row" onclick="location.hash='#/post-view/${p.id}'">
+      <span class="forum-ico ${p.pinned?'new':''}"><i class="fas ${p.pinned?'fa-thumbtack':'fa-comment'}"></i></span>
+      <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(p.title)}</b> <p class="text-[11px] text-muted">por <b class="text-famr-700">${esc(p.profiles_view?.nickname||'—')}</b> • ${fmtDate(p.created_at)}</p></div>
+      <i class="fas fa-chevron-right text-xs text-muted"></i></div>`).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhum tópico ainda.</p>'}
+  </div>
+  ${totalPages > 1 ? `<div class="p-3 flex justify-center gap-2 items-center border-t border-line">
+    ${page>0?`<button class="btn btn-outline btn-sm" onclick="renderSubtopic(document.getElementById('content'),'${id}',${page-1})">← Anterior</button>`:''}
+    <span class="text-xs text-muted">Página ${page+1}/${totalPages}</span>
+    ${page<totalPages-1?`<button class="btn btn-outline btn-sm" onclick="renderSubtopic(document.getElementById('content'),'${id}',${page+1})">Próxima →</button>`:''}
+  </div>` : ''}
+</section>`;
 }
 window.openTopic = id => { location.hash = '#/post-view/' + id; };
 window.editPost = id => { location.hash = '#/post-view/' + id; };
@@ -925,14 +876,14 @@ window.delPost = async function(id){
 async function renderListagem(c, sec){
   const { data: entries } = await supabase.from('listagem_entries').select('*').order('created_at',{ascending:false}).limit(100);
   c.innerHTML = secHead(sec) + `
-  <div class="card fade-up">
-    <div class="cat-head"><i class="fas fa-list-ul"></i> Registros oficiais</div>
-    <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Registro</th><th>Categoria</th><th>Detalhes</th><th>Data</th></tr></thead>
+<div class="card fade-up">
+  <div class="cat-head"><i class="fas fa-list-ul"></i> Registros oficiais</div>
+  <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Registro</th><th>Categoria</th><th>Detalhes</th><th>Data</th></tr></thead>
     <tbody>${(entries||[]).map(e => `<tr>
       <td class="font-bold text-famr-800">${esc(e.title)}</td><td><span class="chip chip-neutral">${esc(e.category)}</span></td>
       <td class="text-xs text-muted">${Object.entries(e.data||{}).map(([k,v])=>`<b>${esc(k)}:</b> ${esc(v)}`).join(' • ')}</td>
       <td class="text-xs text-muted">${fmtDate(e.created_at)}</td></tr>`).join('') || '<tr><td colspan="4" class="text-center text-muted py-8">Nenhum registro.</td></tr>'}</tbody></table></div>
-  </div>`;
+</div>`;
 }
 
 /* ══════════ REQUERIMENTOS ══════════ */
@@ -940,22 +891,22 @@ async function renderRequerimentos(c, sec){
   const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id).order('order_index');
   const { data: mine } = await supabase.from('requests').select('*,subtopics(name)').eq('author_id', STATE.profile.id).order('created_at',{ascending:false}).limit(30);
   c.innerHTML = secHead(sec) + `
-  <div class="grid lg:grid-cols-3 gap-6">
-    <div class="space-y-4 fade-up">
-      ${(subs||[]).filter(canViewSub).map(s => `<div class="card card-hover p-5">
-          <h3 class="font-display font-bold">${esc(s.name)}</h3>
-          <p class="text-xs text-muted mt-1">${esc(s.description||'')}</p>
-          <button class="btn btn-gold btn-sm mt-3" onclick='openRequestForm(${JSON.stringify(s).replace(/'/g,"&#39;")})'><i class="fas fa-pen-to-square"></i> Abrir protocolo</button>
-        </div>`).join('') || '<div class="card card-body text-sm text-muted">Nenhum formulário disponível.</div>'}
-    </div>
-    <div class="lg:col-span-2 card fade-up">
-      <div class="cat-head"><i class="fas fa-inbox"></i> Meus protocolos</div>
-      <div class="divide-y divide-line max-h-[560px] overflow-auto">
-        ${(mine||[]).map(r => `<div class="p-4 flex items-center justify-between gap-3">
-          <div><p class="font-bold text-sm">${esc(r.title)}</p><p class="text-[11px] text-muted">${esc(r.subtopics?.name||'')} • ${fmtDate(r.created_at)}</p></div>
-          ${statusChip(r.status)}</div>`).join('') || '<p class="p-8 text-center text-sm text-muted">Nenhum protocolo.</p>'}
-      </div></div>
-  </div>`;
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="space-y-4 fade-up">
+    ${(subs||[]).filter(canViewSub).map(s => `<div class="card card-hover p-5">
+      <h3 class="font-display font-bold">${esc(s.name)}</h3>
+      <p class="text-xs text-muted mt-1">${esc(s.description||'')}</p>
+      <button class="btn btn-gold btn-sm mt-3" onclick='openRequestForm(${JSON.stringify(s).replace(/'/g, "&#39;")})'><i class="fas fa-pen-to-square"></i> Abrir protocolo</button>
+    </div>`).join('') || '<div class="card card-body text-sm text-muted">Nenhum formulário disponível.</div>'}
+  </div>
+  <div class="lg:col-span-2 card fade-up">
+    <div class="cat-head"><i class="fas fa-inbox"></i> Meus protocolos</div>
+    <div class="divide-y divide-line max-h-[560px] overflow-auto">
+      ${(mine||[]).map(r => `<div class="p-4 flex items-center justify-between gap-3">
+        <div><p class="font-bold text-sm">${esc(r.title)}</p><p class="text-[11px] text-muted">${esc(r.subtopics?.name||'')} • ${fmtDate(r.created_at)}</p></div>
+        ${statusChip(r.status)}</div>`).join('') || '<p class="p-8 text-center text-sm text-muted">Nenhum protocolo.</p>'}
+    </div></div>
+</div>`;
 }
 window.openRequestForm = function(sub){
   const fields = sub.form_fields || [];
@@ -980,106 +931,94 @@ window.submitRequest = async function(subtopicId){
    DOCUMENTOS PRINCIPAIS — SISTEMA HIERÁRQUICO DE PÁGINAS
    ═══════════════════════════════════════════════════ */
 let _wsDirty=false, _wsSaving=false;
-
 async function renderDocumentos(c, sec){
   if(!canViewSection(sec)){ c.innerHTML = secHead(sec)+lockCard(); return; }
   const canManage = isAdmin() || (STATE.perms?.['section:'+sec.id]?.create);
-  
   const [{ data: pages }, { data: generalDocs }] = await Promise.all([
     cachedQuery('docpages:list', ()=> supabase.from('doc_pages').select('*').order('order_index'), 30_000),
     cachedQuery('docs:list-general', ()=> supabase.from('documents').select('id,title,category,cover_url,updated_at,author_id,doc_type,profiles_view(nickname)').is('page_id', null).order('updated_at',{ascending:false}), 30_000)
   ]);
-  
   c.innerHTML = secHead(sec) + `
-  <div class="flex flex-wrap items-center gap-2 mb-4 fade-up">
-    ${canManage?`
-      <button class="btn btn-primary btn-sm" onclick="showNewDocDialog(null)"><i class="fas fa-plus"></i> Novo Documento</button>
-      <button class="btn btn-gold btn-sm" onclick="docPageForm()"><i class="fas fa-file-circle-plus"></i> Nova Página</button>
-    `:''}
-    <input id="doc-q" class="input !py-1.5 w-56 ml-auto" placeholder="Buscar..." oninput="filterDocs(this.value)">
+<div class="flex flex-wrap items-center gap-2 mb-4 fade-up">
+  ${canManage?`
+    <button class="btn btn-primary btn-sm" onclick="showNewDocDialog(null)"><i class="fas fa-plus"></i> Novo Documento</button>
+    <button class="btn btn-gold btn-sm" onclick="docPageForm()"><i class="fas fa-file-circle-plus"></i> Nova Página</button>
+  `:''}
+  <input id="doc-q" class="input !py-1.5 w-56 ml-auto" placeholder="Buscar..." oninput="filterDocs(this.value)">
+</div>
+${(pages||[]).length ? `
+<section class="mb-6 fade-up">
+  <h2 class="font-display text-lg font-extrabold text-famr-900 mb-3"><i class="fas fa-layer-group text-gold-500 mr-2"></i>Páginas / Tópicos</h2>
+  <div class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    ${(pages||[]).map(p => docPageCard(p, canManage)).join('')}
   </div>
-  
-  ${(pages||[]).length ? `
-  <section class="mb-6 fade-up">
-    <h2 class="font-display text-lg font-extrabold text-famr-900 mb-3"><i class="fas fa-layer-group text-gold-500 mr-2"></i>Páginas / Tópicos</h2>
-    <div class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      ${(pages||[]).map(p => docPageCard(p, canManage)).join('')}
-    </div>
-  </section>` : ''}
-  
-  <section class="fade-up">
-    <h2 class="font-display text-lg font-extrabold text-famr-900 mb-3"><i class="fas fa-file-lines text-famr-700 mr-2"></i>Documentos Gerais</h2>
-    <div id="doc-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      ${(generalDocs||[]).map(d=>docCard(d, canManage, null)).join('') || '<div class="card card-body text-sm text-muted col-span-full text-center py-10">Nenhum documento geral.</div>'}
-    </div>
-  </section>`;
+</section>` : ''}
+<section class="fade-up">
+  <h2 class="font-display text-lg font-extrabold text-famr-900 mb-3"><i class="fas fa-file-lines text-famr-700 mr-2"></i>Documentos Gerais</h2>
+  <div id="doc-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    ${(generalDocs||[]).map(d=>docCard(d, canManage, null)).join('') || '<div class="card card-body text-sm text-muted col-span-full text-center py-10">Nenhum documento geral.</div>'}
+  </div>
+</section>`;
 }
-
 function lockCard(){ return `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2></div>`; }
-
 function docPageCard(p, canManage){
   return `<div class="card card-hover overflow-hidden doc-page-item" data-name="${esc((p.name||'').toLowerCase())}">
-    <div class="p-5">
-      <div class="flex items-start justify-between gap-2">
-        <span class="forum-ico" style="background:${p.color||'#14563f'};color:#fff"><i class="fas ${p.icon||'fa-folder-open'}"></i></span>
-        ${canManage?`
-          <div class="flex gap-1">
-            <button class="btn btn-outline btn-sm" onclick="docPageForm('${p.id}')" title="Editar"><i class="fas fa-pen"></i></button>
-            <button class="btn btn-danger btn-sm" onclick="delDocPage('${p.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
-          </div>`:''}
-      </div>
-      <h3 class="font-bold mt-3 text-famr-800">${esc(p.name)}</h3>
-      <p class="text-xs text-muted mt-1">${esc(p.description||'')}</p>
-      <p class="text-[10px] text-muted mt-2"><i class="fas fa-hashtag mr-1"></i>/${esc(p.slug||'')}</p>
-      <a href="#/doc-page/${p.id}" class="btn btn-primary btn-sm mt-3 w-full justify-center"><i class="fas fa-folder-open"></i> Abrir Página</a>
+  <div class="p-5">
+    <div class="flex items-start justify-between gap-2">
+      <span class="forum-ico" style="background:${p.color||'#14563f'};color:#fff"><i class="fas ${p.icon||'fa-folder-open'}"></i></span>
+      ${canManage?`<div class="flex gap-1">
+        <button class="btn btn-outline btn-sm" onclick="docPageForm('${p.id}')" title="Editar"><i class="fas fa-pen"></i></button>
+        <button class="btn btn-danger btn-sm" onclick="delDocPage('${p.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
+      </div>`:''}
     </div>
-  </div>`;
+    <h3 class="font-bold mt-3 text-famr-800">${esc(p.name)}</h3>
+    <p class="text-xs text-muted mt-1">${esc(p.description||'')}</p>
+    <p class="text-[10px] text-muted mt-2"><i class="fas fa-hashtag mr-1"></i>/${esc(p.slug||'')}</p>
+    <a href="#/doc-page/${p.id}" class="btn btn-primary btn-sm mt-3 w-full justify-center"><i class="fas fa-folder-open"></i> Abrir Página</a>
+  </div>
+</div>`;
 }
-
 function docCard(d, canManage, pageId){
   return `<div class="card card-hover overflow-hidden doc-item" data-title="${esc((d.title||'').toLowerCase())}">
-    ${d.cover_url?`<img src="${esc(d.cover_url)}" class="w-full h-32 object-cover" alt="" loading="lazy">`:''}
-    <div class="p-4">
-      <div class="flex items-start justify-between gap-2">
-        <h3 class="font-bold text-famr-800 leading-snug">${esc(d.title)}</h3>
-        ${d.category?`<span class="chip chip-neutral shrink-0">${esc(d.category)}</span>`:''}
-      </div>
-      <p class="text-[11px] text-muted mt-1">por <b>${esc(d.profiles_view?.nickname||'—')}</b> • ${fmtDate(d.updated_at)}</p>
-      ${d.doc_type?`<span class="chip ${d.doc_type==='request'?'chip-wait':d.doc_type==='listing'?'chip-neutral':'chip-ok'} mt-1">${DOC_TYPES[d.doc_type]||d.doc_type}</span>`:''}
-      <div class="flex gap-1 mt-3">
-        <a href="#/doc-view/${d.id}" class="btn btn-outline btn-sm"><i class="fas fa-book-open"></i> Ler</a>
-        ${canManage?`<a href="#/doc-edit/${d.id}" class="btn btn-outline btn-sm"><i class="fas fa-pen"></i></a>
-        <button class="btn btn-danger btn-sm" onclick="delDoc('${d.id}')"><i class="fas fa-trash"></i></button>`:''}
-      </div>
+  ${d.cover_url?`<img src="${esc(d.cover_url)}" class="w-full h-32 object-cover" alt="" loading="lazy">`:''}
+  <div class="p-4">
+    <div class="flex items-start justify-between gap-2">
+      <h3 class="font-bold text-famr-800 leading-snug">${esc(d.title)}</h3>
+      ${d.category?`<span class="chip chip-neutral shrink-0">${esc(d.category)}</span>`:''}
     </div>
-  </div>`;
+    <p class="text-[11px] text-muted mt-1">por <b>${esc(d.profiles_view?.nickname||'—')}</b> • ${fmtDate(d.updated_at)}</p>
+    ${d.doc_type?`<span class="chip ${d.doc_type==='request'?'chip-wait':d.doc_type==='listing'?'chip-neutral':'chip-ok'} mt-1">${DOC_TYPES[d.doc_type]||d.doc_type}</span>`:''}
+    <div class="flex gap-1 mt-3">
+      <a href="#/doc-view/${d.id}" class="btn btn-outline btn-sm"><i class="fas fa-book-open"></i> Ler</a>
+      ${canManage?`<a href="#/doc-edit/${d.id}" class="btn btn-outline btn-sm"><i class="fas fa-pen"></i></a>
+        <button class="btn btn-danger btn-sm" onclick="delDoc('${d.id}')"><i class="fas fa-trash"></i></button>`:''}
+    </div>
+  </div>
+</div>`;
 }
-
 async function renderDocPage(c, pageId){
   const { data: pg } = await supabase.from('doc_pages').select('*').eq('id', pageId).single();
   if(!pg){ c.innerHTML = '<div class="card card-body text-sm text-muted">Página não encontrada.</div>'; return; }
   const canManage = isAdmin();
   const { data: docs } = await supabase.from('documents').select('id,title,category,cover_url,updated_at,author_id,doc_type,profiles_view(nickname)').eq('page_id', pageId).order('updated_at',{ascending:false});
   c.innerHTML = `
-  <div class="fade-up">
-    <p class="text-xs text-muted mb-2"><a href="#/section/documentos" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>Documentos Principais</a> / <b>${esc(pg.name)}</b></p>
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="font-display text-xl md:text-2xl font-extrabold text-famr-900"><i class="fas ${pg.icon||'fa-folder-open'} mr-2" style="color:${pg.color||'#14563f'}"></i>${esc(pg.name)}</h1>
-      ${canManage?`<button class="btn btn-primary btn-sm" onclick="showNewDocDialog('${pg.id}')"><i class="fas fa-plus"></i> Novo Documento</button>`:''}
-    </div>
-    <p class="text-sm text-muted mt-1">${esc(pg.description||'')}</p>
+<div class="fade-up">
+  <p class="text-xs text-muted mb-2"><a href="#/section/documentos" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>Documentos Principais</a> / <b>${esc(pg.name)}</b></p>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h1 class="font-display text-xl md:text-2xl font-extrabold text-famr-900"><i class="fas ${pg.icon||'fa-folder-open'} mr-2" style="color:${pg.color||'#14563f'}"></i>${esc(pg.name)}</h1>
+    ${canManage?`<button class="btn btn-primary btn-sm" onclick="showNewDocDialog('${pg.id}')"><i class="fas fa-plus"></i> Novo Documento</button>`:''}
   </div>
-  <section class="card overflow-hidden fade-up mt-4">
-    <div class="cat-head"><i class="fas fa-file-lines"></i> Documentos nesta página <span class="ml-auto text-[10px] normal-case tracking-normal text-gold-300">${(docs||[]).length} item(ns)</span></div>
-    <div class="p-4">
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        ${(docs||[]).map(d=>docCard(d, canManage, pg.id)).join('') || '<div class="card card-body text-sm text-muted col-span-full text-center py-10">Nenhum documento nesta página.</div>'}
-      </div>
+  <p class="text-sm text-muted mt-1">${esc(pg.description||'')}</p>
+</div>
+<section class="card overflow-hidden fade-up mt-4">
+  <div class="cat-head"><i class="fas fa-file-lines"></i> Documentos nesta página <span class="ml-auto text-[10px] normal-case tracking-normal text-gold-300">${(docs||[]).length} item(ns)</span></div>
+  <div class="p-4">
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      ${(docs||[]).map(d=>docCard(d, canManage, pg.id)).join('') || '<div class="card card-body text-sm text-muted col-span-full text-center py-10">Nenhum documento nesta página.</div>'}
     </div>
-  </section>`;
+  </div>
+</section>`;
 }
-
-/* Diálogo para escolher tipo e onde criar o novo documento */
 window.showNewDocDialog = async function(preferredPageId){
   const { data: pages } = await supabase.from('doc_pages').select('id,name,icon,color').order('order_index');
   const options = [
@@ -1094,14 +1033,12 @@ window.showNewDocDialog = async function(preferredPageId){
          <option value="general">📋 Documentação Geral (regulamentos, cronogramas, etc.)</option>
          <option value="request">📝 Requerimento (com formulário customizável)</option>
          <option value="listing">📊 Listagem (sem respostas/paginação)</option>
-       </select>
-     </label>
+       </select></label>
      <label class="field"><span>Página destino</span><select id="nd-page" class="input">${options}</select></label>
      <p class="text-xs text-muted mt-2"><i class="fas fa-info-circle"></i> Após confirmar, você será levado ao editor completo.</p>`,
     `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
      <button class="btn btn-primary btn-sm" onclick="confirmNewDoc()"><i class="fas fa-check"></i> Criar e abrir editor</button>`);
 };
-
 window.confirmNewDoc = async function(){
   const title = document.getElementById('nd-title').value.trim();
   const category = document.getElementById('nd-category').value.trim();
@@ -1112,7 +1049,6 @@ window.confirmNewDoc = async function(){
   const meta = encodeURIComponent(JSON.stringify({ title, category, page_id: pageId, doc_type: docType }));
   location.hash = `#/doc-new/${meta}`;
 };
-
 window.filterDocs = q => {
   q=q.toLowerCase().trim();
   document.querySelectorAll('.doc-item, .doc-page-item').forEach(el=>{
@@ -1120,22 +1056,20 @@ window.filterDocs = q => {
     el.style.display = (!q || t.includes(q))?'':'none';
   });
 };
-
 window.viewDoc = id => { location.hash = '#/doc-view/' + id; };
 window.downloadDoc = async id => {
   const { data:d } = await supabase.from('documents').select('title,body_html').eq('id',id).single();
   if(!d) return;
   const fullHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>${esc(d.title)}</title></head><body>${d.body_html}</body></html>`;
   const blob = new Blob(['\ufeff'+fullHtml], {type:'application/msword'});
-  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=(d.title||'documento').replace(/[^\w\-]+/g,'_')+'.doc'; a.click(); URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=(d.title||'documento').replace(/[^\w-]+/g,'_')+'.doc'; a.click(); URL.revokeObjectURL(url);
 };
 window.delDoc = async id => {
   if(!await confirmDlg('Excluir este documento permanentemente?', { title:'Excluir', okText:'Excluir', danger:true })) return;
   await supabase.from('documents').delete().eq('id',id);
   await famrLog('DOC_DEL', { id });
-  invalidate('docs:'); invalidate('docpages:'); closeModal(); toast('Excluído.'); location.hash='#/section/documentos';
+  invalidate('docs:'); invalidate('docpages:'); invalidate('home:'); closeModal(); toast('Excluído.'); location.hash='#/section/documentos';
 };
-
 window.docPageForm = async id => {
   let p = { name:'', slug:'', description:'', icon:'fa-folder-open', color:'#14563f', order_index:0 };
   if(id){
@@ -1149,7 +1083,7 @@ window.docPageForm = async id => {
      <div class="grid grid-cols-2 gap-3">
        <label class="field"><span>Ícone</span>
          <div class="icon-grid" id="dp-icon-grid" style="max-height:200px;overflow:auto;border:1px solid #dee2e6;border-radius:8px;padding:6px;">
-           ${SAFE_ICONS.slice(0,80).map(ic => `<button type="button" class="icon-opt ${p.icon===ic?'sel':''}" data-icon="${ic}" onclick="pickIconDP(this)" title="${ic}"><i class="fas ${ic}"></i></button>`).join('')}
+           ${SAFE_ICONS.slice(0,80).map(ic =>`<button type="button" class="icon-opt ${p.icon===ic?'sel':''}" data-icon="${ic}" onclick="pickIconDP(this)" title="${ic}"><i class="fas ${ic}"></i></button> `).join('')}
          </div>
          <input type="hidden" id="dp-icon" value="${esc(p.icon||'fa-folder-open')}">
        </label>
@@ -1191,18 +1125,15 @@ window.delDocPage = async id => {
   await famrLog('DOC_PAGE_DEL', { id });
   invalidate('docpages:'); invalidate('docs:'); toast('Excluída.'); route();
 };
-
 function closeDocWorkspace(){
   const old = document.getElementById('doc-workspace');
   if(old) old.remove();
   _wsDirty=false; _wsSaving=false;
   document.removeEventListener('keydown', ctrlSaveHandler);
 }
-
 window.renderDocWorkspace = async function(docId, metaEncoded){
   closeDocWorkspace();
   let d = { title:'', category:'', body_html:'', cover_url:null, page_id:null, doc_type:'general' };
-  
   if(metaEncoded){
     try{
       const meta = JSON.parse(decodeURIComponent(metaEncoded));
@@ -1212,60 +1143,53 @@ window.renderDocWorkspace = async function(docId, metaEncoded){
       d.doc_type = meta.doc_type || 'general';
     }catch(e){}
   }
-  
   if(docId){
     const r = await supabase.from('documents').select('*').eq('id',docId).single();
     if(!r.data){ toast('Documento não encontrado.','err'); location.hash='#/section/documentos'; return; }
     d = r.data;
   }
-  
   let pageName = null;
   if(d.page_id){
     const pr = await supabase.from('doc_pages').select('name').eq('id', d.page_id).single();
     pageName = pr.data?.name || null;
   }
-  
   const ws = document.createElement('div');
   ws.id = 'doc-workspace';
   ws.className = 'doc-workspace';
-  ws.innerHTML = `
-    <div class="dw-bar">
-      <button class="dw-back" onclick="exitDocWorkspace()"><i class="fas fa-arrow-left"></i> Voltar</button>
-      <span class="text-xs text-muted mx-2">${pageName ? `<i class="fas fa-folder-open mr-1"></i>${esc(pageName)} /` : '<i class="fas fa-file-lines mr-1"></i>Geral /'}</span>
-      <input class="dw-title-in" id="dw-title" placeholder="Título do documento" value="${esc(d.title)}" maxlength="200">
-      <input class="dw-cat-in" id="dw-category" placeholder="Categoria (opcional)" value="${esc(d.category||'')}">
-      <select class="dw-cat-in" id="dw-doc-type" style="width:140px">
-        <option value="general" ${d.doc_type==='general'?'selected':''}>📋 Geral</option>
-        <option value="request" ${d.doc_type==='request'?'selected':''}>📝 Requerimento</option>
-        <option value="listing" ${d.doc_type==='listing'?'selected':''}>📊 Listagem</option>
-      </select>
-      <span class="dw-status" id="dw-status">${docId?'carregado':'novo documento'}</span>
-      <button class="dw-save" id="dw-save-btn" onclick="saveCurrentDoc('${docId||''}','${d.page_id||''}')"><i class="fas fa-floppy-disk"></i> Salvar</button>
+  ws.innerHTML = `<div class="dw-bar">
+    <button class="dw-back" onclick="exitDocWorkspace()"><i class="fas fa-arrow-left"></i> Voltar</button>
+    <span class="text-xs text-muted mx-2">${pageName ?`<i class="fas fa-folder-open mr-1"></i>${esc(pageName)} /`:'<i class="fas fa-file-lines mr-1"></i>Geral /'}</span>
+    <input class="dw-title-in" id="dw-title" placeholder="Título do documento" value="${esc(d.title)}" maxlength="200">
+    <input class="dw-cat-in" id="dw-category" placeholder="Categoria (opcional)" value="${esc(d.category||'')}">
+    <select class="dw-cat-in" id="dw-doc-type" style="width:140px">
+      <option value="general" ${d.doc_type==='general'?'selected':''}>📋 Geral</option>
+      <option value="request" ${d.doc_type==='request'?'selected':''}>📝 Requerimento</option>
+      <option value="listing" ${d.doc_type==='listing'?'selected':''}>📊 Listagem</option>
+    </select>
+    <span class="dw-status" id="dw-status">${docId?'carregado':'novo documento'}</span>
+    <button class="dw-save" id="dw-save-btn" onclick="saveCurrentDoc('${docId||''}','${d.page_id||''}')"><i class="fas fa-floppy-disk"></i> Salvar</button>
+  </div>
+  <div class="dw-toolbar" id="dw-toolbar"></div>
+  <div class="dw-canvas" id="dw-canvas">
+    <div class="doc-page">
+      <div class="doc-body" id="dw-body" contenteditable="true" spellcheck="false">${d.body_html || '<p class="doc-empty-hint">Comece a escrever...</p>'}</div>
     </div>
-    <div class="dw-toolbar" id="dw-toolbar"></div>
-    <div class="dw-canvas" id="dw-canvas">
-      <div class="doc-page">
-        <div class="doc-body" id="dw-body" contenteditable="true" spellcheck="false">${d.body_html || '<p class="doc-empty-hint">Comece a escrever...</p>'}</div>
-      </div>
-    </div>`;
+  </div>`;
   document.body.appendChild(ws);
   initToolbar();
   wireEvents();
   setupImageInteractivity();
   document.getElementById('dw-title').focus();
 };
-
 window.exitDocWorkspace = async function(){
   if(_wsDirty){
     const choice = await new Promise(res => {
       openModal('<i class="fas fa-triangle-exclamation text-gold-500 mr-2"></i>Alterações não salvas',
         `<p class="text-sm text-muted">Este documento tem alterações não salvas.</p>`,
-        `<button class="btn btn-outline btn-sm" id="_ex-cancel">Continuar editando</button>
-         <button class="btn btn-danger btn-sm" id="_ex-discard">Descartar</button>
-         <button class="btn btn-primary btn-sm" id="_ex-save">Salvar e sair</button>`);
-      document.getElementById('_ex-save').onclick = ()=>{ closeModal(); res('save'); };
-      document.getElementById('_ex-discard').onclick = ()=>{ closeModal(); res('discard'); };
-      document.getElementById('_ex-cancel').onclick = ()=>{ closeModal(); res('cancel'); };
+        `<button class="btn btn-outline btn-sm" id="_ex-cancel">Continuar editando</button> <button class="btn btn-danger btn-sm" id="_ex-discard">Descartar</button> <button class="btn btn-primary btn-sm" id="_ex-save">Salvar e sair</button>`);
+      document.getElementById('_ex-save').onclick = () => { closeModal(); res('save'); };
+      document.getElementById('_ex-discard').onclick = () => { closeModal(); res('discard'); };
+      document.getElementById('_ex-cancel').onclick = () => { closeModal(); res('cancel'); };
     });
     if(choice==='cancel') return;
     if(choice==='save'){
@@ -1279,10 +1203,8 @@ window.exitDocWorkspace = async function(){
   if(location.hash==='#/doc-new'||location.hash.startsWith('#/doc-edit')) location.hash='#/section/documentos';
   else history.back();
 };
-
 function getBody(){ return document.getElementById('dw-body'); }
 function focusBody(){ const b = getBody(); if(b){ b.focus(); } }
-
 function execSafe(cmd, val=null){
   focusBody();
   try{
@@ -1298,7 +1220,6 @@ function execSafe(cmd, val=null){
   }catch(e){ console.warn('[FAMR] Cmd fail:', cmd, e); }
   markDirty(); syncState();
 }
-
 function manuallyApplyTag(tagName){
   const sel = window.getSelection();
   if(!sel.rangeCount) return;
@@ -1308,30 +1229,28 @@ function manuallyApplyTag(tagName){
     node = node.parentNode;
   }
   if(node.nodeType === 3){
-     const parent = node.parentElement;
-     if(parent && parent.tagName !== tagName.toUpperCase()){
-        const newEl = document.createElement(tagName);
-        newEl.innerHTML = parent ? parent.innerHTML : node.textContent;
-        if(parent) parent.replaceWith(newEl); else node.replaceWith(newEl);
-        const r = document.createRange();
-        r.selectNodeContents(newEl); r.collapse(false);
-        sel.removeAllRanges(); sel.addRange(r);
-     }
+    const parent = node.parentElement;
+    if(parent && parent.tagName !== tagName.toUpperCase()){
+      const newEl = document.createElement(tagName);
+      newEl.innerHTML = parent ? parent.innerHTML : node.textContent;
+      if(parent) parent.replaceWith(newEl); else node.replaceWith(newEl);
+      const r = document.createRange();
+      r.selectNodeContents(newEl); r.collapse(false);
+      sel.removeAllRanges(); sel.addRange(r);
+    }
   } else if(node.nodeType === 1){
-     if(node.tagName !== tagName.toUpperCase()){
-        const newEl = document.createElement(tagName);
-        newEl.innerHTML = node.innerHTML;
-        node.replaceWith(newEl);
-     }
+    if(node.tagName !== tagName.toUpperCase()){
+      const newEl = document.createElement(tagName);
+      newEl.innerHTML = node.innerHTML;
+      node.replaceWith(newEl);
+    }
   }
 }
-
 function initToolbar(){
   const bar = document.getElementById('dw-toolbar');
   bar.innerHTML = '';
   const COLORS_TEXT = ['#000000','#434343','#666666','#999999','#b7b7b7','#cccccc','#efefef','#ffffff','#ff0000','#ff9900','#ffff00','#00ff00','#00ffff','#0000ff','#9900ff','#ff00ff'];
   const COLORS_HILITE = ['#fce8b2','#d9ead3','#c9daf8','#ead1dc','#fff2cc','#d0e3e3','#f4cccc','#e0e0e0'];
-
   function addBtn(label, iconClass, actionFn, isActiveCheck=null){
     const btn = document.createElement('button');
     btn.type='button'; btn.className='dw-tool-fixed'; btn.title=label;
@@ -1367,7 +1286,6 @@ function initToolbar(){
     wrap.appendChild(btn); wrap.appendChild(pop);
     bar.appendChild(wrap);
   }
-
   addSelect([['Arial','Arial'],['Georgia','Georgia'],['Times New Roman','TNR'],['Verdana','Verdana']], v => execSafe('fontName', v));
   addSelect([['1','Peq'],['2','Norm'],['3','Med'],['4','Grande'],['5','Maior'],['6','Enorme']], v => execSafe('fontSize', v));
   addSep();
@@ -1401,7 +1319,7 @@ function initToolbar(){
     const html = `<div class="famr-quote-box">Digite sua citação aqui...</div><p><br></p>`;
     document.execCommand('insertHTML', false, html);
     markDirty();
-    setTimeout(()=>{
+    setTimeout(() => {
       const lastBox = getBody().querySelector('.famr-quote-box:last-of-type');
       if(lastBox){
         const range = document.createRange();
@@ -1418,7 +1336,7 @@ function initToolbar(){
   addSep();
   addBtn('Inserir Link','fa-link', async () => {
     const urlRaw = await promptDlg('Cole a URL completa','https://', { title:'Inserir Link', okText:'Aplicar' });
-    if(urlRaw){ 
+    if(urlRaw){
       let finalUrl = urlRaw.trim();
       if(finalUrl && !/^https?:\/\//i.test(finalUrl)){ finalUrl = 'https://' + finalUrl; }
       focusBody();
@@ -1439,14 +1357,12 @@ function initToolbar(){
   addSep();
   addBtn('Desfazer','fa-undo', () => execSafe('undo'));
   addBtn('Refazer','fa-repeat', () => execSafe('redo'));
-
   document.addEventListener('click', e => {
     if(!e.target.closest('.dw-color-btn')&&!e.target.closest('.dw-color-pop')){
       document.querySelectorAll('.dw-color-pop.open').forEach(p=>p.classList.remove('open'));
     }
   });
 }
-
 function syncState(){
   const bar = document.getElementById('dw-toolbar');
   if(!bar) return;
@@ -1456,33 +1372,30 @@ function syncState(){
     }
   });
 }
-
 function openCodeModal(){
   const old = document.getElementById('code-modal-root');
   if(old) old.remove();
   const overlay = document.createElement('div');
   overlay.id = 'code-modal-root';
   overlay.className = 'code-modal-overlay active';
-  overlay.innerHTML = `
-    <div class="code-modal-card">
-      <div class="cm-header">
-        <span class="cm-title"><i class="fas fa-code mr-2"></i>Inserir Código HTML/CSS Visual</span>
-        <button class="cm-close" onclick="closeCodeModal()">&times;</button>
-      </div>
-      <div class="cm-body">
-        <textarea id="html-input-area" class="cm-textarea" placeholder="Cole TODO o código HTML/CSS aqui..."></textarea>
-        <p class="text-xs text-muted mt-2"><i class="fas fa-info-circle"></i> Scripts serão removidos. Estilos serão isolados para não quebrar o site.</p>
-      </div>
-      <div class="cm-footer">
-        <button class="btn btn-outline btn-sm" onclick="closeCodeModal()">Cancelar</button>
-        <button class="btn btn-primary btn-sm" onclick="applyCodeToDoc()"><i class="fas fa-check"></i> Inserir</button>
-      </div>
-    </div>`;
+  overlay.innerHTML = `<div class="code-modal-card">
+    <div class="cm-header">
+      <span class="cm-title"><i class="fas fa-code mr-2"></i>Inserir Código HTML/CSS Visual</span>
+      <button class="cm-close" onclick="closeCodeModal()">&times;</button>
+    </div>
+    <div class="cm-body">
+      <textarea id="html-input-area" class="cm-textarea" placeholder="Cole TODO o código HTML/CSS aqui..."></textarea>
+      <p class="text-xs text-muted mt-2"><i class="fas fa-info-circle"></i> Scripts serão removidos. Estilos serão isolados para não quebrar o site.</p>
+    </div>
+    <div class="cm-footer">
+      <button class="btn btn-outline btn-sm" onclick="closeCodeModal()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="applyCodeToDoc()"><i class="fas fa-check"></i> Inserir</button>
+    </div>
+  </div>`;
   document.body.appendChild(overlay);
   setTimeout(()=>document.getElementById('html-input-area').focus(), 100);
 }
 window.closeCodeModal = function(){ const m = document.getElementById('code-modal-root'); if(m) m.remove(); };
-
 window.applyCodeToDoc = function(){
   const input = document.getElementById('html-input-area');
   if(!input || !input.value.trim()) return closeCodeModal();
@@ -1496,14 +1409,12 @@ window.applyCodeToDoc = function(){
     .replace(/on\w+="[^"]*"/gi, '')
     .replace(/on\w+='[^']*'/gi, '')
     .replace(/<\/?(html|head|body|meta|title|link)\b[^>]*>/gi, '');
-  
   const scopeHash = Math.abs(hashCode(rawContent.substring(0, 50))).toString(36).substring(0, 6);
   const uniqueScopeClass = `famr-scope-${scopeHash}`;
-  
   let processedCss = '';
   if(cssBlocks.length > 0){
     const combinedCss = cssBlocks.join('\n\n');
-    processedCss = combinedCss.replace(/(^|\}\s*)([^\{\}]+)(\s*\{)/gm, (match, before, selector, after) => {
+    processedCss = combinedCss.replace(/(^|}\s*)([^{}]+)(\s*{)/gm, (match, before, selector, after) => {
       if(selector.trim().startsWith('@') || selector.includes(uniqueScopeClass)) return match;
       const selectors = selector.split(',').map(s => {
         const trimmed = s.trim();
@@ -1515,20 +1426,17 @@ window.applyCodeToDoc = function(){
       return `${before}${selectors}${after}`;
     });
   }
-  
   let finalSnippet = '';
   if(processedCss){
     finalSnippet += `<style data-famr-scoped="${uniqueScopeClass}">\n${processedCss}\n</style>\n`;
   }
   finalSnippet += `<div class="${uniqueScopeClass} isolated-html-block">\n${cleanHtml}\n</div>`;
-  
   focusBody();
   document.execCommand('insertHTML', false, finalSnippet);
   markDirty();
   closeCodeModal();
   toast('Código e estilos inseridos visualmente e isolados.');
 };
-
 function hashCode(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -1538,7 +1446,6 @@ function hashCode(str) {
   }
   return hash;
 }
-
 function insertImage(body){
   const inp = document.createElement('input');
   inp.type='file'; inp.accept='image/*';
@@ -1574,7 +1481,7 @@ function insertImage(body){
 }
 window.setImgFloat = function(wrapper, side){
   const img = wrapper.querySelector('img'); if(!img) return;
-  img.style.float = 'none'; img.style.display = 'block'; img.style.margin = '8px auto'; 
+  img.style.float = 'none'; img.style.display = 'block'; img.style.margin = '8px auto';
   if(side === 'left'){ img.style.float = 'left'; img.style.margin = '8px 12px 8px 0'; img.style.display = 'inline-block'; }
   else if(side === 'right'){ img.style.float = 'right'; img.style.margin = '8px 0 8px 12px'; img.style.display = 'inline-block'; }
   markDirty();
@@ -1591,7 +1498,6 @@ window.resizeImg = function(wrapper, delta){
   markDirty();
 };
 window.removeImg = function(wrapper){ wrapper.remove(); markDirty(); };
-
 function setupImageInteractivity(){
   const canvas = document.getElementById('dw-canvas');
   if(!canvas) return;
@@ -1602,8 +1508,8 @@ function setupImageInteractivity(){
     const handle = e.target.closest('.img-handle');
     const wrapper = e.target.closest('.img-wrapper');
     if(wrapper && !handle && e.target.tagName === 'IMG'){
-       e.preventDefault(); selectWrapper(wrapper); isDraggingMove = true;
-       startX = e.clientX; startY = e.clientY; return;
+      e.preventDefault(); selectWrapper(wrapper); isDraggingMove = true;
+      startX = e.clientX; startY = e.clientY; return;
     }
     if(handle && wrapper){
       e.preventDefault();
@@ -1619,12 +1525,12 @@ function setupImageInteractivity(){
   document.addEventListener('mousemove', e => {
     if(!selectedWrapper) return;
     if(isDraggingMove){
-       const dx = e.clientX - startX; const dy = e.clientY - startY;
-       const currentMarginLeft = parseInt(selectedWrapper.style.marginLeft || '0');
-       const currentMarginTop = parseInt(selectedWrapper.style.marginTop || '0');
-       selectedWrapper.style.marginLeft = (currentMarginLeft + dx) + 'px';
-       selectedWrapper.style.marginTop = (currentMarginTop + dy) + 'px';
-       startX = e.clientX; startY = e.clientY; return;
+      const dx = e.clientX - startX; const dy = e.clientY - startY;
+      const currentMarginLeft = parseInt(selectedWrapper.style.marginLeft || '0');
+      const currentMarginTop = parseInt(selectedWrapper.style.marginTop || '0');
+      selectedWrapper.style.marginLeft = (currentMarginLeft + dx) + 'px';
+      selectedWrapper.style.marginTop = (currentMarginTop + dy) + 'px';
+      startX = e.clientX; startY = e.clientY; return;
     }
     if(!dragHandle) return;
     const img = selectedWrapper.querySelector('img');
@@ -1638,16 +1544,15 @@ function setupImageInteractivity(){
   });
   document.addEventListener('mouseup', () => { if(dragHandle || isDraggingMove){ markDirty(); } dragHandle = null; isDraggingMove = false; });
   function selectWrapper(w){ deselectAll(); selectedWrapper = w; w.classList.add('selected'); w.style.borderColor = '#c9a227'; }
-  function deselectAll(){ if(selectedWrapper) { selectedWrapper.classList.remove('selected'); selectedWrapper.style.borderColor = 'transparent'; } selectedWrapper = null; }
+  function deselectAll(){ if(selectedWrapper){ selectedWrapper.classList.remove('selected'); selectedWrapper.style.borderColor = 'transparent'; } selectedWrapper = null; }
   document.addEventListener('keydown', e => {
     if((e.key==='Delete'||e.key==='Backspace') && selectedWrapper){
       e.preventDefault(); selectedWrapper.remove(); selectedWrapper = null; markDirty();
     }
   });
 }
-
 function showEmojiPanel(body){
-  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','🤗','🤩','🤔','🤨','😐','😑','😶','','','😣','','😮','🤐','','','','😴','😌','😛','😜','😝','','😒','😓','😔','😕','🙃','','😲','','😖','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','','🥶','😳','🤪','','','🤡','💀','☠️','','👽','','💩','⭐','✅','❌','️','📌','','❤️','','✨','🎖️','','🥇','','🥉',''];
+  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','️','🤗','','🤔','🤨','😐','😑','😶','🙄','😏','😣','😥','😮','🤐','😯','😪','😫','😴','😌','😛','😜','😝','🤤','😒','😓','😔','😕','🙃','🤑','','🙁','','😞','😟','😤','😢','😭','😦','😧','😨','😩','','😬','😰','😱','🥵','','😳','','😵','','😠','😡','','😷','','🤕','','🤮','','😇','','🥸','','🤡','','⭐','✅','❌','❤️','📌','','✨','🎖️','🏅','','🥈','','🏆'];
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#fff;border:1px solid #dadce0;border-radius:12px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);max-width:460px;max-height:360px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:2px';
   emojis.forEach(em=>{
@@ -1666,7 +1571,6 @@ function showEmojiPanel(body){
   document.body.appendChild(overlay);
   document.body.appendChild(wrap);
 }
-
 function wireEvents(){
   const body = document.getElementById('dw-body');
   body.addEventListener('keyup', syncState);
@@ -1685,7 +1589,6 @@ function ctrlSaveHandler(e){
     if(document.getElementById('doc-workspace')){ e.preventDefault(); const btn=document.getElementById('dw-save-btn'); if(btn) btn.click(); }
   }
 }
-
 window.saveCurrentDoc = async function(existingId, pageId){
   if(_wsSaving) return;
   const titleEl = document.getElementById('dw-title');
@@ -1720,7 +1623,7 @@ window.saveCurrentDoc = async function(existingId, pageId){
   saveBtn.innerHTML = '<i class="fas fa-check"></i> Salvo';
   setStatus('salvo ✓');
   toast('Documento salvo.');
-  setTimeout(()=>{
+  setTimeout(() => {
     if(saveBtn.isConnected){
       saveBtn.innerHTML = '<i class="fas fa-floppy-disk"></i> Salvar';
       setStatus(existingId?'atualizado':'novo');
@@ -1747,19 +1650,19 @@ async function renderProfile(c, param){
   const cg = colorGroupOf(gs);
   const { count: msgCount } = await supabase.from('posts').select('*', { count:'exact', head:true }).eq('author_id', id);
   c.innerHTML = `
-  <div class="card fade-up overflow-hidden">
-    <div class="h-24" style="background:${groupBg(cg) || 'linear-gradient(120deg,#0e4433,#14563f 60%,#c9a227)'}"></div>
-    <div class="p-6 -mt-12">
-      <div class="flex flex-wrap items-end gap-4">
-        <span class="w-20 h-20 rounded-2xl grid place-items-center text-3xl font-extrabold text-white border-4 border-white shadow-lg" style="background:${groupBg(cg) || '#14563f'}"><i class="fas ${main?.icon || 'fa-user'}"></i></span>
-        <div class="flex-1"><h1 class="font-display text-2xl font-extrabold">${esc(p.nickname)}</h1>
-          <p class="text-xs text-muted">Desde ${fmtDate(p.created_at)} ${me ? `• ${esc(p.email)}` : ''} • ${msgCount||0} mensagem(ns)</p></div>
-        <span class="chip ${p.status==='active'?'chip-ok':p.status==='pending'?'chip-wait':'chip-no'}">${p.status.toUpperCase()}</span>
-        ${p.login_locked ? '<span class="chip chip-no"><i class="fas fa-lock mr-1"></i>BLOQUEADA</span>' : ''}
-      </div>
-      <div class="flex flex-wrap gap-2 mt-4">${gs.map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}</div>
+<div class="card fade-up overflow-hidden">
+  <div class="h-24" style="background:${groupBg(cg) || 'linear-gradient(120deg,#0e4433,#14563f 60%,#c9a227)'}"></div>
+  <div class="p-6 -mt-12">
+    <div class="flex flex-wrap items-end gap-4">
+      <span class="w-20 h-20 rounded-2xl grid place-items-center text-3xl font-extrabold text-white border-4 border-white shadow-lg" style="background:${groupBg(cg) || '#14563f'}"><i class="fas ${main?.icon || 'fa-user'}"></i></span>
+      <div class="flex-1"><h1 class="font-display text-2xl font-extrabold">${esc(p.nickname)}</h1>
+        <p class="text-xs text-muted">Desde ${fmtDate(p.created_at)} ${me ? `• ${esc(p.email)}` : ''} • ${msgCount||0} mensagem(ns)</p></div>
+      <span class="chip ${p.status==='active'?'chip-ok':p.status==='pending'?'chip-wait':'chip-no'}">${p.status.toUpperCase()}</span>
+      ${p.login_locked ? '<span class="chip chip-no"><i class="fas fa-lock mr-1"></i>BLOQUEADA</span>' : ''}
     </div>
-  </div>`;
+    <div class="flex flex-wrap gap-2 mt-4">${gs.map(groupChip).join('') || '<span class="chip chip-neutral">Sem grupo</span>'}</div>
+  </div>
+</div>`;
 }
 
 /* ══════════ SEARCH BAR ══════════ */
@@ -1789,15 +1692,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ══════════════════ PAINEL ADMIN ══════════════════ */
-const A = { tab:'usuarios', page:0, q:'', logFilters:{ user:'', action:'', ip:'', dateFrom:'', dateTo:'', search:'' } };
+/* v42: statusFilter adicionado ao objeto A */
+const A = { tab:'usuarios', page:0, q:'', statusFilter:'', logFilters:{ user:'', action:'', ip:'', dateFrom:'', dateTo:'', search:'' } };
 const ADMIN_TABS = [['usuarios','fa-users','Usuários'],['grupos','fa-layer-group','Grupos'],['topicos','fa-sitemap','Tópicos'],['protocolos','fa-inbox','Protocolos'],['logs','fa-scroll','Logs'],['config','fa-sliders','Config']];
 async function renderAdmin(c){
   if(!isAdmin()){ c.innerHTML = `<div class="card card-body text-center py-16"><i class="fas fa-lock text-3xl text-red-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso negado</h2></div>`; return; }
   c.innerHTML = `
-  <div class="fade-up"><p class="text-xs font-bold tracking-[0.3em] uppercase text-gold-600">Comando</p>
+<div class="fade-up"><p class="text-xs font-bold tracking-[0.3em] uppercase text-gold-600">Comando</p>
   <h1 class="font-display text-2xl md:text-3xl font-extrabold text-famr-900"><i class="fas fa-shield-halved text-gold-500 mr-2"></i>Painel Administrativo</h1>
   <div id="admin-tabs" class="flex flex-wrap gap-2 mt-4"></div></div>
-  <div id="admin-body" class="mt-6"></div>`;
+<div id="admin-body" class="mt-6"></div>`;
   drawAdminTabs(); await adminTab(A.tab);
 }
 function drawAdminTabs(){
@@ -1809,43 +1713,101 @@ window.adminTab = async function(tab){
   const b = document.getElementById('admin-body'); b.innerHTML = '<div class="skeleton h-64"></div>';
   ({usuarios:tabUsuarios, grupos:tabGrupos, topicos:tabTopicos, protocolos:tabProtocolos, logs:tabLogs, config:tabConfig})[tab](b);
 };
+
+/* ══════════ v42 FIX PRINCIPAL: tabUsuarios lê da TABELA BASE profiles ══════════
+   Motivo: profiles_view filtra status='active', escondendo pendentes do admin.
+   A tabela profiles (protegida pelas policies famr_profiles_select/update) permite
+   que o admin veja e aprove TODOS os status. */
 async function tabUsuarios(b){
   const from = A.page*20;
-  let q = supabase.from('profiles_view').select('*', { count:'exact' }).neq('nickname','admin master').order('created_at',{ascending:false}).range(from, from+19);
+  let q = supabase.from('profiles')
+    .select('id,nickname,email,status,is_invisible,login_locked,failed_logins,created_at', { count:'exact' })
+    .neq('nickname','admin master')
+    .order('created_at',{ascending:false})
+    .range(from, from+19);
   if(A.q) q = q.ilike('nickname', `%${A.q}%`);
-  const { data, count } = await q; const totalPages = Math.ceil((count||0)/20);
-  b.innerHTML = `<div class="card fade-up">
-    <div class="card-head justify-between gap-3 flex-wrap"><h2 class="font-display font-bold text-sm">Militares <span class="chip chip-neutral ml-2 normal-case">${count??0}</span></h2>
-      <input class="input !py-1.5 !pl-3 w-56" placeholder="Filtrar..." value="${esc(A.q)}" oninput="A.q=this.value;clearTimeout(window._t);window._t=setTimeout(()=>tabUsuarios(document.getElementById('admin-body')),350)"></div>
-    <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Nickname</th><th>Status</th><th>Tentativas</th><th>Desde</th><th class="text-right">Ações</th></tr></thead><tbody>
+  if(A.statusFilter) q = q.eq('status', A.statusFilter);
+
+  const { data, count, error } = await q;
+  if(error){ b.innerHTML = `<div class="card card-body text-red-600 text-sm">Erro ao carregar usuários: ${esc(error.message)}</div>`; return; }
+
+  const totalPages = Math.ceil((count||0)/20);
+  const pendingCount = (data||[]).filter(u => u.status === 'pending').length;
+
+  b.innerHTML = `
+  ${pendingCount > 0 ? `
+  <div class="pending-alert fade-up">
+    <i class="fas fa-user-clock"></i>
+    <span class="pa-text"><b>${pendingCount}</b> novo(s) militar(es) aguardando aprovação!</span>
+    <button class="pa-btn" onclick="A.statusFilter='pending';A.page=0;tabUsuarios(document.getElementById('admin-body'))">Ver pendentes</button>
+    <button class="pa-btn" style="background:var(--green-700)" onclick="A.statusFilter='';A.page=0;tabUsuarios(document.getElementById('admin-body'))">Ver todos</button>
+  </div>
+  <div class="flex gap-2 mb-3 fade-up">
+    <button class="btn btn-primary btn-sm" onclick="approveAllPending()"><i class="fas fa-check-double"></i> Aprovar Todos (${pendingCount})</button>
+  </div>` : ''}
+  <div class="card fade-up">
+    <div class="card-head justify-between gap-3 flex-wrap">
+      <h2 class="font-display font-bold text-sm">Militares <span class="chip chip-neutral ml-2 normal-case">${count??0}</span>
+        ${A.statusFilter ? `<span class="chip chip-wait ml-1 normal-case">${A.statusFilter.toUpperCase()}</span>` : ''}
+      </h2>
+      <div class="flex gap-2 items-center admin-filter-bar">
+        <select class="input !py-1.5 !pl-2 w-36" onchange="A.statusFilter=this.value;A.page=0;tabUsuarios(document.getElementById('admin-body'))">
+          <option value="">Todos status</option>
+          <option value="pending" ${A.statusFilter==='pending'?'selected':''}>Pendentes</option>
+          <option value="active" ${A.statusFilter==='active'?'selected':''}>Ativos</option>
+          <option value="banned" ${A.statusFilter==='banned'?'selected':''}>Banidos</option>
+        </select>
+        <input class="input !py-1.5 !pl-3 w-48" placeholder="Filtrar nickname..." value="${esc(A.q)}" oninput="A.q=this.value;clearTimeout(window._t);window._t=setTimeout(()=>tabUsuarios(document.getElementById('admin-body')),350)">
+      </div>
+    </div>
+    <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Nickname</th><th>Email</th><th>Status</th><th>Tentativas</th><th>Desde</th><th class="text-right">Ações</th></tr></thead><tbody>
     ${(data||[]).map(u => `<tr>
       <td class="font-bold">${esc(u.nickname)}</td>
+      <td class="text-xs text-muted">${esc(u.email||'—')}</td>
       <td>${u.login_locked ? '<span class="chip chip-no"><i class="fas fa-lock"></i> BLOQUEADO</span>' : `<span class="chip ${u.status==='active'?'chip-ok':u.status==='pending'?'chip-wait':'chip-no'}">${u.status.toUpperCase()}</span>`}</td>
       <td class="text-xs ${u.failed_logins>0?'text-red-600 font-bold':'text-muted'}">${u.failed_logins||0}/4</td>
       <td class="text-xs text-muted">${fmtDate(u.created_at)}</td>
       <td class="text-right space-x-1">
         ${u.login_locked ? `<button class="btn btn-gold btn-sm" onclick="unlockUser('${u.id}')"><i class="fas fa-unlock"></i></button>` : ''}
-        ${u.status!=='active'?`<button class="btn btn-primary btn-sm" onclick="setUser('${u.id}','active')"><i class="fas fa-check"></i></button>`:''}
-        ${u.status!=='banned'?`<button class="btn btn-danger btn-sm" onclick="setUser('${u.id}','banned')"><i class="fas fa-ban"></i></button>`:`<button class="btn btn-outline btn-sm" onclick="setUser('${u.id}','pending')"><i class="fas fa-rotate-left"></i></button>`}
+        ${u.status==='pending'?`<button class="btn btn-primary btn-sm" onclick="setUser('${u.id}','active')" title="Aprovar"><i class="fas fa-check"></i> Aprovar</button>`:''}
+        ${u.status==='active'?`<button class="btn btn-danger btn-sm" onclick="setUser('${u.id}','banned')" title="Banir"><i class="fas fa-ban"></i></button>`:''}
+        ${u.status==='banned'?`<button class="btn btn-outline btn-sm" onclick="setUser('${u.id}','pending')" title="Reverter"><i class="fas fa-rotate-left"></i></button>`:''}
         <button class="btn btn-outline btn-sm" onclick="manageGroups('${u.id}','${esc(u.nickname)}')"><i class="fas fa-layer-group"></i></button>
-      </td></tr>`).join('') || '<tr><td colspan="5" class="text-center text-muted py-8">Nada.</td></tr>'}
+      </td></tr>`).join('') || '<tr><td colspan="6" class="text-center text-muted py-8">Nenhum usuário encontrado.</td></tr>'}
     </tbody></table></div>
-    <div class="p-3 flex justify-center gap-2">${A.page>0?`<button class="btn btn-outline btn-sm" onclick="A.page--;tabUsuarios(document.getElementById('admin-body'))">←</button>`:''}
+    <div class="p-3 flex justify-center gap-2">${A.page>0?`<button class="btn btn-outline btn-sm" onclick="A.page--;tabUsuarios(document.getElementById('admin-body'))">← Anterior</button>`:''}
     <span class="text-xs text-muted self-center">Pág ${A.page+1}${totalPages>1?`/${totalPages}`:''}</span>
-    ${(data||[]).length===20?`<button class="btn btn-outline btn-sm" onclick="A.page++;tabUsuarios(document.getElementById('admin-body'))">→</button>`:''}</div></div>`;
+    ${(data||[]).length===20?`<button class="btn btn-outline btn-sm" onclick="A.page++;tabUsuarios(document.getElementById('admin-body'))">Próxima →</button>`:''}</div></div>`;
 }
+
+/* v42: aprovação em massa */
+window.approveAllPending = async function(){
+  if(!await confirmDlg('Aprovar TODOS os usuários pendentes de uma vez?', { title:'Aprovação em Massa', okText:'Aprovar Todos' })) return;
+  const { data: pending, error } = await supabase.from('profiles').select('id,nickname').eq('status','pending').neq('nickname','admin master');
+  if(error) return toast('Erro: '+error.message,'err');
+  if(!pending || pending.length===0) return toast('Nenhum pendente.','warn');
+  const ids = pending.map(p => p.id);
+  const { error: upErr } = await supabase.from('profiles').update({ status:'active' }).in('id', ids);
+  if(upErr) return toast('Erro: '+upErr.message,'err');
+  await famrLog('USER_STATUS', { bulk:true, count:ids.length, status:'active' });
+  invalidate('home:');
+  toast(`${ids.length} usuário(s) aprovado(s)!`);
+  tabUsuarios(document.getElementById('admin-body'));
+};
+
 window.setUser = async (id, status) => { const { error } = await supabase.from('profiles').update({ status }).eq('id', id); if(error) return toast('Erro: '+error.message,'err'); await famrLog('USER_STATUS', { id, status }); toast('Status atualizado.'); tabUsuarios(document.getElementById('admin-body')); };
 window.unlockUser = async (id) => { const { error } = await supabase.from('profiles').update({ login_locked:false, failed_logins:0 }).eq('id', id); if(error) return toast('Erro: '+error.message,'err'); await famrLog('LOCK_REMOVIDO_ADMIN', { id }); toast('Destravada.'); tabUsuarios(document.getElementById('admin-body')); };
 window.manageGroups = async (userId, nick) => {
   const [{ data: all }, { data: mine }] = await Promise.all([
-    supabase.from('groups').select('id,name,color,icon,order_index,is_priority').order('order_index'),
+    supabase.from('groups').select('id,name,color,icon,order_index,is_priority,is_admin').order('order_index'),
     supabase.from('user_groups').select('group_id').eq('user_id', userId)]);
   const has = new Set((mine||[]).map(m => m.group_id));
   openModal(`<i class="fas fa-layer-group text-gold-500 mr-2"></i>Grupos de ${esc(nick)}`,
     (all||[]).map(g => `<label class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-famr-50 cursor-pointer">
       <input type="checkbox" value="${g.id}" ${has.has(g.id)?'checked':''} class="accent-[#14563f] w-4 h-4">
-      <i class="fas ${g.icon||'fa-shield-halved'}" style="color:${g.color}"></i><span class="text-sm font-bold">${esc(g.name)}${g.is_priority?' <i class="fas fa-crown text-gold-500 text-[10px] ml-1"></i>':''}</span></label>`).join(''),
-    `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button><button class="btn btn-primary btn-sm" onclick="saveGroups('${userId}')"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
+      <i class="fas ${g.icon||'fa-shield-halved'}" style="color:${g.color}"></i>
+      <span class="text-sm font-bold">${esc(g.name)}${g.is_priority?' <i class="fas fa-crown text-gold-500 text-[10px] ml-1"></i>':''}${g.is_admin?' <i class="fas fa-user-shield text-red-500 text-[10px] ml-1" title="Chefia"></i>':''}</span></label>`).join(''),
+    `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button> <button class="btn btn-primary btn-sm" onclick="saveGroups('${userId}')"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
 };
 window.saveGroups = async userId => {
   const ids = [...document.querySelectorAll('#modal-body input:checked')].map(i => i.value);
@@ -1859,26 +1821,26 @@ async function tabGrupos(b){
   const { data: ug } = await supabase.from('user_groups').select('group_id').limit(10000);
   const cnt = {}; (ug||[]).forEach(m => cnt[m.group_id] = (cnt[m.group_id]||0)+1);
   b.innerHTML = `<div class="card fade-up">
-    <div class="card-head justify-between"><h2 class="font-display font-bold text-sm">Grupos</h2>
+  <div class="card-head justify-between"><h2 class="font-display font-bold text-sm">Grupos</h2>
     <button class="btn btn-gold btn-sm" onclick="groupForm()"><i class="fas fa-plus"></i> Novo</button></div>
-    <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Ordem</th><th>Grupo</th><th>Tipo</th><th>Priorit.</th><th>Membros</th><th class="text-right">Ações</th></tr></thead><tbody>
+  <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Ordem</th><th>Grupo</th><th>Tipo</th><th>Papel</th><th>Membros</th><th class="text-right">Ações</th></tr></thead><tbody>
     ${(data||[]).map((g,i,arr) => `<tr>
       <td><button class="ord-btn" onclick="moveGroup('${g.id}',-1)" ${i===0?'disabled':''}><i class="fas fa-chevron-up"></i></button>
-          <button class="ord-btn" onclick="moveGroup('${g.id}',1)" ${i===arr.length-1?'disabled':''}><i class="fas fa-chevron-down"></i></button></td>
+        <button class="ord-btn" onclick="moveGroup('${g.id}',1)" ${i===arr.length-1?'disabled':''}><i class="fas fa-chevron-down"></i></button></td>
       <td>
         <span class="inline-block w-5 h-5 rounded mr-2 align-middle" style="background:${groupBg(g)}"></span>
-        <i class="fas ${g.icon||'fa-shield-halved'} mr-1" style="color:${g.color}"></i><b style="color:${g.color}">${esc(g.name)}</b>
+        <i class="fas ${g.icon||'fa-shield-halved'} mr-1" style="color:${g.color}"></i> <b style="color:${g.color}">${esc(g.name)}</b>
         ${g.color_mode==='gradient'?'<span class="chip chip-neutral ml-1 text-[9px]">GRADIENTE</span>':''}
       </td>
       <td><span class="chip ${g.group_type==='open'?'chip-ok':g.group_type==='closed'?'chip-wait':'chip-neutral'}">${GROUP_TYPES[g.group_type]||g.group_type}</span></td>
-      <td>${g.is_priority ? `<span class="chip chip-wait"><i class="fas fa-crown mr-1"></i>SIM (nv.${g.priority_level||1})</span>` : '<span class="chip chip-neutral">Não</span>'}</td>
+      <td>${g.is_admin ? '<span class="chip chip-no"><i class="fas fa-user-shield mr-1"></i>CHEFIA</span>' : ''}${g.is_priority ? `<span class="chip chip-wait ${g.is_admin?'ml-1':''}"><i class="fas fa-crown mr-1"></i>SIM (nv.${g.priority_level||1})</span>` : ''}${!g.is_admin && !g.is_priority ? '<span class="chip chip-neutral">Operacional</span>' : ''}</td>
       <td class="text-xs font-bold">${cnt[g.id]||0}</td>
       <td class="text-right space-x-1">
         <button class="btn btn-outline btn-sm" onclick="groupPermissions('${g.id}')"><i class="fas fa-key"></i></button>
         <button class="btn btn-outline btn-sm" onclick="groupMembers('${g.id}')"><i class="fas fa-users"></i></button>
         <button class="btn btn-outline btn-sm" onclick="groupForm('${g.id}')"><i class="fas fa-pen"></i></button>
         <button class="btn btn-danger btn-sm" onclick="delGroup('${g.id}')"><i class="fas fa-trash"></i></button></td></tr>`).join('')}
-    </tbody></table></div></div>`;
+  </tbody></table></div></div>`;
 }
 window.moveGroup = async (id, dir) => {
   const { data } = await supabase.from('groups').select('id,order_index').order('order_index');
@@ -1889,92 +1851,92 @@ window.moveGroup = async (id, dir) => {
   invalidate('home:'); tabGrupos(document.getElementById('admin-body'));
 };
 window.groupForm = async id => {
-  let g = { name:'', color:'#14563f', color_end:'#c9a227', color_mode:'solid', gradient_angle:'135deg', icon:'fa-shield-halved', apply_color:true, group_type:'open', parent_id:null, is_priority:false, priority_level:1 };
+  let g = { name:'', color:'#14563f', color_end:'#c9a227', color_mode:'solid', gradient_angle:'135deg', icon:'fa-shield-halved', apply_color:true, group_type:'open', parent_id:null, is_priority:false, priority_level:1, is_admin:false };
   if(id){ const r = await supabase.from('groups').select('*').eq('id', id).single(); if(r.data) g = {...g, ...r.data}; }
   const { data: all } = await supabase.from('groups').select('id,name').neq('id', id||'').order('order_index');
   openModal(`<i class="fas fa-layer-group text-gold-500 mr-2"></i>${id?'Editar':'Novo'} grupo`, `
-    <label class="field"><span>Nome</span><input id="g-name" class="input" value="${esc(g.name)}"></label>
-    <div class="field"><span>Ícone</span>
-      <div class="icon-grid" id="g-icon-grid" style="max-height:260px;overflow:auto">
-        ${SAFE_ICONS.map(ic => `<button type="button" class="icon-opt ${g.icon===ic?'sel':''}" data-icon="${ic}" onclick="pickIcon(this)" title="${ic}"><i class="fas ${ic}"></i></button>`).join('')}
-      </div>
-      <input type="hidden" id="g-icon" value="${esc(g.icon||'fa-shield-halved')}">
+  <label class="field"><span>Nome</span><input id="g-name" class="input" value="${esc(g.name)}"></label>
+  <div class="field"><span>Ícone</span>
+    <div class="icon-grid" id="g-icon-grid" style="max-height:260px;overflow:auto">
+      ${SAFE_ICONS.map(ic => `<button type="button" class="icon-opt ${g.icon===ic?'sel':''}" data-icon="${ic}" onclick="pickIcon(this)" title="${ic}"><i class="fas ${ic}"></i></button>`).join('')}
     </div>
-    
-    <!-- SELEÇÃO DE MODO DE COR -->
-    <div class="field">
-      <span>Modo de cor</span>
-      <div class="flex gap-2">
-        <label class="flex-1 cursor-pointer">
-          <input type="radio" name="g-colormode" value="solid" ${g.color_mode!=='gradient'?'checked':''} onchange="toggleGradientMode()" class="sr-only peer">
-          <div class="peer-checked:border-famr-700 peer-checked:bg-famr-50 border-2 border-line rounded-lg p-3 text-center">
-            <i class="fas fa-fill-drip text-lg block mb-1"></i>
-            <span class="text-xs font-bold">Sólida</span>
-          </div>
-        </label>
-        <label class="flex-1 cursor-pointer">
-          <input type="radio" name="g-colormode" value="gradient" ${g.color_mode==='gradient'?'checked':''} onchange="toggleGradientMode()" class="sr-only peer">
-          <div class="peer-checked:border-famr-700 peer-checked:bg-famr-50 border-2 border-line rounded-lg p-3 text-center">
-            <i class="fas fa-blend text-lg block mb-1"></i>
-            <span class="text-xs font-bold">Gradiente</span>
-          </div>
-        </label>
-      </div>
-    </div>
-    
-    <div class="grid grid-cols-2 gap-3">
-      <label class="field"><span>Cor inicial</span><input id="g-color" type="color" class="input !p-1 h-11" value="${g.color}"></label>
-      <label class="field" id="g-color-end-wrap" style="${g.color_mode!=='gradient'?'display:none':''}"><span>Cor final</span><input id="g-color-end" type="color" class="input !p-1 h-11" value="${g.color_end||'#c9a227'}"></label>
-      <label class="field" id="g-angle-wrap" style="${g.color_mode!=='gradient'?'display:none':''}"><span>Ângulo</span>
-        <select id="g-angle" class="input">
-          <option value="0deg" ${g.gradient_angle==='0deg'?'selected':''}>↑ Cima (0°)</option>
-          <option value="45deg" ${g.gradient_angle==='45deg'?'selected':''}>↗ Diagonal NE (45°)</option>
-          <option value="90deg" ${g.gradient_angle==='90deg'?'selected':''}>→ Direita (90°)</option>
-          <option value="135deg" ${g.gradient_angle==='135deg'?'selected':''}>↘ Diagonal SE (135°)</option>
-          <option value="180deg" ${g.gradient_angle==='180deg'?'selected':''}>↓ Baixo (180°)</option>
-          <option value="270deg" ${g.gradient_angle==='270deg'?'selected':''}>← Esquerda (270°)</option>
-          <option value="radial" ${g.gradient_angle==='radial'?'selected':''}>◎ Radial</option>
-        </select>
+    <input type="hidden" id="g-icon" value="${esc(g.icon||'fa-shield-halved')}">
+  </div>
+  <!-- SELEÇÃO DE MODO DE COR -->
+  <div class="field">
+    <span>Modo de cor</span>
+    <div class="flex gap-2">
+      <label class="flex-1 cursor-pointer">
+        <input type="radio" name="g-colormode" value="solid" ${g.color_mode!=='gradient'?'checked':''} onchange="toggleGradientMode()" class="sr-only peer">
+        <div class="peer-checked:border-famr-700 peer-checked:bg-famr-50 border-2 border-line rounded-lg p-3 text-center">
+          <i class="fas fa-fill-drip text-lg block mb-1"></i>
+          <span class="text-xs font-bold">Sólida</span>
+        </div>
       </label>
-      <label class="field"><span>Tipo</span><select id="g-type" class="input">
-        <option value="open" ${g.group_type==='open'?'selected':''}>Aberto</option>
-        <option value="closed" ${g.group_type==='closed'?'selected':''}>Fechado</option>
-        <option value="invisible" ${g.group_type==='invisible'?'selected':''}>Invisível</option>
-      </select></label>
-    </div>
-    
-    <!-- PREVIEW AO VIVO -->
-    <div class="field">
-      <span>Preview</span>
-      <div id="g-preview" class="rounded-lg h-16 flex items-center justify-center text-white font-bold text-sm" style="background:${groupBg(g)}">
-        <i class="fas ${g.icon||'fa-shield-halved'} mr-2"></i>${esc(g.name||'Prévia do Grupo')}
-      </div>
-    </div>
-    
-    <label class="flex items-center gap-3 text-sm font-bold mt-2"><input id="g-applycolor" type="checkbox" class="w-4 h-4 accent-[#14563f]" ${g.apply_color?'checked':''}> Aplicar cor aos membros</label>
-    
-    <!-- NOVOS CAMPOS: PRIORITÁRIO -->
-    <div class="mt-3 p-3 rounded-lg border-2 border-gold-500/30 bg-gold-100/30">
-      <label class="flex items-center gap-3 text-sm font-bold">
-        <input id="g-priority" type="checkbox" class="w-4 h-4 accent-[#c9a227]" ${g.is_priority?'checked':''} onchange="document.getElementById('g-level-wrap').style.display=this.checked?'':'none'">
-        <i class="fas fa-crown text-gold-500"></i> Grupo Prioritário
+      <label class="flex-1 cursor-pointer">
+        <input type="radio" name="g-colormode" value="gradient" ${g.color_mode==='gradient'?'checked':''} onchange="toggleGradientMode()" class="sr-only peer">
+        <div class="peer-checked:border-famr-700 peer-checked:bg-famr-50 border-2 border-line rounded-lg p-3 text-center">
+          <i class="fas fa-blend text-lg block mb-1"></i>
+          <span class="text-xs font-bold">Gradiente</span>
+        </div>
       </label>
-      <p class="text-[11px] text-muted mt-1 ml-7">Quando habilitado, este grupo será exibido como principal no perfil dos usuários que pertencem a ele.</p>
-      <div id="g-level-wrap" class="mt-2 ml-7 ${g.is_priority?'':'hidden'}">
-        <label class="field"><span>Nível de prioridade (maior = mais alto)</span>
-          <input id="g-level" type="number" class="input !py-1 !pl-2" min="1" max="99" value="${g.priority_level||1}">
-        </label>
-        <p class="text-[10px] text-muted">Se um usuário tiver múltiplos grupos prioritários, o de MAIOR nível prevalece.</p>
-      </div>
     </div>
-    
-    <label class="field mt-3"><span>Subgrupo de</span><select id="g-parent" class="input"><option value="">— nenhum —</option>
-      ${(all||[]).map(p => `<option value="${p.id}" ${g.parent_id===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label>`,
-    `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
-     <button class="btn btn-primary btn-sm" onclick="saveGroup('${id||''}')"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
-  
-  /* Atualiza preview em tempo real */
-  setTimeout(()=>{
+  </div>
+  <div class="grid grid-cols-2 gap-3">
+    <label class="field"><span>Cor inicial</span><input id="g-color" type="color" class="input !p-1 h-11" value="${g.color}"></label>
+    <label class="field" id="g-color-end-wrap" style="${g.color_mode!=='gradient'?'display:none':''}"><span>Cor final</span><input id="g-color-end" type="color" class="input !p-1 h-11" value="${g.color_end||'#c9a227'}"></label>
+    <label class="field" id="g-angle-wrap" style="${g.color_mode!=='gradient'?'display:none':''}"><span>Ângulo</span>
+      <select id="g-angle" class="input">
+        <option value="0deg" ${g.gradient_angle==='0deg'?'selected':''}>↑ Cima (0°)</option>
+        <option value="45deg" ${g.gradient_angle==='45deg'?'selected':''}>↗ Diagonal NE (45°)</option>
+        <option value="90deg" ${g.gradient_angle==='90deg'?'selected':''}>→ Direita (90°)</option>
+        <option value="135deg" ${g.gradient_angle==='135deg'?'selected':''}>↘ Diagonal SE (135°)</option>
+        <option value="180deg" ${g.gradient_angle==='180deg'?'selected':''}>↓ Baixo (180°)</option>
+        <option value="270deg" ${g.gradient_angle==='270deg'?'selected':''}>← Esquerda (270°)</option>
+        <option value="radial" ${g.gradient_angle==='radial'?'selected':''}>◎ Radial</option>
+      </select>
+    </label>
+    <label class="field"><span>Tipo</span><select id="g-type" class="input">
+      <option value="open" ${g.group_type==='open'?'selected':''}>Aberto</option>
+      <option value="closed" ${g.group_type==='closed'?'selected':''}>Fechado</option>
+      <option value="invisible" ${g.group_type==='invisible'?'selected':''}>Invisível</option>
+    </select></label>
+  </div>
+  <!-- PREVIEW AO VIVO -->
+  <div class="field">
+    <span>Preview</span>
+    <div id="g-preview" style="background:${groupBg(g)}">
+      <i class="fas ${g.icon||'fa-shield-halved'} mr-2"></i>${esc(g.name||'Prévia do Grupo')}
+    </div>
+  </div>
+  <label class="flex items-center gap-3 text-sm font-bold mt-2"><input id="g-applycolor" type="checkbox" class="w-4 h-4 accent-[#14563f]" ${g.apply_color?'checked':''}> Aplicar cor aos membros</label>
+  <!-- GRUPO PRIORITÁRIO -->
+  <div class="mt-3 p-3 rounded-lg border-2 border-gold-500/30 bg-gold-100/30">
+    <label class="flex items-center gap-3 text-sm font-bold">
+      <input id="g-priority" type="checkbox" class="w-4 h-4 accent-[#c9a227]" ${g.is_priority?'checked':''} onchange="document.getElementById('g-level-wrap').style.display=this.checked?'':'none'">
+      <i class="fas fa-crown text-gold-500"></i> Grupo Prioritário
+    </label>
+    <p class="text-[11px] text-muted mt-1 ml-7">Quando habilitado, este grupo será exibido como principal no perfil dos usuários que pertencem a ele.</p>
+    <div id="g-level-wrap" class="mt-2 ml-7 ${g.is_priority?'':'hidden'}">
+      <label class="field"><span>Nível de prioridade (maior = mais alto)</span>
+        <input id="g-level" type="number" class="input !py-1 !pl-2" min="1" max="99" value="${g.priority_level||1}">
+      </label>
+      <p class="text-[10px] text-muted">Se um usuário tiver múltiplos grupos prioritários, o de MAIOR nível prevalece.</p>
+    </div>
+  </div>
+  <!-- v42: GRUPO DE CHEFIA (ADMIN POR RBAC) -->
+  <div class="mt-3 p-3 rounded-lg border-2 border-red-500/30 bg-red-50/40">
+    <label class="flex items-center gap-3 text-sm font-bold">
+      <input id="g-isadmin" type="checkbox" class="w-4 h-4 accent-[#b3261e]" ${g.is_admin?'checked':''}>
+      <i class="fas fa-user-shield text-red-600"></i> Grupo de Chefia (poderes administrativos)
+    </label>
+    <p class="text-[11px] text-muted mt-1 ml-7">Quem pertencer a este grupo poderá acessar o Painel Admin, aprovar usuários, gerenciar grupos, setores e permissões. Use com parcimônia.</p>
+  </div>
+  <label class="field mt-3"><span>Subgrupo de</span><select id="g-parent" class="input"><option value="">— nenhum —</option>
+    ${(all||[]).map(p => `<option value="${p.id}" ${g.parent_id===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label>`,
+  `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
+   <button class="btn btn-primary btn-sm" onclick="saveGroup('${id||''}')"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
+  setTimeout(() => {
     const upd = () => {
       const mode = document.querySelector('input[name="g-colormode"]:checked').value;
       const c1 = document.getElementById('g-color').value;
@@ -1984,7 +1946,7 @@ window.groupForm = async id => {
       const ic = document.getElementById('g-icon').value;
       const prev = document.getElementById('g-preview');
       if(prev){
-        prev.style.background = mode==='gradient' 
+        prev.style.background = mode==='gradient'
           ? (ang==='radial' ? `radial-gradient(circle, ${c1}, ${c2})` : `linear-gradient(${ang}, ${c1}, ${c2})`)
           : c1;
         prev.innerHTML = `<i class="fas ${ic} mr-2"></i>${esc(nm)}`;
@@ -2009,27 +1971,26 @@ window.pickIcon = btn => {
   document.querySelectorAll('#g-icon-grid .icon-opt').forEach(b => b.classList.remove('sel'));
   btn.classList.add('sel');
   document.getElementById('g-icon').value = btn.dataset.icon;
-  document.getElementById('g-preview')?.querySelector('i')?.className && (()=>{
-    const prev = document.getElementById('g-preview');
-    if(prev) prev.innerHTML = `<i class="fas ${btn.dataset.icon} mr-2"></i>${esc(document.getElementById('g-name').value || 'Prévia')}`;
-  })();
+  const prev = document.getElementById('g-preview');
+  if(prev) prev.innerHTML = `<i class="fas ${btn.dataset.icon} mr-2"></i>${esc(document.getElementById('g-name').value || 'Prévia')}`;
 };
 window.saveGroup = async id => {
   const mode = document.querySelector('input[name="g-colormode"]:checked').value;
   const isPriority = document.getElementById('g-priority').checked;
   const level = isPriority ? parseInt(document.getElementById('g-level').value)||1 : null;
-  const row = { 
-    name: document.getElementById('g-name').value.trim(), 
-    color: document.getElementById('g-color').value, 
+  const row = {
+    name: document.getElementById('g-name').value.trim(),
+    color: document.getElementById('g-color').value,
     color_end: mode==='gradient' ? document.getElementById('g-color-end').value : null,
     color_mode: mode,
     gradient_angle: mode==='gradient' ? document.getElementById('g-angle').value : null,
-    icon: document.getElementById('g-icon').value, 
-    apply_color: document.getElementById('g-applycolor').checked, 
-    group_type: document.getElementById('g-type').value, 
+    icon: document.getElementById('g-icon').value,
+    apply_color: document.getElementById('g-applycolor').checked,
+    group_type: document.getElementById('g-type').value,
     parent_id: document.getElementById('g-parent').value || null,
     is_priority: isPriority,
-    priority_level: level
+    priority_level: level,
+    is_admin: document.getElementById('g-isadmin').checked   /* v42 */
   };
   if(!row.name) return toast('Nome obrigatório.','warn');
   let error;
@@ -2037,7 +1998,13 @@ window.saveGroup = async id => {
   else { const { count } = await supabase.from('groups').select('*', { count:'exact', head:true }); row.order_index = (count||0)+1; ({ error } = await supabase.from('groups').insert([row])); }
   if(error) return toast('Erro: '+error.message,'err');
   await famrLog('GROUP_SAVE', row);
-  invalidate('home:'); closeModal(); toast('Grupo salvo.'); tabGrupos(document.getElementById('admin-body'));
+  invalidate('home:'); invalidate('perms:'); closeModal(); toast('Grupo salvo.');
+  /* Se o próprio admin editou um grupo de chefia, recarrega seus grupos */
+  if(row.is_admin || STATE.groups.some(x=>x.id===id)){
+    STATE.groups = await loadSessionGroups(STATE.profile.id);
+    updateUserChip();
+  }
+  tabGrupos(document.getElementById('admin-body'));
 };
 window.delGroup = async id => {
   if(!await confirmDlg('Excluir grupo?', { title:'Excluir', okText:'Excluir', danger:true })) return;
@@ -2057,10 +2024,10 @@ window.groupPermissions = async gid => {
   openModal(`<i class="fas ${grp?.icon||'fa-shield-halved'}" style="color:${grp?.color}"></i> Permissões: ${esc(grp?.name||'')}`,
     `<div class="perm-wrap"><table class="perm-matrix">
       <thead><tr><th>Fórum</th><th>Ver</th><th>Criar</th><th>Editar</th><th>Excluir</th><th>Mod.</th></tr></thead>
-      <tbody>${(secs||[]).map(s => `
+      <tbody>${(secs||[]).map(s =>`
         <tr class="pm-sec"><td><i class="fas ${esc(s.icon)} mr-2"></i>${esc(s.name)}</td>
           ${cb('section:'+s.id,'can_view','V')}${cb('section:'+s.id,'can_create','C')}${cb('section:'+s.id,'can_edit','E')}${cb('section:'+s.id,'can_delete','D')}${cb('section:'+s.id,'is_moderator','M')}</tr>
-        ${(subs||[]).filter(x=>x.section_id===s.id).map(x => `
+        ${(subs||[]).filter(x=>x.section_id===s.id).map(x =>`
           <tr><td class="pm-sub1"><i class="fas fa-folder-open mr-2 text-muted"></i>${esc(x.name)}</td>
             ${cb('subtopic:'+x.id,'can_view','V')}${cb('subtopic:'+x.id,'can_create','C')}${cb('subtopic:'+x.id,'can_edit','E')}${cb('subtopic:'+x.id,'can_delete','D')}${cb('subtopic:'+x.id,'is_moderator','M')}</tr>`).join('')}`).join('')}
       </tbody></table></div>`,
@@ -2091,13 +2058,14 @@ window.targetPermissions = async (type, id, name) => {
   const cbAll = (field, label, dis) => `<td title="${label}"><input type="checkbox" data-g="__ALL__" data-f="${field}" ${dis?'disabled':''} ${(!dis&&cur[null]?.[field])?'checked':''}></td>`;
   openModal(`<i class="fas fa-key text-gold-500 mr-2"></i>Permissões: ${esc(name)}`,
     `<div class="perm-wrap"><table class="perm-matrix">
-       <thead><tr><th>Grupo</th><th>Ver</th><th>Criar</th><th>Editar</th><th>Excluir</th><th>Mod.</th></tr></thead>
-       <tbody>
-         <tr class="pm-sec"><td><i class="fas fa-users mr-2"></i><b>Todos</b></td>
-           ${cbAll('can_view','V')}${cbAll('can_create','C')}${cbAll('can_edit','E')}${cbAll('can_delete','D')}${cbAll('is_moderator','M',true)}</tr>
-         ${(grps||[]).map(g => `<tr><td><i class="fas ${g.icon||'fa-shield-halved'} mr-2" style="color:${g.color}"></i><b>${esc(g.name)}</b></td>
-           ${cb(g.id,'can_view','V')}${cb(g.id,'can_create','C')}${cb(g.id,'can_edit','E')}${cb(g.id,'can_delete','D')}${cb(g.id,'is_moderator','M')}</tr>`).join('')}
-       </tbody></table></div>`,
+      <thead><tr><th>Grupo</th><th>Ver</th><th>Criar</th><th>Editar</th><th>Excluir</th><th>Mod.</th></tr></thead>
+      <tbody>
+        <tr class="pm-sec"><td><i class="fas fa-users mr-2"></i><b>Todos</b></td>
+          ${cbAll('can_view','V')}${cbAll('can_create','C')}${cbAll('can_edit','E')}${cbAll('can_delete','D')}${cbAll('is_moderator','M',true)}</tr>
+        ${(grps||[]).map(g =>`
+          <tr><td><i class="fas ${g.icon||'fa-shield-halved'} mr-2" style="color:${g.color}"></i><b>${esc(g.name)}</b></td>
+            ${cb(g.id,'can_view','V')}${cb(g.id,'can_create','C')}${cb(g.id,'can_edit','E')}${cb(g.id,'can_delete','D')}${cb(g.id,'is_moderator','M')}</tr>`).join('')}
+      </tbody></table></div>`,
     `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
      <button class="btn btn-primary btn-sm" onclick="saveTargetPermissions('${type}','${id}')"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
 };
@@ -2131,9 +2099,9 @@ window.groupMembers = async gid => {
     `<div class="field"><span>Adicionar</span>
       <div class="input-wrap"><i class="fas fa-magnifying-glass"></i><input id="gm-search" class="input" placeholder="Nickname..." oninput="gmSearch(this.value)"></div>
       <div id="gm-results" class="mt-2 space-y-1"></div></div>
-    <div class="field mt-3"><span>Atuais (${list.length})</span>
+     <div class="field mt-3"><span>Atuais (${list.length})</span>
       <div id="gm-list" class="space-y-1 max-h-56 overflow-auto">
-        ${list.map(m => `<div class="flex items-center justify-between p-2 rounded-lg bg-paper border border-line">
+        ${list.map(m =>`<div class="flex items-center justify-between p-2 rounded-lg bg-paper border border-line">
           <span class="text-sm font-bold">${esc(m.nickname)}</span>
           <button class="btn btn-danger btn-sm" onclick="gmRemove('${gid}','${m.id}')"><i class="fas fa-user-minus"></i></button></div>`).join('') || '<p class="text-xs text-muted">Nenhum.</p>'}
       </div></div>`,
@@ -2165,54 +2133,48 @@ async function tabTopicos(b){
   ]);
   window._groupsCache = groups || [];
   b.innerHTML = `<div class="space-y-4 fade-up">
-    <div class="flex justify-end gap-2">
-      <button class="btn btn-gold btn-sm" onclick="docPageForm()"><i class="fas fa-file-circle-plus"></i> Nova Página Doc</button>
-      <button class="btn btn-primary btn-sm" onclick="sectionForm()"><i class="fas fa-plus"></i> Novo setor</button>
-    </div>
-    ${(docPages||[]).length ? `
-    <div class="card">
-      <div class="cat-head"><i class="fas fa-file-lines"></i> Páginas de Documentos <span class="chip chip-neutral ml-2 normal-case">${(docPages||[]).length}</span></div>
-      <div class="divide-y divide-line">
-        ${(docPages||[]).map(p => `
-          <div class="p-3.5 flex flex-wrap items-center gap-3 text-sm">
-            <i class="fas ${p.icon||'fa-folder-open'}" style="color:${p.color||'#14563f'}"></i>
-            <b>${esc(p.name)}</b>
-            <span class="chip chip-neutral">/${esc(p.slug||'')}</span>
-            <span class="ml-auto flex gap-1">
-              <a href="#/doc-page/${p.id}" class="btn btn-outline btn-sm"><i class="fas fa-folder-open"></i></a>
-              <button class="btn btn-outline btn-sm" onclick="docPageForm('${p.id}')"><i class="fas fa-pen"></i></button>
-              <button class="btn btn-danger btn-sm" onclick="delDocPage('${p.id}')"><i class="fas fa-trash"></i></button>
-            </span>
-          </div>`).join('')}
-      </div>
-    </div>` : ''}
-    ${(secs||[]).map((s,i,arr) => `<div class="card">
-      <div class="cat-head">
-        <span class="flex items-center gap-1 mr-2">
-          <button class="ord-btn" onclick="moveSection('${s.id}',-1)" ${i===0?'disabled':''}><i class="fas fa-chevron-up"></i></button>
-          <button class="ord-btn" onclick="moveSection('${s.id}',1)" ${i===arr.length-1?'disabled':''}><i class="fas fa-chevron-down"></i></button>
-        </span>
-        <i class="fas ${esc(s.icon)}"></i> ${esc(s.name)} <span class="chip chip-neutral ml-2 normal-case">/${esc(s.slug)}</span>
+  <div class="flex justify-end gap-2">
+    <button class="btn btn-gold btn-sm" onclick="docPageForm()"><i class="fas fa-file-circle-plus"></i> Nova Página Doc</button>
+    <button class="btn btn-primary btn-sm" onclick="sectionForm()"><i class="fas fa-plus"></i> Novo setor</button>
+  </div>
+  ${(docPages||[]).length ?`<div class="card">
+    <div class="cat-head"><i class="fas fa-file-lines"></i> Páginas de Documentos <span class="chip chip-neutral ml-2 normal-case">${(docPages||[]).length}</span></div>
+    <div class="divide-y divide-line">
+      ${(docPages||[]).map(p => `<div class="p-3.5 flex flex-wrap items-center gap-3 text-sm">
+        <i class="fas ${p.icon||'fa-folder-open'}" style="color:${p.color||'#14563f'}"></i>
+        <b>${esc(p.name)}</b> <span class="chip chip-neutral">/${esc(p.slug||'')}</span>
         <span class="ml-auto flex gap-1">
-          <button class="btn btn-outline btn-sm" onclick="targetPermissions('section','${s.id}','${esc(s.name)}')"><i class="fas fa-key"></i></button>
-          <button class="btn btn-outline btn-sm" onclick="sectionForm('${s.id}')"><i class="fas fa-pen"></i></button>
-          <button class="btn btn-outline btn-sm" onclick="subtopicForm('${s.id}')"><i class="fas fa-plus"></i> Sub</button>
-          <button class="btn btn-danger btn-sm" onclick="delSection('${s.id}')"><i class="fas fa-trash"></i></button>
-        </span>
-      </div>
-      <div class="divide-y divide-line">${(subs||[]).filter(x => x.section_id===s.id).map(x => `
-        <div class="p-3.5 flex flex-wrap items-center gap-3 text-sm">
-          <i class="fas fa-folder-open text-muted"></i><b>${esc(x.name)}</b>
-          ${x.required_group_id?`<span class="chip chip-wait"><i class="fas fa-lock"></i> ${esc(x.groups?.name||'')}</span>`:'<span class="chip chip-ok">todos</span>'}
-          ${x.is_request_form?'<span class="chip chip-neutral">formulário</span>':''}
-          <span class="ml-auto flex gap-1">
-            <button class="btn btn-outline btn-sm" onclick="targetPermissions('subtopic','${x.id}','${esc(x.name)}')"><i class="fas fa-key"></i></button>
-            <button class="btn btn-outline btn-sm" onclick="subtopicForm('${s.id}','${x.id}')"><i class="fas fa-pen"></i></button>
-            <button class="btn btn-danger btn-sm" onclick="delSubtopic('${x.id}')"><i class="fas fa-trash"></i></button>
-          </span>
-        </div>`).join('') || '<p class="p-4 text-xs text-muted">Sem subtópicos.</p>'}</div>
-    </div>`).join('')}
-  </div>`;
+          <a href="#/doc-page/${p.id}" class="btn btn-outline btn-sm"><i class="fas fa-folder-open"></i></a>
+          <button class="btn btn-outline btn-sm" onclick="docPageForm('${p.id}')"><i class="fas fa-pen"></i></button>
+          <button class="btn btn-danger btn-sm" onclick="delDocPage('${p.id}')"><i class="fas fa-trash"></i></button>
+        </span></div>`).join('')}
+    </div>
+  </div>`: ''}
+  ${(secs||[]).map((s,i,arr) =>`<div class="card">
+    <div class="cat-head">
+      <span class="flex items-center gap-1 mr-2">
+        <button class="ord-btn" onclick="moveSection('${s.id}',-1)" ${i===0?'disabled':''}><i class="fas fa-chevron-up"></i></button>
+        <button class="ord-btn" onclick="moveSection('${s.id}',1)" ${i===arr.length-1?'disabled':''}><i class="fas fa-chevron-down"></i></button>
+      </span>
+      <i class="fas ${esc(s.icon)}"></i> ${esc(s.name)} <span class="chip chip-neutral ml-2 normal-case">/${esc(s.slug)}</span>
+      <span class="ml-auto flex gap-1">
+        <button class="btn btn-outline btn-sm" onclick="targetPermissions('section','${s.id}','${esc(s.name)}')"><i class="fas fa-key"></i></button>
+        <button class="btn btn-outline btn-sm" onclick="sectionForm('${s.id}')"><i class="fas fa-pen"></i></button>
+        <button class="btn btn-outline btn-sm" onclick="subtopicForm('${s.id}')"><i class="fas fa-plus"></i> Sub</button>
+        <button class="btn btn-danger btn-sm" onclick="delSection('${s.id}')"><i class="fas fa-trash"></i></button>
+      </span>
+    </div>
+    <div class="divide-y divide-line">${(subs||[]).filter(x => x.section_id===s.id).map(x => `<div class="p-3.5 flex flex-wrap items-center gap-3 text-sm">
+      <i class="fas fa-folder-open text-muted"></i><b>${esc(x.name)}</b>
+      ${x.required_group_id?`<span class="chip chip-wait"><i class="fas fa-lock"></i> ${esc(x.groups?.name||'')}</span>`:'<span class="chip chip-ok">todos</span>'}
+      ${x.is_request_form?'<span class="chip chip-neutral">formulário</span>':''}
+      <span class="ml-auto flex gap-1">
+        <button class="btn btn-outline btn-sm" onclick="targetPermissions('subtopic','${x.id}','${esc(x.name)}')"><i class="fas fa-key"></i></button>
+        <button class="btn btn-outline btn-sm" onclick="subtopicForm('${s.id}','${x.id}')"><i class="fas fa-pen"></i></button>
+        <button class="btn btn-danger btn-sm" onclick="delSubtopic('${x.id}')"><i class="fas fa-trash"></i></button>
+      </span></div>`).join('') || '<p class="p-4 text-xs text-muted">Sem subtópicos.</p>'}</div>
+  </div>`).join('')}
+</div>`;
 }
 window.moveSection = async (id, dir) => {
   const { data } = await supabase.from('sections').select('id,order_index').order('order_index');
@@ -2230,7 +2192,7 @@ window.sectionForm = async id => {
     <label class="field"><span>Slug</span><input id="s-slug" class="input" value="${esc(s.slug)}"></label>
     <label class="field"><span>Ícone</span><input id="s-icon" class="input" value="${esc(s.icon)}"></label>
     <label class="field"><span>Descrição</span><textarea id="s-desc" class="input" rows="2">${esc(s.description||'')}</textarea></label>`,
-    `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button><button class="btn btn-primary btn-sm" onclick="saveSection('${id||''}')"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
+    `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button> <button class="btn btn-primary btn-sm" onclick="saveSection('${id||''}')"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
 };
 window.saveSection = async id => {
   const row = { name: document.getElementById('s-name').value.trim(), slug: document.getElementById('s-slug').value.trim().toLowerCase().replace(/\s+/g,'-'), icon: document.getElementById('s-icon').value.trim() || 'fa-folder-open', description: document.getElementById('s-desc').value, required_group_id: null };
@@ -2255,7 +2217,7 @@ window.subtopicForm = async (sid, tid) => {
     <label class="flex items-center gap-2 text-sm font-bold"><input id="t-form" type="checkbox" ${t.is_request_form?'checked':''} class="w-4 h-4 accent-[#14563f]"> Formulário de requerimento</label>
     <label class="field"><span>Campos (Nome:tipo)</span><textarea id="t-fields" class="input" rows="3">${esc(fieldsText)}</textarea></label>
     <input type="hidden" id="t-sid" value="${sid}"><input type="hidden" id="t-tid" value="${tid||''}">`,
-    `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button><button class="btn btn-primary btn-sm" onclick="saveSubtopic()"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
+    `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button> <button class="btn btn-primary btn-sm" onclick="saveSubtopic()"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
 };
 window.saveSubtopic = async () => {
   const tid = document.getElementById('t-tid').value;
@@ -2272,11 +2234,11 @@ window.saveSubtopic = async () => {
 async function tabProtocolos(b){
   const { data } = await supabase.from('requests').select('*,profiles_view(nickname),subtopics(name,auto_listagem_category)').eq('status','pending').order('created_at');
   b.innerHTML = `<div class="card fade-up"><div class="cat-head"><i class="fas fa-inbox"></i> Pendentes (${(data||[]).length})</div>
-  <div class="divide-y divide-line">${(data||[]).map(r => `<div class="p-4">
-    <div class="flex flex-wrap items-center gap-3 justify-between"><div><b class="text-sm">${esc(r.title)}</b> <span class="chip chip-neutral ml-1">${esc(r.subtopics?.name||'')}</span>
-      <p class="text-[11px] text-muted mt-1">${esc(r.profiles_view?.nickname||'')} • ${fmtDate(r.created_at)}</p></div>
-      <div class="space-x-1"><button class="btn btn-primary btn-sm" onclick="review('${r.id}','approved')"><i class="fas fa-check"></i> Aprovar</button><button class="btn btn-danger btn-sm" onclick="review('${r.id}','rejected')"><i class="fas fa-xmark"></i> Reprovar</button></div></div>
-    <div class="mt-3 grid sm:grid-cols-2 gap-2 text-xs bg-famr-50 rounded-lg p-3">${Object.entries(r.form_data||{}).map(([k,v])=>`<p><b class="text-famr-700">${esc(k)}:</b> ${esc(v)}</p>`).join('')}</div></div>`).join('') || '<p class="p-8 text-center text-sm text-muted">Nenhum pendente.</p>'}</div></div>`;
+    <div class="divide-y divide-line">${(data||[]).map(r => `<div class="p-4">
+      <div class="flex flex-wrap items-center gap-3 justify-between"><div><b class="text-sm">${esc(r.title)}</b> <span class="chip chip-neutral ml-1">${esc(r.subtopics?.name||'')}</span>
+        <p class="text-[11px] text-muted mt-1">${esc(r.profiles_view?.nickname||'')} • ${fmtDate(r.created_at)}</p></div>
+        <div class="space-x-1"><button class="btn btn-primary btn-sm" onclick="review('${r.id}','approved')"><i class="fas fa-check"></i> Aprovar</button> <button class="btn btn-danger btn-sm" onclick="review('${r.id}','rejected')"><i class="fas fa-xmark"></i> Reprovar</button></div></div>
+      <div class="mt-3 grid sm:grid-cols-2 gap-2 text-xs bg-famr-50 rounded-lg p-3">${Object.entries(r.form_data||{}).map(([k,v])=>`<p><b class="text-famr-700">${esc(k)}:</b> ${esc(v)}</p>`).join('')}</div></div>`).join('') || '<p class="p-8 text-center text-sm text-muted">Nenhum pendente.</p>'}</div></div>`;
 }
 window.review = async (id, status) => {
   if(status === 'approved') return doReview(id, 'approved', '');
@@ -2285,7 +2247,6 @@ window.review = async (id, status) => {
   doReview(id, 'rejected', note);
 };
 window.doReview = async (id, status, note) => { const { error } = await supabase.rpc('review_request', { req_id: id, new_status: status, note: note || null }); if(error) return toast('Erro: '+error.message,'err'); await famrLog('REVIEW_REQUEST', { req_id:id, new_status:status, note }); invalidate('home:'); closeModal(); toast(status==='approved'?'Aprovado!':'Reprovado.'); tabProtocolos(document.getElementById('admin-body')); };
-
 async function tabLogs(b){
   const f = A.logFilters;
   const from = A.page*30;
@@ -2300,64 +2261,62 @@ async function tabLogs(b){
   const totalPages = Math.ceil((count||0)/30);
   const actions = Object.keys(ACTION_PT);
   b.innerHTML = `<div class="card fade-up">
-    <div class="cat-head"><i class="fas fa-scroll"></i> Logs de ações <span class="chip chip-neutral ml-2 normal-case">${count??0} registros</span></div>
-    <div class="log-filters">
-      <input placeholder="Busca livre" value="${esc(f.search)}" onchange="A.logFilters.search=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
-      <input placeholder="Usuário" value="${esc(f.user)}" onchange="A.logFilters.user=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
-      <select onchange="A.logFilters.action=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
-        <option value="">Todas ações</option>
-        ${actions.map(a=>`<option value="${a}" ${f.action===a?'selected':''}>${ACTION_PT[a]}</option>`).join('')}
-      </select>
-      <input placeholder="IP parcial" value="${esc(f.ip)}" onchange="A.logFilters.ip=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
-      <input type="date" value="${esc(f.dateFrom)}" onchange="A.logFilters.dateFrom=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
-      <input type="date" value="${esc(f.dateTo)}" onchange="A.logFilters.dateTo=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
-      <button class="log-clear-btn" onclick="A.logFilters={user:'',action:'',ip:'',dateFrom:'',dateTo:'',search:''};A.page=0;tabLogs(document.getElementById('admin-body'))"><i class="fas fa-xmark mr-1"></i>Limpar</button>
-    </div>
-    <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Data/Hora</th><th>Ação</th><th>Autor</th><th>Detalhes</th><th>IP</th></tr></thead><tbody>
-    ${(data||[]).map(l => `<tr>
+  <div class="cat-head"><i class="fas fa-scroll"></i> Logs de ações <span class="chip chip-neutral ml-2 normal-case">${count??0} registros</span></div>
+  <div class="log-filters">
+    <input placeholder="Busca livre" value="${esc(f.search)}" onchange="A.logFilters.search=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
+    <input placeholder="Usuário" value="${esc(f.user)}" onchange="A.logFilters.user=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
+    <select onchange="A.logFilters.action=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
+      <option value="">Todas ações</option>
+      ${actions.map(a=>`<option value="${a}" ${f.action===a?'selected':''}>${ACTION_PT[a]}</option>`).join('')}
+    </select>
+    <input placeholder="IP parcial" value="${esc(f.ip)}" onchange="A.logFilters.ip=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
+    <input type="date" value="${esc(f.dateFrom)}" onchange="A.logFilters.dateFrom=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
+    <input type="date" value="${esc(f.dateTo)}" onchange="A.logFilters.dateTo=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
+    <button class="log-clear-btn" onclick="A.logFilters={user:'',action:'',ip:'',dateFrom:'',dateTo:'',search:''};A.page=0;tabLogs(document.getElementById('admin-body'))"><i class="fas fa-xmark mr-1"></i>Limpar</button>
+  </div>
+  <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Data/Hora</th><th>Ação</th><th>Autor</th><th>Detalhes</th><th>IP</th></tr></thead><tbody>
+    ${(data||[]).map(l =>`<tr>
       <td class="text-xs text-muted whitespace-nowrap">${fmtDate(l.created_at)}</td>
       <td><span class="chip ${l.action==='LOGIN'?'chip-ok':(l.action.includes('DEL')||l.action.includes('BAN'))?'chip-no':'chip-wait'}">${esc(ptAction(l.action))}</span></td>
       <td class="text-xs font-bold">${esc(l.actor_name||'sistema')}</td>
       <td class="text-[11px] text-muted max-w-md truncate" title="${esc(JSON.stringify(l.details))}">${esc(ptDetails(l.details, l.action))}</td>
       <td class="text-xs font-mono text-muted">${esc(l.ip || '—')}</td>
     </tr>`).join('') || '<tr><td colspan="5" class="text-center text-muted py-8">Nenhum log.</td></tr>'}
-    </tbody></table></div>
-    <div class="p-3 flex justify-center gap-2 items-center">
-      ${A.page>0?`<button class="btn btn-outline btn-sm" onclick="A.page--;tabLogs(document.getElementById('admin-body'))">← Anterior</button>`:''}
-      <span class="text-xs text-muted">Página ${A.page+1}${totalPages>1?` de ${totalPages}`:''}</span>
-      ${(data||[]).length===30?`<button class="btn btn-outline btn-sm" onclick="A.page++;tabLogs(document.getElementById('admin-body'))">Próxima →</button>`:''}
-    </div>
-  </div>`;
+  </tbody></table></div>
+  <div class="p-3 flex justify-center gap-2 items-center">
+    ${A.page>0?`<button class="btn btn-outline btn-sm" onclick="A.page--;tabLogs(document.getElementById('admin-body'))">← Anterior</button>`:''}
+    <span class="text-xs text-muted">Página ${A.page+1}${totalPages>1?` de ${totalPages}`:''}</span>
+    ${(data||[]).length===30?`<button class="btn btn-outline btn-sm" onclick="A.page++;tabLogs(document.getElementById('admin-body'))">Próxima →</button>`:''}
+  </div>
+</div>`;
 }
 async function tabConfig(b){
   const m = STATE.settings.maintenance || { enabled:false, message:'' }; const a = STATE.settings.announcement || { text:'' };
   b.innerHTML = `<div class="grid md:grid-cols-2 gap-4 fade-up">
-    <div class="card"><div class="cat-head"><i class="fas fa-screwdriver-wrench"></i> Manutenção</div><div class="card-body space-y-3">
-      <label class="flex items-center gap-3 text-sm font-bold"><input id="c-maint" type="checkbox" class="w-5 h-5 accent-[#c9a227]" ${m.enabled?'checked':''}> Ativar manutenção</label>
-      <label class="field"><span>Mensagem</span><input id="c-maint-msg" class="input" value="${esc(m.message||'')}"></label>
-      <button class="btn btn-primary btn-sm" onclick="saveMaint()"><i class="fas fa-floppy-disk"></i> Salvar</button></div></div>
-    <div class="card"><div class="cat-head"><i class="fas fa-bullhorn"></i> Aviso home</div><div class="card-body space-y-3">
-      <textarea id="c-ann" class="input" rows="4">${esc(a.text||'')}</textarea>
-      <button class="btn btn-gold btn-sm" onclick="saveAnn()"><i class="fas fa-floppy-disk"></i> Publicar</button></div></div>
-  </div>`;
+  <div class="card"><div class="cat-head"><i class="fas fa-screwdriver-wrench"></i> Manutenção</div><div class="card-body space-y-3">
+    <label class="flex items-center gap-3 text-sm font-bold"><input id="c-maint" type="checkbox" class="w-5 h-5 accent-[#c9a227]" ${m.enabled?'checked':''}> Ativar manutenção</label>
+    <label class="field"><span>Mensagem</span><input id="c-maint-msg" class="input" value="${esc(m.message||'')}"></label>
+    <button class="btn btn-primary btn-sm" onclick="saveMaint()"><i class="fas fa-floppy-disk"></i> Salvar</button></div></div>
+  <div class="card"><div class="cat-head"><i class="fas fa-bullhorn"></i> Aviso home</div><div class="card-body space-y-3">
+    <textarea id="c-ann" class="input" rows="4">${esc(a.text||'')}</textarea>
+    <button class="btn btn-gold btn-sm" onclick="saveAnn()"><i class="fas fa-floppy-disk"></i> Publicar</button></div></div>
+</div>`;
 }
 window.saveMaint = async () => { const value = { enabled: document.getElementById('c-maint').checked, message: document.getElementById('c-maint-msg').value }; await supabase.from('settings').upsert({ key:'maintenance', value }); STATE.settings.maintenance = value; await famrLog('MANUTENCAO', value); toast('Salvo.'); document.getElementById('maintenance-banner').classList.toggle('hidden', !value.enabled); };
 window.saveAnn = async () => { const value = { text: document.getElementById('c-ann').value }; await supabase.from('settings').upsert({ key:'announcement', value }); STATE.settings.announcement = value; await famrLog('AVISO', value); toast('Aviso publicado.'); };
-
 function sanitizeHtml(h){ return String(h||'').replace(/<script[\s\S]*?<\/script>/gi,'').replace(/on\w+="[^"]*"/gi,'').replace(/on\w+='[^']*'/gi,''); }
 function sanitizeHtmlPreservingStyles(h){
   let result = String(h||'');
   result = result.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/on\w+="[^"]*"/gi,'').replace(/on\w+='[^']*'/gi,'');
   const placeholders = [];
-  result = result.replace(/<style\s+data-famr-scoped="([^"]+)">([\s\S]*?)<\/style>/gi, (match) => {
+  result = result.replace(/<style\s+data-famr-scoped="([^"]*)"[^>]*>([\s\S]*?)<\/style>/gi, (match) => {
     const ph = `<!--STYLE_PH_${placeholders.length}-->`;
     placeholders.push(match); return ph;
   });
-  result = result.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, '');
+  result = result.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
   placeholders.forEach((orig, i) => { result = result.replace(`<!--STYLE_PH_${i}-->`, orig); });
   return result;
 }
-
 async function famrLog(action, details={}){
   const enriched = { ...details };
   if(!enriched.nick){ enriched.nick = STATE.profile?.nickname || details.nick || null; }
@@ -2375,17 +2334,22 @@ async function famrLog(action, details={}){
   }
 }
 
+/* ══════════ v42 FIX: enterSystem lê status da tabela BASE profiles ══════════
+   Motivo: se a view filtra pendentes, um recém-cadastrado cairia em
+   "Perfil não encontrado" em vez da mensagem correta "Conta não ativada".
+   A policy famr_profiles_select garante auth.uid()=id, então o usuário
+   sempre consegue ler o PRÓPRIO perfil da tabela base. */
 async function enterSystem(userId){
   if(window._famrRecovery){ showScreen('screen-reset'); return; }
   const [profRes, groups, setsRes] = await Promise.all([
-    supabase.from('profiles_view').select('*').eq('id', userId).single(),
+    supabase.from('profiles').select('*').eq('id', userId).single(),   /* v42: profiles (base) */
     loadSessionGroups(userId),
     supabase.from('settings').select('*').in('key',['maintenance','announcement'])
   ]);
   const profile = profRes.data;
   if(profRes.error || !profile){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Perfil não encontrado.', 'err'); return; }
   if(profile.status==='banned'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta BANIDA.', 'err'); return; }
-  if(profile.status==='pending'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta não ativada.', 'warn'); return; }
+  if(profile.status==='pending'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta não ativada. Aguarde a aprovação da chefia.', 'warn'); return; }
   if(profile.login_locked){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta BLOQUEADA.', 'err'); return; }
   STATE.profile = profile; STATE.groups = groups;
   (setsRes.data||[]).forEach(s => STATE.settings[s.key] = s.value);
