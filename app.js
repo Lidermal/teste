@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v40 (Visualização Página-Inteira | Grupos Gradiente | Páginas Doc | CSS Isolado Persistente) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v41 (Grupo Prioritário | Paginação Respostas | Doc Hierárquico | Form Custom) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
@@ -19,6 +19,7 @@ const SAFE_ICONS = [...new Set(ICON_OPTIONS.filter(i=>/^fa-/.test(i)))];
 
 const GROUP_TYPES = { open:'ABERTO', closed:'FECHADO', invisible:'INVISÍVEL' };
 const SLUGS_REQUIRE_GROUP = ['companhias'];
+const DOC_TYPES = { general:'GERAL', request:'REQUERIMENTO', listing:'LISTAGEM' };
 
 /* ══════════ TRADUÇÃO DE LOGS PT ══════════ */
 const ACTION_PT = {
@@ -30,7 +31,8 @@ const ACTION_PT = {
   GROUP_SAVE:'Grupo salvo', GROUP_DEL:'Grupo excluído', USER_GROUPS:'Grupos de usuário alterados',
   MANUTENCAO:'Modo manutenção', AVISO:'Aviso publicado', REVIEW_REQUEST:'Análise de protocolo',
   DOC_CREATE:'Documento criado', DOC_UPDATE:'Documento atualizado', DOC_DEL:'Documento excluído',
-  DOC_PAGE_SAVE:'Página salva', DOC_PAGE_DEL:'Página excluída'
+  DOC_PAGE_SAVE:'Página salva', DOC_PAGE_DEL:'Página excluída',
+  REPLY_POSTED:'Resposta enviada'
 };
 function ptAction(a){ return ACTION_PT[a] || a; }
 function shortId(s){ return String(s||'').slice(0,8)+'…'; }
@@ -44,7 +46,7 @@ function ptDetails(d, action){
   else if(action==='LOCK_REMOVIDO_ADMIN') out.push(`conta ${shortId(d.id)} destravada`);
   else if(action==='POST_CRIADO')     out.push(`subtópico ${shortId(d.subtopicId||d.id)}`);
   else if(action==='POST_EDITADO'||action==='POST_EXCLUIDO') out.push(`publicação ${shortId(d.id)}`);
-  else if(action==='GROUP_SAVE')      out.push(`grupo "${d.name||'?'}" (${d.group_type||'?'} · ordem ${d.order_index??'-'})`);
+  else if(action==='GROUP_SAVE')      out.push(`grupo "${d.name||'?'}" (${d.group_type||'?'} · ordem ${d.order_index??'-'}${d.is_priority?' · PRIORITÁRIO':''})`);
   else if(action==='GROUP_DEL')       out.push(`grupo ${shortId(d.id)}`);
   else if(action==='USER_GROUPS')     out.push(`usuário ${shortId(d.userId)} recebeu ${Array.isArray(d.ids)?d.ids.length+' grupo(s)':d.ids}`);
   else if(action==='SECTION_SAVE')    out.push(`setor "${d.name||'?'}" (/ ${d.slug||'?'})`);
@@ -53,11 +55,12 @@ function ptDetails(d, action){
   else if(action==='AVISO')           out.push(d.text ? `aviso: "${truncate(d.text,60)}"` : 'aviso removido');
   else if(action==='SENHA_LINK_ENVIADO') out.push(`nickname: ${d.nick||'?'}`);
   else if(action==='REVIEW_REQUEST')  out.push(`protocolo ${shortId(d.req_id)} → ${statusLabel(d.new_status)}${d.note?` · motivo: "${truncate(d.note,40)}"`:''}`);
-  else if(action==='DOC_CREATE')      out.push(`documento "${d.title||'?'}"${d.category?` (${d.category})`:''}${d.page_name?` · página: ${d.page_name}`:''}`);
+  else if(action==='DOC_CREATE')      out.push(`documento "${d.title||'?'}"${d.category?` (${d.category})`:''}${d.doc_type?` [${DOC_TYPES[d.doc_type]||d.doc_type}]`:''}${d.page_name?` · página: ${d.page_name}`:''}`);
   else if(action==='DOC_UPDATE')      out.push(`documento "${d.title||'?'}" atualizado`);
   else if(action==='DOC_DEL')         out.push(`documento ${shortId(d.id)} excluído`);
   else if(action==='DOC_PAGE_SAVE')   out.push(`página "${d.name||'?'}" (${d.slug||'?'})`);
   else if(action==='DOC_PAGE_DEL')    out.push(`página ${shortId(d.id)} excluída`);
+  else if(action==='REPLY_POSTED')    out.push(`resposta em ${shortId(d.postId||d.docId)}`);
   else if(action==='LOGIN')           out.push(`autenticação de ${d.nick||STATE.profile?.nickname||'usuário'}`);
   else if(action==='LOGOUT')          out.push(`saída de ${d.nick||STATE.profile?.nickname||'usuário'}`);
   else { Object.entries(d).forEach(([k,v])=>out.push(`${k}: ${typeof v==='object'?JSON.stringify(v):v}`)); }
@@ -74,35 +77,47 @@ async function cachedQuery(key, factory, ttl=60_000){
   const r = await factory(); cacheSet(key,r,ttl); return r;
 }
 const PAGE_SIZE = 25;
+const REPLIES_PER_PAGE = 10;
 
-/* ══════════ HELPERS GRUPO (COM SUPORTE A GRADIENTE) ══════════ */
+/* ══════════ HELPERS GRUPO (COM PRIORIDADE E GRADIENTE) ══════════ */
 function groupBg(g){
   if(!g) return '#14563f';
-  /* Se tiver gradiente configurado, retorna linear-gradient */
   if(g.color_mode === 'gradient' && g.color_end){
     const angle = g.gradient_angle || '135deg';
-    return `linear-gradient(${angle}, ${g.color}, ${g.color_end})`;
+    return angle === 'radial' ? `radial-gradient(circle, ${g.color}, ${g.color_end})` : `linear-gradient(${angle}, ${g.color}, ${g.color_end})`;
   }
   return g.color || '#14563f';
 }
 function groupBorder(g){
   if(!g) return '#14563f55';
-  if(g.color_mode === 'gradient' && g.color_end){
-    return `transparent`; /* borda sólida não combina com gradient */
-  }
+  if(g.color_mode === 'gradient' && g.color_end) return 'transparent';
   return (g.color || '#14563f') + '55';
 }
 function groupChip(g){
   if(!g) return '<span class="chip chip-neutral">Geral</span>';
-  const bg = g.color_mode === 'gradient' && g.color_end
-    ? `${g.color}22` /* fundo sólido translúcido pro chip */
-    : `${g.color}18`;
-  return `<span class="chip" style="background:${bg};color:${g.color};border:1px solid ${groupBorder(g)}"><i class="fas ${g.icon||'fa-shield-halved'}"></i> ${esc(g.name)}</span>`;
+  const bg = g.color_mode === 'gradient' && g.color_end ? `${g.color}22` : `${g.color}18`;
+  return `<span class="chip" style="background:${bg};color:${g.color};border:1px solid ${groupBorder(g)}"><i class="fas ${g.icon||'fa-shield-halved'}"></i> ${esc(g.name)}${g.is_priority?' <i class="fas fa-crown text-[9px]" title="Prioritário"></i>':''}</span>`;
 }
 function sortGroups(list){ return [...(list||[])].sort((a,b)=>(a.order_index||0)-(b.order_index||0)); }
-function primaryGroupOf(list){ return sortGroups(list)[0] || null; }
+
+/** Retorna o grupo PRIORITÁRIO (maior is_priority=true na sequência de order_index) */
+function priorityGroupOf(list){
+  const sorted = sortGroups(list);
+  /* Primeiro procura por is_priority marcando qual tem maior peso */
+  let best = null;
+  for(const g of sorted){
+    if(g.is_priority){
+      if(!best || (g.priority_level||0) >= (best.priority_level||0)){
+        best = g;
+      }
+    }
+  }
+  /* Se nenhum marcado como prioritário, usa o primeiro da lista */
+  return best || sorted[0] || null;
+}
+function primaryGroupOf(list){ return priorityGroupOf(list); }
 function colorGroupOf(list){ return sortGroups(list).find(g => g.apply_color) || null; }
-function userIconOf(list){ return primaryGroupOf(list)?.icon || 'fa-user'; }
+function userIconOf(list){ return priorityGroupOf(list)?.icon || 'fa-user'; }
 
 /* ══════════ PERMISSÕES ESTRITAS ══════════ */
 function permOf(type,id){ return STATE.perms?.[type+':'+id] || null; }
@@ -221,7 +236,7 @@ function promptDlg(label, def='', opts={}){
 function updateUserChip(){
   if(!STATE.profile) return;
   const nick = STATE.profile.nickname || '—';
-  const main = primaryGroupOf(STATE.groups);
+  const main = priorityGroupOf(STATE.groups);
   const cg = colorGroupOf(STATE.groups);
   const av = document.getElementById('user-avatar');
   const nk = document.getElementById('user-nick');
@@ -262,8 +277,8 @@ async function route(){
   if(page==='doc-new'){ renderDocWorkspace(null, subParam); return; }
   if(page==='doc-edit'){ renderDocWorkspace(param, subParam); return; }
   if(page==='doc-page'){ await renderDocPage(c, param); return; }
-  if(page==='doc-view'){ await renderDocViewPage(c, param); return; }   /* NOVO: visualização página inteira */
-  if(page==='post-view'){ await renderPostViewPage(c, param); return; } /* NOVO: visualização tópico página inteira */
+  if(page==='doc-view'){ await renderDocViewPage(c, param); return; }
+  if(page==='post-view'){ await renderPostViewPage(c, param); return; }
   closeDocWorkspace();
   c.innerHTML = '<div class="skeleton h-40"></div><div class="skeleton h-64 mt-4"></div>';
   try{
@@ -332,9 +347,9 @@ async function renderHome(c){
       supabase.from('posts').select('id,subtopic_id,title,created_at,profiles_view(nickname)').order('created_at',{ascending:false}).limit(500),
       supabase.from('profiles_view').select('*',{count:'exact',head:true}).eq('status','active').neq('nickname','admin master'),
       supabase.from('profiles_view').select('id,nickname,created_at').eq('status','active').eq('is_invisible',false).neq('nickname','admin master').order('created_at',{ascending:false}).limit(5),
-      supabase.from('groups').select('id,name,color,color_end,color_mode,gradient_angle,icon,apply_color,group_type,order_index,parent_id').neq('group_type','invisible').order('order_index'),
+      supabase.from('groups').select('id,name,color,color_end,color_mode,gradient_angle,icon,apply_color,group_type,order_index,parent_id,is_priority,priority_level').neq('group_type','invisible').order('order_index'),
       supabase.from('user_groups').select('group_id').limit(10000),
-      supabase.from('documents').select('id,title,category,updated_at,cover_url,profiles_view(nickname)').order('updated_at',{ascending:false}).limit(8)
+      supabase.from('documents').select('id,title,category,updated_at,cover_url,doc_type,profiles_view(nickname)').order('updated_at',{ascending:false}).limit(8)
     ]);
     return { sections:sections.data||[], subs:subs.data||[], posts:postsMeta.data||[], members:nMembers.count||0, newest:newest.data||[], groups:groups.data||[], ug:allUG.data||[], docs:recentDocs.data||[] };
   }, 45_000);
@@ -342,7 +357,7 @@ async function renderHome(c){
   const memberCount={}; (ug||[]).forEach(m=>memberCount[m.group_id]=(memberCount[m.group_id]||0)+1);
   let lastChip='<em>nenhum</em>';
   if(newest?.[0]){
-    const ic = userIconOf((await cachedQuery('lastug:'+newest[0].id, ()=> supabase.from('user_groups').select('groups(id,icon,order_index,apply_color)').eq('user_id',newest[0].id), 120_000)).data||[]);
+    const ic = userIconOf((await cachedQuery('lastug:'+newest[0].id, ()=> supabase.from('user_groups').select('groups(id,icon,order_index,apply_color,is_priority)').eq('user_id',newest[0].id), 120_000)).data||[]);
     lastChip=`<span class="sg-link"><i class="fas ${ic}"></i> ${esc(newest[0].nickname)}</span>`;
   }
   const counts={},lastMap={};
@@ -367,7 +382,7 @@ async function renderHome(c){
       <span class="qs-pill"><i class="fas fa-circle qs-on"></i> ${totalOnline} online</span>
       <span class="qs-pill"><i class="fas fa-users"></i> ${registeredCount} efetivo</span>
       <span class="qs-pill"><i class="fas fa-comments"></i> ${pubs} publicações</span>
-      <span class="qs-pill"><i class="fas ${primaryGroupOf(STATE.groups)?.icon || 'fa-id-badge'}"></i> ${esc(STATE.profile.nickname)}</span>
+      <span class="qs-pill"><i class="fas ${priorityGroupOf(STATE.groups)?.icon || 'fa-id-badge'}"></i> ${esc(STATE.profile.nickname)}</span>
     </div>
     ${ann ? `<div class="qs-notice" title="${esc(ann)}"><i class="fas fa-bullhorn"></i><span>${esc(ann)}</span></div>` : ``}
     <div class="qs-emblem"><img src="${CONFIG.logoUrl}" alt="" loading="lazy" onerror="this.parentElement.classList.add('qs-emblem-empty')"></div>
@@ -387,16 +402,15 @@ async function renderHome(c){
     <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-user-plus"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Mais recente</p><p class="font-display text-sm font-extrabold text-famr-800 truncate">${esc(newest?.[0]?.nickname || '—')}</p></div></div>
   </section>
 
-  <!-- DOCUMENTOS RECENTES NA HOME -->
   ${(recentDocs||[]).length ? `
   <section class="card overflow-hidden fade-up">
     <div class="cat-head"><i class="fas fa-file-lines"></i> Documentos Recentes
       <a href="#/section/documentos" class="ml-auto text-[10px] font-bold text-gold-300 hover:text-white normal-case tracking-normal">ver todos →</a></div>
     <div class="divide-y divide-line">
       ${(recentDocs||[]).map(d => `<a href="#/doc-view/${d.id}" class="forum-row">
-        <span class="forum-ico"><i class="fas fa-file-alt"></i></span>
+        <span class="forum-ico ${d.doc_type==='request'?'new':''}"><i class="fas ${d.doc_type==='request'?'fa-file-signature':'fa-file-alt'}"></i></span>
         <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(d.title)}</b>
-          <p class="text-xs text-muted">por <b class="text-famr-700">${esc(d.profiles_view?.nickname||'—')}</b> • ${fmtDate(d.updated_at)}${d.category?` • <span class="chip chip-neutral ml-1">${esc(d.category)}</span>`:''}</p></div>
+          <p class="text-xs text-muted">por <b class="text-famr-700">${esc(d.profiles_view?.nickname||'—')}</b> • ${fmtDate(d.updated_at)}${d.category?` • <span class="chip chip-neutral ml-1">${esc(d.category)}</span>`:''}${d.doc_type?` <span class="chip ${d.doc_type==='request'?'chip-wait':'chip-ok'} ml-1">${DOC_TYPES[d.doc_type]||d.doc_type}</span>`:''}</p></div>
         <i class="fas fa-chevron-right text-xs text-muted"></i></a>`).join('')}
     </div>
   </section>` : ''}
@@ -405,8 +419,8 @@ async function renderHome(c){
     if(!canSeeSection(sec)) return '';
     if(sectionNeedsGroup(sec)){
       const grows = (groups||[]).map(g => `<a href="#/grupo/${g.id}" class="forum-row">
-        <span class="forum-ico"><i class="fas ${g.icon||'fa-shield-halved'}" style="color:${g.color}"></i></span>
-        <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(g.name)}</b>
+        <span class="forum-ico" style="background:${groupBg(g)};color:#fff"><i class="fas ${g.icon||'fa-shield-halved'}"></i></span>
+        <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(g.name)}${g.is_priority?' <i class="fas fa-crown text-gold-500 text-[10px] ml-1"></i>':''}</b>
           <p class="text-xs text-muted">${GROUP_TYPES[g.group_type]||''} • ${memberCount[g.id]||0} membro(s)</p></div>
         ${myIds.has(g.id)?'<span class="chip chip-ok">SEU GRUPO</span>':''}
         <i class="fas fa-chevron-right text-xs text-muted"></i></a>`).join('');
@@ -435,7 +449,7 @@ async function renderHome(c){
     <div class="st-body stab-panel" id="stab-usuarios">Há <strong>${totalOnline}</strong> usuário online :: ${registeredCount} registrado${registeredCount!==1?'s':''}<br>Último recruta aprovado: ${lastChip}</div>
     <div class="st-body stab-panel hidden" id="stab-aniversarios"><p class="st-empty">Nenhum membro festeja aniversário hoje</p></div>
     <div class="st-body stab-panel hidden" id="stab-grupos"><div class="st-groups-list">
-      ${(groups||[]).map(g => `<a href="#/grupo/${g.id}" class="sg-link"><i class="fas ${g.icon||'fa-shield-halved'}" style="color:${g.color}"></i><span>${esc(g.name)}</span><span class="text-[10px] text-muted">(${memberCount[g.id]||0})</span></a>`).join('') || '<em class="text-muted text-xs">Nenhum grupo.</em>'}
+      ${(groups||[]).map(g => `<a href="#/grupo/${g.id}" class="sg-link"><i class="fas ${g.icon||'fa-shield-halved'}" style="color:${g.color}"></i><span>${esc(g.name)}${g.is_priority?' 👑':''}</span><span class="text-[10px] text-muted">(${memberCount[g.id]||0})</span></a>`).join('') || '<em class="text-muted text-xs">Nenhum grupo.</em>'}
     </div></div>
     <div class="st-body st-legend"><strong class="text-famr-800">Legenda:</strong>
       <div class="flex flex-wrap gap-3 mt-1">${legend.map(i=>`<span class="inline-flex items-center gap-1.5"><i class="fas ${i.icon}" style="color:${i.color}"></i><span class="text-muted">${esc(i.label)}</span></span>`).join('')}</div>
@@ -466,30 +480,65 @@ function forumRow(s, counts, lastMap){
 }
 
 /* ═══════════════════════════════════════════════════
-   VISUALIZAÇÃO PÁGINA-INTEIRA (ESTILO FÓRUM CLÁSSICO)
-   Perfil à esquerda + Conteúdo à direita
+   VISUALIZAÇÃO PÁGINA-INTEIRA COM PERFIL DO AUTOR
+   (Grupo Prioritário + Contagem de Mensagens)
    ═══════════════════════════════════════════════════ */
+async function getAuthorInfo(userId){
+  const [{ data: profile }, { count: postCount }] = await Promise.all([
+    supabase.from('profiles_view').select('*').eq('id', userId).single(),
+    supabase.from('posts').select('*', { count:'exact', head:true }).eq('author_id', userId)
+  ]);
+  const { data: userGroups } = await supabase.from('user_groups').select('groups(*)').eq('user_id', userId);
+  const gs = (userGroups||[]).map(r=>r.groups).filter(Boolean);
+  return { profile: profile||{}, groups: gs, messageCount: postCount||0 };
+}
+
+function renderAuthorPanel(info){
+  const pg = priorityGroupOf(info.groups);
+  const cg = colorGroupOf(info.groups);
+  return `
+  <aside class="doc-view-profile">
+    <div class="dv-author-name">${esc(info.profile.nickname||'Autor')}</div>
+    <div class="dv-author-status">ONLINE</div>
+    <div class="dv-author-avatar">
+      ${pg ? `<img src="${CONFIG.logoUrl}" alt="" onerror="this.parentElement.innerHTML='<div class=&quot;dv-avatar-placeholder&quot; style=&quot;background:${groupBg(pg)}&quot;>${esc((info.profile.nickname||'A')[0].toUpperCase())}</div>'">` 
+            : `<div class="dv-avatar-placeholder">${esc((info.profile.nickname||'A')[0].toUpperCase())}</div>`}
+    </div>
+    ${pg ? `<div class="dv-author-btn" style="background:${groupBg(pg)};color:#fff;border:none">
+      <i class="fas ${pg.icon||'fa-shield-halved'} mr-1"></i>${esc(pg.name)}${pg.is_priority?' <i class="fas fa-crown ml-1 text-[10px]"></i>':''}
+    </div>` : `<div class="dv-author-btn"><i class="fas fa-user mr-1"></i>Sem grupo</div>`}
+    <div class="dv-author-stats">
+      <span>Mensagens:</span> <b>${info.messageCount}</b>
+    </div>
+  </aside>`;
+}
+
 async function renderDocViewPage(c, docId){
   const { data:d } = await supabase.from('documents').select('*,profiles_view(*)').eq('id',docId).single();
   if(!d){ c.innerHTML = '<div class="card card-body text-sm text-muted">Documento não encontrado.</div>'; return; }
-  const author = d.profiles_view || {};
+  
+  const authorInfo = await getAuthorInfo(d.author_id);
   const canManage = isAdmin();
+  
+  /* Carrega respostas se houver tabela replies */
+  const { data: replies } = await supabase.from('post_replies').select('*,profiles_view(nickname)').eq('parent_doc_id', docId).order('created_at',{ascending:true}).limit(REPLIES_PER_PAGE*2);
+  const replyPages = Math.ceil(((replies||[]).length)/REPLIES_PER_PAGE) || 1;
   
   c.innerHTML = `
   <div class="fade-up">
     <p class="text-xs text-muted mb-3"><a href="#/section/documentos" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>Documentos Principais</a> / <b>${esc(d.title)}</b></p>
     
     <div class="doc-view-page">
-      <!-- HEADER DO DOCUMENTO (topo) -->
-      <div class="doc-view-header" style="background:${canManage ? 'linear-gradient(135deg,#0e4433,#14563f)' : 'linear-gradient(135deg,#0e4433,#14563f 60%,#c9a227)'}">
+      <div class="doc-view-header" style="background:linear-gradient(135deg,#0e4433,#14563f)">
         <div class="dvh-brand">
           <img src="${CONFIG.logoUrl}" alt="" onerror="this.style.display='none'" class="dvh-logo">
           <div class="dvh-titles">
             <h1 class="dvh-title">${esc(d.title)}</h1>
             <p class="dvh-meta">
-              <span><i class="fas fa-user-tie mr-1"></i>${esc(author.nickname||'—')}</span>
+              <span><i class="fas fa-user-tie mr-1"></i>${esc(authorInfo.profile.nickname||'—')}</span>
               <span><i class="far fa-clock mr-1"></i>${fmtDate(d.updated_at)}</span>
               ${d.category?`<span><i class="fas fa-tag mr-1"></i>${esc(d.category)}</span>`:''}
+              ${d.doc_type?`<span class="chip ${d.doc_type==='request'?'chip-wait':'chip-ok'}">${DOC_TYPES[d.doc_type]||d.doc_type}</span>`:''}
             </p>
           </div>
         </div>
@@ -499,26 +548,11 @@ async function renderDocViewPage(c, docId){
         </div>
       </div>
       
-      <!-- CORPO EM DUAS COLUNAS -->
       <div class="doc-view-body">
-        <!-- PERFIL À ESQUERDA -->
-        <aside class="doc-view-profile">
-          <div class="dv-author-name">${esc(author.nickname||'Autor')}</div>
-          <div class="dv-author-status">ONLINE</div>
-          <div class="dv-author-avatar">
-            <img src="${CONFIG.logoUrl}" alt="" onerror="this.parentElement.innerHTML='<div class=&quot;dv-avatar-placeholder&quot;>${esc((author.nickname||'A')[0].toUpperCase())}</div>'">
-          </div>
-          <div class="dv-author-btn">
-            <i class="fas fa-user-shield mr-1"></i>${esc(author.nickname||'Perfil')}
-          </div>
-          <div class="dv-author-stats">
-            <span>Mensagens:</span> <b>${author.posts_count||0}</b>
-          </div>
-        </aside>
+        ${renderAuthorPanel(authorInfo)}
         
-        <!-- CONTEÚDO À DIREITA -->
         <article class="doc-view-content">
-          <div class="dvc-timestamp">Seg ${fmtDate(d.updated_at)}</div>
+          <div class="dvc-timestamp">${fmtDate(d.updated_at)}</div>
           <div class="dvc-isolated" style="pointer-events:auto">${sanitizeHtmlPreservingStyles(d.body_html||'')}</div>
           
           ${d.cover_url ? `<figure class="dvc-cover"><img src="${esc(d.cover_url)}" alt=""></figure>` : ''}
@@ -527,19 +561,83 @@ async function renderDocViewPage(c, docId){
             <span><i class="fas fa-hashtag mr-1"></i>#${esc(d.id.slice(0,8))}</span>
             ${canManage?`<button class="btn btn-danger btn-sm" onclick="delDoc('${d.id}')"><i class="fas fa-trash"></i> Excluir</button>`:''}
           </footer>
+          
+          <!-- RESPOSTAS / REQUERIMENTOS -->
+          ${d.doc_type !== 'listing' ? `
+          <section class="reply-section mt-6">
+            <div class="cat-head"><i class="fas fa-reply-all"></i> Respostas <span class="ml-auto text-[10px] normal-case tracking-normal text-gold-300">${(replies||[]).length} resposta(s)</span></div>
+            <div class="reply-list divide-y divide-line">
+              ${(replies||[]).slice(0, REPLIES_PER_PAGE).map(r => replyCard(r)).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhuma resposta ainda.</p>'}
+            </div>
+            ${replyPages > 1 ? `<div class="p-3 flex justify-center gap-2 border-t border-line">
+              <span class="text-xs text-muted">Página 1 de ${replyPages}</span>
+              <button class="btn btn-outline btn-sm" disabled>Próxima →</button>
+            </div>` : ''}
+            
+            <!-- FORMULÁRIO DE NOVA RESPOSTA -->
+            <form class="reply-form card card-body mt-4" onsubmit="return submitReply(event,'${d.id}','doc')">
+              <label class="field"><span>Sua resposta</span>
+                <textarea name="content" class="input" rows="3" placeholder="Escreva sua resposta..." required></textarea></label>
+              <button class="btn btn-primary btn-sm"><i class="fas fa-paper-plane"></i> Enviar Resposta</button>
+            </form>
+          </section>` : ''}
         </article>
       </div>
     </div>
   </div>`;
 }
 
+function replyCard(r){
+  return `<div class="reply-item p-4">
+    <div class="flex items-start gap-3">
+      <span class="forum-ico shrink-0"><i class="fas fa-user"></i></span>
+      <div class="flex-1 min-w-0">
+        <b class="text-sm text-famr-800">${esc(r.profiles_view?.nickname||'—')}</b>
+        <span class="text-[10px] text-muted ml-2">${fmtDate(r.created_at)}</span>
+        <p class="text-sm mt-1 whitespace-pre-wrap">${esc(r.content)}</p>
+      </div>
+    </div>
+  </div>`;
+}
+
+window.submitReply = async function(e, parentId, parentType){
+  e.preventDefault();
+  const f = e.target;
+  const content = f.content.value.trim();
+  if(!content) return toast('Escreva algo.','warn');
+  
+  const payload = { 
+    parent_id: parentId, 
+    parent_type: parentType, 
+    content, 
+    author_id: STATE.profile.id 
+  };
+  
+  const { error } = await supabase.from('post_replies').insert([payload]);
+  if(error) return toast('Erro: '+error.message,'err');
+  
+  await famrLog('REPLY_POSTED', { postId: parentId, docId: parentType==='doc'?parentId:null });
+  invalidate('docs:'); invalidate('posts:'); invalidate('home:');
+  toast('Resposta enviada!');
+  f.reset();
+  /* Recarrega a página */
+  if(parentType==='doc') location.reload();
+  else location.reload();
+  return false;
+};
+
 async function renderPostViewPage(c, postId){
   const { data:p } = await supabase.from('posts').select('*,profiles_view(*),subtopics(name,section_id,sections(name,slug))').eq('id',postId).single();
   if(!p){ c.innerHTML = '<div class="card card-body text-sm text-muted">Publicação não encontrada.</div>'; return; }
-  const author = p.profiles_view || {};
+  
+  const authorInfo = await getAuthorInfo(p.author_id);
   const mine = p.author_id === STATE.profile.id;
   const canEdit = mine && canEditIn({section_id:p.subtopics?.section_id, id:p.subtopic_id});
   const canDel = mine || canDeleteIn({section_id:p.subtopics?.section_id, id:p.subtopic_id});
+  
+  /* Carrega respostas */
+  const { data: replies } = await supabase.from('post_replies').select('*,profiles_view(nickname)').eq('parent_post_id', postId).order('created_at',{ascending:true}).limit(REPLIES_PER_PAGE*2);
+  const replyPages = Math.ceil(((replies||[]).length)/REPLIES_PER_PAGE) || 1;
   
   c.innerHTML = `
   <div class="fade-up">
@@ -550,13 +648,13 @@ async function renderPostViewPage(c, postId){
     </p>
     
     <div class="doc-view-page">
-      <div class="doc-view-header">
+      <div class="doc-view-header" style="background:linear-gradient(135deg,#0e4433,#14563f)">
         <div class="dvh-brand">
           <span class="forum-ico"><i class="fas fa-comment"></i></span>
           <div class="dvh-titles">
             <h1 class="dvh-title">${esc(p.title)}</h1>
             <p class="dvh-meta">
-              <span><i class="fas fa-user-tie mr-1"></i>${esc(author.nickname||'—')}</span>
+              <span><i class="fas fa-user-tie mr-1"></i>${esc(authorInfo.profile.nickname||'—')}</span>
               <span><i class="far fa-clock mr-1"></i>${fmtDate(p.created_at)}</span>
             </p>
           </div>
@@ -568,14 +666,7 @@ async function renderPostViewPage(c, postId){
       </div>
       
       <div class="doc-view-body">
-        <aside class="doc-view-profile">
-          <div class="dv-author-name">${esc(author.nickname||'Autor')}</div>
-          <div class="dv-author-status">ONLINE</div>
-          <div class="dv-author-avatar">
-            <img src="${CONFIG.logoUrl}" alt="" onerror="this.parentElement.innerHTML='<div class=&quot;dv-avatar-placeholder&quot;>${esc((author.nickname||'A')[0].toUpperCase())}</div>'">
-          </div>
-          <div class="dv-author-btn"><i class="fas fa-user-shield mr-1"></i>${esc(author.nickname||'Perfil')}</div>
-        </aside>
+        ${renderAuthorPanel(authorInfo)}
         
         <article class="doc-view-content">
           <div class="dvc-timestamp">${fmtDate(p.created_at)}</div>
@@ -584,6 +675,24 @@ async function renderPostViewPage(c, postId){
           <footer class="dvc-footer">
             <span><i class="fas fa-hashtag mr-1"></i>#${esc(p.id.slice(0,8))}</span>
           </footer>
+          
+          <!-- RESPOSTAS -->
+          <section class="reply-section mt-6">
+            <div class="cat-head"><i class="fas fa-reply-all"></i> Respostas <span class="ml-auto text-[10px] normal-case tracking-normal text-gold-300">${(replies||[]).length} resposta(s)</span></div>
+            <div class="reply-list divide-y divide-line">
+              ${(replies||[]).slice(0, REPLIES_PER_PAGE).map(r => replyCard(r)).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhuma resposta ainda.</p>'}
+            </div>
+            ${replyPages > 1 ? `<div class="p-3 flex justify-center gap-2 border-t border-line">
+              <span class="text-xs text-muted">Página 1 de ${replyPages}</span>
+              <button class="btn btn-outline btn-sm" disabled>Próxima →</button>
+            </div>` : ''}
+            
+            <form class="reply-form card card-body mt-4" onsubmit="return submitReply(event,'${p.id}','post')">
+              <label class="field"><span>Sua resposta</span>
+                <textarea name="content" class="input" rows="3" placeholder="Escreva sua resposta..." required></textarea></label>
+              <button class="btn btn-primary btn-sm"><i class="fas fa-paper-plane"></i> Enviar Resposta</button>
+            </form>
+          </section>
         </article>
       </div>
     </div>
@@ -620,7 +729,7 @@ async function renderGroupPage(c, groupId){
   if(!grp){ c.innerHTML = '<div class="card card-body text-sm text-muted">Grupo não encontrado.</div>'; return; }
   const list = (members||[]).map(m => m.profiles_view).filter(Boolean).filter(p => p.status==='active' && p.nickname !== 'admin master');
   const ids = list.map(m => m.id);
-  const { data: ugIcons } = ids.length ? await supabase.from('user_groups').select('user_id, groups(id,icon,order_index,apply_color)').in('user_id', ids) : { data: [] };
+  const { data: ugIcons } = ids.length ? await supabase.from('user_groups').select('user_id, groups(id,icon,order_index,apply_color,is_priority)').in('user_id', ids) : { data: [] };
   const iconByUser = {};
   (ugIcons||[]).forEach(r => { (iconByUser[r.user_id] = iconByUser[r.user_id] || []).push(r.groups); });
   const isMember = STATE.groups.some(g => g.id === groupId);
@@ -632,8 +741,12 @@ async function renderGroupPage(c, groupId){
       <h1 class="font-display text-xl md:text-2xl font-extrabold text-famr-900">
         <span class="inline-block w-9 h-9 rounded-lg align-middle mr-2" style="background:${groupBg(grp)}"></span>
         ${esc(grp.name)}
+        ${grp.is_priority ? '<i class="fas fa-crown text-gold-500 ml-2 text-sm" title="Grupo Prioritário"></i>' : ''}
       </h1>
-      <span class="chip ${grp.group_type==='open'?'chip-ok':grp.group_type==='closed'?'chip-wait':'chip-neutral'}">${GROUP_TYPES[grp.group_type]||grp.group_type}</span>
+      <div class="flex gap-2">
+        <span class="chip ${grp.group_type==='open'?'chip-ok':grp.group_type==='closed'?'chip-wait':'chip-neutral'}">${GROUP_TYPES[grp.group_type]||grp.group_type}</span>
+        ${grp.is_priority ? '<span class="chip chip-wait"><i class="fas fa-crown mr-1"></i>Prioritário</span>' : ''}
+      </div>
     </div>
     <p class="text-sm text-muted mt-1">${grp.groups ? 'Subgrupo de <b>'+esc(grp.groups.name)+'</b>' : 'Companhia principal'} • ${list.length} membro(s)</p>
     <div class="flex gap-2 mt-3">
@@ -721,7 +834,7 @@ async function renderCompanhias(c, sec){
     return;
   }
   const [{ data: groups }, { data: allUG }] = await Promise.all([
-    supabase.from('groups').select('id,name,color,color_end,color_mode,gradient_angle,icon,group_type,order_index,parent_id').neq('group_type','invisible').order('order_index'),
+    supabase.from('groups').select('id,name,color,color_end,color_mode,gradient_angle,icon,group_type,order_index,parent_id,is_priority,priority_level').neq('group_type','invisible').order('order_index'),
     supabase.from('user_groups').select('group_id').limit(10000)
   ]);
   const cnt = {}; (allUG||[]).forEach(m => cnt[m.group_id] = (cnt[m.group_id]||0)+1);
@@ -731,7 +844,10 @@ async function renderCompanhias(c, sec){
     ${(groups||[]).map(g => `<div class="card card-hover p-5">
       <div class="flex items-center justify-between">
         <span class="forum-ico" style="background:${groupBg(g)};color:#fff"><i class="fas ${g.icon||'fa-shield-halved'}"></i></span>
-        <span class="chip ${g.group_type==='open'?'chip-ok':g.group_type==='closed'?'chip-wait':'chip-neutral'}">${GROUP_TYPES[g.group_type]||g.group_type}</span>
+        <div class="flex gap-1">
+          <span class="chip ${g.group_type==='open'?'chip-ok':g.group_type==='closed'?'chip-wait':'chip-neutral'}">${GROUP_TYPES[g.group_type]||g.group_type}</span>
+          ${g.is_priority?'<span class="chip chip-wait"><i class="fas fa-crown mr-1"></i>PRIORITÁRIO</span>':''}
+        </div>
       </div>
       <h3 class="font-bold mt-3" style="color:${g.color}">${esc(g.name)}</h3>
       <p class="text-xs text-muted mt-1">${cnt[g.id]||0} membro(s)</p>
@@ -741,7 +857,7 @@ async function renderCompanhias(c, sec){
   </div>`;
 }
 
-/* ══════════ SUBTÓPICO ══════════ */
+/* ══════════ SUBTÓPICO COM PAGINAÇÃO DE RESPOSTAS ══════════ */
 async function renderSubtopic(c, id, page=0){
   const { data: sub } = await supabase.from('subtopics').select('*,sections(name,slug)').eq('id', id).single();
   if(!sub){ c.innerHTML = '<div class="card card-body text-sm text-muted">Subtópico não encontrado.</div>'; return; }
@@ -861,7 +977,7 @@ window.submitRequest = async function(subtopicId){
 };
 
 /* ═══════════════════════════════════════════════════
-   DOCUMENTOS PRINCIPAIS — COM SISTEMA DE PÁGINAS
+   DOCUMENTOS PRINCIPAIS — SISTEMA HIERÁRQUICO DE PÁGINAS
    ═══════════════════════════════════════════════════ */
 let _wsDirty=false, _wsSaving=false;
 
@@ -871,7 +987,7 @@ async function renderDocumentos(c, sec){
   
   const [{ data: pages }, { data: generalDocs }] = await Promise.all([
     cachedQuery('docpages:list', ()=> supabase.from('doc_pages').select('*').order('order_index'), 30_000),
-    cachedQuery('docs:list-general', ()=> supabase.from('documents').select('id,title,category,cover_url,updated_at,author_id,profiles_view(nickname)').is('page_id', null).order('updated_at',{ascending:false}), 30_000)
+    cachedQuery('docs:list-general', ()=> supabase.from('documents').select('id,title,category,cover_url,updated_at,author_id,doc_type,profiles_view(nickname)').is('page_id', null).order('updated_at',{ascending:false}), 30_000)
   ]);
   
   c.innerHTML = secHead(sec) + `
@@ -885,7 +1001,7 @@ async function renderDocumentos(c, sec){
   
   ${(pages||[]).length ? `
   <section class="mb-6 fade-up">
-    <h2 class="font-display text-lg font-extrabold text-famr-900 mb-3"><i class="fas fa-layer-group text-gold-500 mr-2"></i>Páginas</h2>
+    <h2 class="font-display text-lg font-extrabold text-famr-900 mb-3"><i class="fas fa-layer-group text-gold-500 mr-2"></i>Páginas / Tópicos</h2>
     <div class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       ${(pages||[]).map(p => docPageCard(p, canManage)).join('')}
     </div>
@@ -929,6 +1045,7 @@ function docCard(d, canManage, pageId){
         ${d.category?`<span class="chip chip-neutral shrink-0">${esc(d.category)}</span>`:''}
       </div>
       <p class="text-[11px] text-muted mt-1">por <b>${esc(d.profiles_view?.nickname||'—')}</b> • ${fmtDate(d.updated_at)}</p>
+      ${d.doc_type?`<span class="chip ${d.doc_type==='request'?'chip-wait':d.doc_type==='listing'?'chip-neutral':'chip-ok'} mt-1">${DOC_TYPES[d.doc_type]||d.doc_type}</span>`:''}
       <div class="flex gap-1 mt-3">
         <a href="#/doc-view/${d.id}" class="btn btn-outline btn-sm"><i class="fas fa-book-open"></i> Ler</a>
         ${canManage?`<a href="#/doc-edit/${d.id}" class="btn btn-outline btn-sm"><i class="fas fa-pen"></i></a>
@@ -942,7 +1059,7 @@ async function renderDocPage(c, pageId){
   const { data: pg } = await supabase.from('doc_pages').select('*').eq('id', pageId).single();
   if(!pg){ c.innerHTML = '<div class="card card-body text-sm text-muted">Página não encontrada.</div>'; return; }
   const canManage = isAdmin();
-  const { data: docs } = await supabase.from('documents').select('id,title,category,cover_url,updated_at,author_id,profiles_view(nickname)').eq('page_id', pageId).order('updated_at',{ascending:false});
+  const { data: docs } = await supabase.from('documents').select('id,title,category,cover_url,updated_at,author_id,doc_type,profiles_view(nickname)').eq('page_id', pageId).order('updated_at',{ascending:false});
   c.innerHTML = `
   <div class="fade-up">
     <p class="text-xs text-muted mb-2"><a href="#/section/documentos" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>Documentos Principais</a> / <b>${esc(pg.name)}</b></p>
@@ -962,6 +1079,7 @@ async function renderDocPage(c, pageId){
   </section>`;
 }
 
+/* Diálogo para escolher tipo e onde criar o novo documento */
 window.showNewDocDialog = async function(preferredPageId){
   const { data: pages } = await supabase.from('doc_pages').select('id,name,icon,color').order('order_index');
   const options = [
@@ -971,7 +1089,15 @@ window.showNewDocDialog = async function(preferredPageId){
   openModal('<i class="fas fa-file-circle-plus text-gold-500 mr-2"></i>Novo Documento',
     `<label class="field"><span>Título</span><input id="nd-title" class="input" placeholder="Ex.: Relatório Mensal S3"></label>
      <label class="field"><span>Categoria (opcional)</span><input id="nd-category" class="input" placeholder="Ex.: Operacional"></label>
-     <label class="field"><span>Página destino</span><select id="nd-page" class="input">${options}</select></label>`,
+     <label class="field"><span>Tipo de documento</span>
+       <select id="nd-type" class="input">
+         <option value="general">📋 Documentação Geral (regulamentos, cronogramas, etc.)</option>
+         <option value="request">📝 Requerimento (com formulário customizável)</option>
+         <option value="listing">📊 Listagem (sem respostas/paginação)</option>
+       </select>
+     </label>
+     <label class="field"><span>Página destino</span><select id="nd-page" class="input">${options}</select></label>
+     <p class="text-xs text-muted mt-2"><i class="fas fa-info-circle"></i> Após confirmar, você será levado ao editor completo.</p>`,
     `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
      <button class="btn btn-primary btn-sm" onclick="confirmNewDoc()"><i class="fas fa-check"></i> Criar e abrir editor</button>`);
 };
@@ -979,10 +1105,11 @@ window.showNewDocDialog = async function(preferredPageId){
 window.confirmNewDoc = async function(){
   const title = document.getElementById('nd-title').value.trim();
   const category = document.getElementById('nd-category').value.trim();
+  const docType = document.getElementById('nd-type').value;
   const pageId = document.getElementById('nd-page').value || null;
   if(!title) return toast('Título obrigatório.','warn');
   closeModal();
-  const meta = encodeURIComponent(JSON.stringify({ title, category, page_id: pageId }));
+  const meta = encodeURIComponent(JSON.stringify({ title, category, page_id: pageId, doc_type: docType }));
   location.hash = `#/doc-new/${meta}`;
 };
 
@@ -1017,7 +1144,7 @@ window.docPageForm = async id => {
   }
   openModal(`<i class="fas fa-file-circle-plus text-gold-500 mr-2"></i>${id?'Editar':'Nova'} Página`,
     `<label class="field"><span>Nome</span><input id="dp-name" class="input" value="${esc(p.name)}"></label>
-     <label class="field"><span>Slug (URL amigável)</span><input id="dp-slug" class="input" value="${esc(p.slug)}" placeholder="ex.: relatorios-mensais"></label>
+     <label class="field"><span>Slug (URL amigável)</span><input id="dp-slug" class="input" value="${esc(p.slug)}" placeholder="ex.: regulamento-disciplinar"></label>
      <label class="field"><span>Descrição</span><textarea id="dp-desc" class="input" rows="2">${esc(p.description||'')}</textarea></label>
      <div class="grid grid-cols-2 gap-3">
        <label class="field"><span>Ícone</span>
@@ -1074,7 +1201,7 @@ function closeDocWorkspace(){
 
 window.renderDocWorkspace = async function(docId, metaEncoded){
   closeDocWorkspace();
-  let d = { title:'', category:'', body_html:'', cover_url:null, page_id:null };
+  let d = { title:'', category:'', body_html:'', cover_url:null, page_id:null, doc_type:'general' };
   
   if(metaEncoded){
     try{
@@ -1082,6 +1209,7 @@ window.renderDocWorkspace = async function(docId, metaEncoded){
       d.title = meta.title || '';
       d.category = meta.category || '';
       d.page_id = meta.page_id || null;
+      d.doc_type = meta.doc_type || 'general';
     }catch(e){}
   }
   
@@ -1106,6 +1234,11 @@ window.renderDocWorkspace = async function(docId, metaEncoded){
       <span class="text-xs text-muted mx-2">${pageName ? `<i class="fas fa-folder-open mr-1"></i>${esc(pageName)} /` : '<i class="fas fa-file-lines mr-1"></i>Geral /'}</span>
       <input class="dw-title-in" id="dw-title" placeholder="Título do documento" value="${esc(d.title)}" maxlength="200">
       <input class="dw-cat-in" id="dw-category" placeholder="Categoria (opcional)" value="${esc(d.category||'')}">
+      <select class="dw-cat-in" id="dw-doc-type" style="width:140px">
+        <option value="general" ${d.doc_type==='general'?'selected':''}>📋 Geral</option>
+        <option value="request" ${d.doc_type==='request'?'selected':''}>📝 Requerimento</option>
+        <option value="listing" ${d.doc_type==='listing'?'selected':''}>📊 Listagem</option>
+      </select>
       <span class="dw-status" id="dw-status">${docId?'carregado':'novo documento'}</span>
       <button class="dw-save" id="dw-save-btn" onclick="saveCurrentDoc('${docId||''}','${d.page_id||''}')"><i class="fas fa-floppy-disk"></i> Salvar</button>
     </div>
@@ -1514,7 +1647,7 @@ function setupImageInteractivity(){
 }
 
 function showEmojiPanel(body){
-  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','🤗','🤩','🤔','🤨','😐','😑','😶','🙄','','😣','','😮','🤐','','😪','','😴','😌','😛','😜','😝','🤤','😒','😓','😔','😕','🙃','','😲','','😖','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','🥵','🥶','😳','🤪','','🤬','🤡','💀','☠️','','👽','','💩','⭐','✅','❌','️','📌','','❤️','','✨','🎖️','🏅','🥇','','🥉',''];
+  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','🤗','🤩','🤔','🤨','😐','😑','😶','','','😣','','😮','🤐','','','','😴','😌','😛','😜','😝','','😒','😓','😔','😕','🙃','','😲','','😖','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','','🥶','😳','🤪','','','🤡','💀','☠️','','👽','','💩','⭐','✅','❌','️','📌','','❤️','','✨','🎖️','','🥇','','🥉',''];
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#fff;border:1px solid #dadce0;border-radius:12px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);max-width:460px;max-height:360px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:2px';
   emojis.forEach(em=>{
@@ -1557,19 +1690,21 @@ window.saveCurrentDoc = async function(existingId, pageId){
   if(_wsSaving) return;
   const titleEl = document.getElementById('dw-title');
   const catEl = document.getElementById('dw-category');
+  const typeEl = document.getElementById('dw-doc-type');
   const bodyEl = document.getElementById('dw-body');
   const saveBtn = document.getElementById('dw-save-btn');
   if(!titleEl || !bodyEl) return;
   const title = titleEl.value.trim();
   if(!title){ toast('Título obrigatório.','warn'); titleEl.focus(); return; }
   const category = catEl.value.trim() || null;
+  const doc_type = typeEl ? typeEl.value : 'general';
   const body_html = bodyEl.innerHTML;
   const pid = pageId || null;
   _wsSaving = true;
   saveBtn.disabled = true;
   saveBtn.innerHTML = '<span class="spin-sm"></span> Salvando...';
   setStatus('salvando...');
-  const payload = { title, category, body_html, page_id: pid };
+  const payload = { title, category, body_html, page_id: pid, doc_type };
   let error;
   if(existingId){ ({error} = await supabase.from('documents').update(payload).eq('id', existingId)); }
   else { payload.author_id = STATE.profile.id; ({error} = await supabase.from('documents').insert([payload])); }
@@ -1578,7 +1713,7 @@ window.saveCurrentDoc = async function(existingId, pageId){
     saveBtn.innerHTML = '<i class="fas fa-floppy-disk"></i> Salvar';
     setStatus('erro'); return toast('Erro: '+error.message,'err');
   }
-  await famrLog(existingId?'DOC_UPDATE':'DOC_CREATE', { title, category, page_name: pid ? '(nesta página)' : '(geral)' });
+  await famrLog(existingId?'DOC_UPDATE':'DOC_CREATE', { title, category, doc_type, page_name: pid ? '(nesta página)' : '(geral)' });
   invalidate('docs:'); invalidate('docpages:'); invalidate('home:');
   _wsDirty = false; _wsSaving = false;
   saveBtn.disabled = false;
@@ -1608,8 +1743,9 @@ async function renderProfile(c, param){
   }
   const viewerOk = me || isAdmin();
   gs = gs.filter(g => g.group_type !== 'invisible' || viewerOk || STATE.modGroups?.has(g.id));
-  const main = primaryGroupOf(gs);
+  const main = priorityGroupOf(gs);
   const cg = colorGroupOf(gs);
+  const { count: msgCount } = await supabase.from('posts').select('*', { count:'exact', head:true }).eq('author_id', id);
   c.innerHTML = `
   <div class="card fade-up overflow-hidden">
     <div class="h-24" style="background:${groupBg(cg) || 'linear-gradient(120deg,#0e4433,#14563f 60%,#c9a227)'}"></div>
@@ -1617,7 +1753,7 @@ async function renderProfile(c, param){
       <div class="flex flex-wrap items-end gap-4">
         <span class="w-20 h-20 rounded-2xl grid place-items-center text-3xl font-extrabold text-white border-4 border-white shadow-lg" style="background:${groupBg(cg) || '#14563f'}"><i class="fas ${main?.icon || 'fa-user'}"></i></span>
         <div class="flex-1"><h1 class="font-display text-2xl font-extrabold">${esc(p.nickname)}</h1>
-          <p class="text-xs text-muted">Desde ${fmtDate(p.created_at)} ${me ? `• ${esc(p.email)}` : ''}</p></div>
+          <p class="text-xs text-muted">Desde ${fmtDate(p.created_at)} ${me ? `• ${esc(p.email)}` : ''} • ${msgCount||0} mensagem(ns)</p></div>
         <span class="chip ${p.status==='active'?'chip-ok':p.status==='pending'?'chip-wait':'chip-no'}">${p.status.toUpperCase()}</span>
         ${p.login_locked ? '<span class="chip chip-no"><i class="fas fa-lock mr-1"></i>BLOQUEADA</span>' : ''}
       </div>
@@ -1641,7 +1777,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if(q.length < 2){ drop.classList.add('hidden'); return; }
       const { data } = await supabase.from('profiles_view').select('id,nickname').eq('status','active').eq('is_invisible', false).neq('nickname','admin master').ilike('nickname', `%${q}%`).limit(6);
       const ids = (data||[]).map(u=>u.id);
-      const { data: ug } = ids.length ? await supabase.from('user_groups').select('user_id, groups(id,icon,order_index,apply_color)').in('user_id', ids) : { data: [] };
+      const { data: ug } = ids.length ? await supabase.from('user_groups').select('user_id, groups(id,icon,order_index,apply_color,is_priority)').in('user_id', ids) : { data: [] };
       const byUser = {}; (ug||[]).forEach(r => { (byUser[r.user_id] = byUser[r.user_id] || []).push(r.groups); });
       drop.innerHTML = (data||[]).map(u => `<a href="#/perfil/${u.id}" onclick="document.getElementById('search-drop').classList.add('hidden')" class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-famr-100 transition-colors">
         <span class="w-8 h-8 rounded-full bg-famr-700 text-white grid place-items-center text-xs"><i class="fas ${userIconOf(byUser[u.id]||[])}"></i></span>
@@ -1702,13 +1838,13 @@ window.setUser = async (id, status) => { const { error } = await supabase.from('
 window.unlockUser = async (id) => { const { error } = await supabase.from('profiles').update({ login_locked:false, failed_logins:0 }).eq('id', id); if(error) return toast('Erro: '+error.message,'err'); await famrLog('LOCK_REMOVIDO_ADMIN', { id }); toast('Destravada.'); tabUsuarios(document.getElementById('admin-body')); };
 window.manageGroups = async (userId, nick) => {
   const [{ data: all }, { data: mine }] = await Promise.all([
-    supabase.from('groups').select('id,name,color,icon,order_index').order('order_index'),
+    supabase.from('groups').select('id,name,color,icon,order_index,is_priority').order('order_index'),
     supabase.from('user_groups').select('group_id').eq('user_id', userId)]);
   const has = new Set((mine||[]).map(m => m.group_id));
   openModal(`<i class="fas fa-layer-group text-gold-500 mr-2"></i>Grupos de ${esc(nick)}`,
     (all||[]).map(g => `<label class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-famr-50 cursor-pointer">
       <input type="checkbox" value="${g.id}" ${has.has(g.id)?'checked':''} class="accent-[#14563f] w-4 h-4">
-      <i class="fas ${g.icon||'fa-shield-halved'}" style="color:${g.color}"></i><span class="text-sm font-bold">${esc(g.name)}</span></label>`).join(''),
+      <i class="fas ${g.icon||'fa-shield-halved'}" style="color:${g.color}"></i><span class="text-sm font-bold">${esc(g.name)}${g.is_priority?' <i class="fas fa-crown text-gold-500 text-[10px] ml-1"></i>':''}</span></label>`).join(''),
     `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button><button class="btn btn-primary btn-sm" onclick="saveGroups('${userId}')"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
 };
 window.saveGroups = async userId => {
@@ -1725,7 +1861,7 @@ async function tabGrupos(b){
   b.innerHTML = `<div class="card fade-up">
     <div class="card-head justify-between"><h2 class="font-display font-bold text-sm">Grupos</h2>
     <button class="btn btn-gold btn-sm" onclick="groupForm()"><i class="fas fa-plus"></i> Novo</button></div>
-    <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Ordem</th><th>Grupo</th><th>Tipo</th><th>Membros</th><th class="text-right">Ações</th></tr></thead><tbody>
+    <div class="overflow-x-auto"><table class="table-famr"><thead><tr><th>Ordem</th><th>Grupo</th><th>Tipo</th><th>Priorit.</th><th>Membros</th><th class="text-right">Ações</th></tr></thead><tbody>
     ${(data||[]).map((g,i,arr) => `<tr>
       <td><button class="ord-btn" onclick="moveGroup('${g.id}',-1)" ${i===0?'disabled':''}><i class="fas fa-chevron-up"></i></button>
           <button class="ord-btn" onclick="moveGroup('${g.id}',1)" ${i===arr.length-1?'disabled':''}><i class="fas fa-chevron-down"></i></button></td>
@@ -1735,6 +1871,7 @@ async function tabGrupos(b){
         ${g.color_mode==='gradient'?'<span class="chip chip-neutral ml-1 text-[9px]">GRADIENTE</span>':''}
       </td>
       <td><span class="chip ${g.group_type==='open'?'chip-ok':g.group_type==='closed'?'chip-wait':'chip-neutral'}">${GROUP_TYPES[g.group_type]||g.group_type}</span></td>
+      <td>${g.is_priority ? `<span class="chip chip-wait"><i class="fas fa-crown mr-1"></i>SIM (nv.${g.priority_level||1})</span>` : '<span class="chip chip-neutral">Não</span>'}</td>
       <td class="text-xs font-bold">${cnt[g.id]||0}</td>
       <td class="text-right space-x-1">
         <button class="btn btn-outline btn-sm" onclick="groupPermissions('${g.id}')"><i class="fas fa-key"></i></button>
@@ -1752,7 +1889,7 @@ window.moveGroup = async (id, dir) => {
   invalidate('home:'); tabGrupos(document.getElementById('admin-body'));
 };
 window.groupForm = async id => {
-  let g = { name:'', color:'#14563f', color_end:'#c9a227', color_mode:'solid', gradient_angle:'135deg', icon:'fa-shield-halved', apply_color:true, group_type:'open', parent_id:null };
+  let g = { name:'', color:'#14563f', color_end:'#c9a227', color_mode:'solid', gradient_angle:'135deg', icon:'fa-shield-halved', apply_color:true, group_type:'open', parent_id:null, is_priority:false, priority_level:1 };
   if(id){ const r = await supabase.from('groups').select('*').eq('id', id).single(); if(r.data) g = {...g, ...r.data}; }
   const { data: all } = await supabase.from('groups').select('id,name').neq('id', id||'').order('order_index');
   openModal(`<i class="fas fa-layer-group text-gold-500 mr-2"></i>${id?'Editar':'Novo'} grupo`, `
@@ -1815,6 +1952,22 @@ window.groupForm = async id => {
     </div>
     
     <label class="flex items-center gap-3 text-sm font-bold mt-2"><input id="g-applycolor" type="checkbox" class="w-4 h-4 accent-[#14563f]" ${g.apply_color?'checked':''}> Aplicar cor aos membros</label>
+    
+    <!-- NOVOS CAMPOS: PRIORITÁRIO -->
+    <div class="mt-3 p-3 rounded-lg border-2 border-gold-500/30 bg-gold-100/30">
+      <label class="flex items-center gap-3 text-sm font-bold">
+        <input id="g-priority" type="checkbox" class="w-4 h-4 accent-[#c9a227]" ${g.is_priority?'checked':''} onchange="document.getElementById('g-level-wrap').style.display=this.checked?'':'none'">
+        <i class="fas fa-crown text-gold-500"></i> Grupo Prioritário
+      </label>
+      <p class="text-[11px] text-muted mt-1 ml-7">Quando habilitado, este grupo será exibido como principal no perfil dos usuários que pertencem a ele.</p>
+      <div id="g-level-wrap" class="mt-2 ml-7 ${g.is_priority?'':'hidden'}">
+        <label class="field"><span>Nível de prioridade (maior = mais alto)</span>
+          <input id="g-level" type="number" class="input !py-1 !pl-2" min="1" max="99" value="${g.priority_level||1}">
+        </label>
+        <p class="text-[10px] text-muted">Se um usuário tiver múltiplos grupos prioritários, o de MAIOR nível prevalece.</p>
+      </div>
+    </div>
+    
     <label class="field mt-3"><span>Subgrupo de</span><select id="g-parent" class="input"><option value="">— nenhum —</option>
       ${(all||[]).map(p => `<option value="${p.id}" ${g.parent_id===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label>`,
     `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
@@ -1863,6 +2016,8 @@ window.pickIcon = btn => {
 };
 window.saveGroup = async id => {
   const mode = document.querySelector('input[name="g-colormode"]:checked').value;
+  const isPriority = document.getElementById('g-priority').checked;
+  const level = isPriority ? parseInt(document.getElementById('g-level').value)||1 : null;
   const row = { 
     name: document.getElementById('g-name').value.trim(), 
     color: document.getElementById('g-color').value, 
@@ -1872,7 +2027,9 @@ window.saveGroup = async id => {
     icon: document.getElementById('g-icon').value, 
     apply_color: document.getElementById('g-applycolor').checked, 
     group_type: document.getElementById('g-type').value, 
-    parent_id: document.getElementById('g-parent').value || null 
+    parent_id: document.getElementById('g-parent').value || null,
+    is_priority: isPriority,
+    priority_level: level
   };
   if(!row.name) return toast('Nome obrigatório.','warn');
   let error;
