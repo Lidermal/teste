@@ -906,3 +906,109 @@ select.input,textarea.input{padding-left:.9rem}
   box-shadow: 0 4px 12px -4px rgba(0,0,0,.3);
   transition: background .3s ease;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v42 ADDITIONS — Grupo Prioritário | Chefia | Pendentes | Respostas |
+                    Docs Hierárquicos | Form Custom | Tipos de Documento
+   (Tudo abaixo é NOVO; nada acima foi alterado)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Alerta de usuários pendentes (Painel Admin › Usuários) ── */
+.pending-alert{display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;background:var(--gold-100);border:1px solid #ecd9a0;border-radius:12px;margin-bottom:1rem;animation:fadeUp .3s both}
+.pending-alert i{font-size:1.2rem;color:var(--gold-600);flex-shrink:0}
+.pending-alert .pa-text{flex:1;font-size:.82rem;font-weight:700;color:#8a6d12;line-height:1.3}
+.pending-alert .pa-text b{color:var(--gold-600)}
+.pending-alert .pa-btn{font-size:.7rem;font-weight:800;color:#fff;background:var(--gold-500);border:none;border-radius:8px;padding:.35rem .7rem;cursor:pointer;transition:all .15s;white-space:nowrap}
+.pending-alert .pa-btn:hover{background:var(--gold-600);transform:translateY(-1px)}
+:root[data-theme="dark"] .pending-alert{background:#241f10;border-color:#4a3d18}
+:root[data-theme="dark"] .pending-alert .pa-text{color:#e6c65c}
+:root[data-theme="dark"] .pending-alert .pa-text b{color:#f0d98a}
+:root[data-theme="dark"] .pending-alert .pa-btn{background:var(--gold-500);color:#241f10}
+:root[data-theme="dark"] .pending-alert .pa-btn:hover{background:var(--gold-300)}
+
+/* ── Badge de grupo PRIORITÁRIO (coroa) ── */
+.priority-badge{display:inline-flex;align-items:center;gap:.25rem;font-size:.6rem;font-weight:800;letter-spacing:.05em;color:#3a2f0b;background:linear-gradient(135deg,var(--gold-300),var(--gold-500));padding:.1rem .4rem;border-radius:4px;text-transform:uppercase;vertical-align:middle}
+.priority-badge i{font-size:.55rem}
+.chip i.fa-crown{animation:crownGlow 2s ease-in-out infinite alternate}
+@keyframes crownGlow{from{text-shadow:0 0 2px rgba(201,162,39,.3)}to{text-shadow:0 0 8px rgba(201,162,39,.8)}}
+:root[data-theme="dark"] .priority-badge{background:linear-gradient(135deg,var(--gold-300),var(--gold-500));color:#241f10}
+
+/* ── Badge de CHEFIA (grupo com is_admin=true) ── */
+.staff-badge{display:inline-flex;align-items:center;gap:.25rem;font-size:.6rem;font-weight:800;letter-spacing:.05em;color:#fff;background:linear-gradient(135deg,#b3261e,#7f1d1d);padding:.1rem .4rem;border-radius:4px;text-transform:uppercase;vertical-align:middle}
+.staff-badge i{font-size:.55rem}
+
+/* ── Botão do grupo no painel do autor (quando tem cor/gradiente inline) ── */
+.dv-author-btn[style*="background"]{color:#fff!important;border:none!important;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.dv-author-btn[style*="background"]:hover{opacity:.92;transform:translateY(-1px);border:none!important;color:#fff!important}
+.dv-author-btn[style*="gradient"]{transition:background .3s ease}
+
+/* ── Seção de RESPOSTAS / paginação de tópicos ── */
+.reply-section{margin-top:1.5rem;border-top:2px solid var(--line);padding-top:1rem}
+.reply-list .reply-item{transition:background .15s}
+.reply-list .reply-item:hover{background:var(--gold-100)}
+.reply-item .ri-head{display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem}
+.reply-item .ri-author{font-size:.8rem;font-weight:800;color:var(--green-800)}
+.reply-item .ri-date{font-size:.65rem;color:var(--muted)}
+.reply-item .ri-body{font-size:.88rem;line-height:1.6;color:var(--ink);white-space:pre-wrap;word-break:break-word}
+.reply-form{margin-top:1rem}
+.reply-form textarea.input{resize:vertical;min-height:80px}
+.reply-pagination{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:.4rem;padding:.75rem;border-top:1px solid var(--line);font-size:.75rem}
+.reply-pagination .rp-info{color:var(--muted);font-weight:700;margin:0 .4rem}
+.reply-pagination .rp-btn{min-width:28px;height:28px;padding:0 .5rem;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);cursor:pointer;font-size:.7rem;font-weight:800;display:inline-grid;place-items:center;transition:all .15s}
+.reply-pagination .rp-btn:hover{border-color:var(--green-600);color:var(--green-700)}
+.reply-pagination .rp-btn.active{background:var(--green-700);color:#fff;border-color:var(--green-700)}
+.reply-pagination .rp-btn:disabled{opacity:.4;cursor:not-allowed}
+:root[data-theme="dark"] .reply-section{border-top-color:var(--line)}
+:root[data-theme="dark"] .reply-list .reply-item:hover{background:rgba(224,185,74,.08)}
+:root[data-theme="dark"] .reply-item .ri-author{color:var(--green-700)}
+:root[data-theme="dark"] .reply-pagination .rp-btn{background:var(--surface-2);border-color:var(--line);color:var(--ink)}
+:root[data-theme="dark"] .reply-pagination .rp-btn:hover{border-color:var(--green-700);color:var(--green-700)}
+:root[data-theme="dark"] .reply-pagination .rp-btn.active{background:var(--green-700);color:#fff;border-color:var(--green-700)}
+
+/* ── Cards de PÁGINAS / tópicos hierárquicos (Documentos Principais) ── */
+.doc-page-card{position:relative;overflow:hidden}
+.doc-page-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--page-color,var(--green-700))}
+.doc-page-card .dpc-icon{width:3rem;height:3rem;border-radius:12px;display:grid;place-items:center;font-size:1.2rem;color:#fff;background:var(--page-color,var(--green-700));flex-shrink:0;box-shadow:0 4px 10px -4px rgba(11,61,44,.4)}
+.doc-page-card .dpc-count{position:absolute;top:.75rem;right:.75rem;font-size:.65rem;font-weight:800;color:var(--muted);background:var(--paper);border:1px solid var(--line);padding:.15rem .45rem;border-radius:999px}
+:root[data-theme="dark"] .doc-page-card .dpc-count{background:var(--surface-2);color:var(--muted);border-color:var(--line)}
+
+/* ── Construtor de FORMULÁRIO customizável (Requerimentos) ── */
+.custom-form-builder{border:2px dashed var(--line);border-radius:12px;padding:1rem;min-height:120px;background:var(--paper);transition:border-color .15s,background .15s}
+.custom-form-builder.drag-over{border-color:var(--green-600);background:rgba(20,86,63,.04)}
+.cfb-field{display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin-bottom:.4rem;cursor:grab;transition:box-shadow .15s,border-color .15s}
+.cfb-field:active{cursor:grabbing;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.cfb-field.dragging{opacity:.5;border-color:var(--green-600)}
+.cfb-field .cfb-drag{color:var(--muted);font-size:.8rem;flex-shrink:0}
+.cfb-field .cfb-label{flex:1;font-size:.8rem;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cfb-field .cfb-type{font-size:.65rem;color:var(--muted);background:var(--paper);padding:.1rem .4rem;border-radius:4px;flex-shrink:0}
+.cfb-field .cfb-req{font-size:.6rem;color:#b3261e;font-weight:800;flex-shrink:0}
+.cfb-field .cfb-del{color:#b3261e;cursor:pointer;font-size:.75rem;opacity:.6;transition:opacity .15s;flex-shrink:0;background:none;border:none;padding:2px}
+.cfb-field .cfb-del:hover{opacity:1}
+.cfb-add-btn{display:inline-flex;align-items:center;gap:.4rem;font-size:.75rem;font-weight:700;color:var(--green-700);background:rgba(20,86,63,.08);border:1px solid rgba(20,86,63,.2);border-radius:8px;padding:.4rem .8rem;cursor:pointer;transition:all .15s}
+.cfb-add-btn:hover{background:rgba(20,86,63,.15);border-color:var(--green-600)}
+:root[data-theme="dark"] .custom-form-builder{background:var(--surface-2);border-color:var(--line)}
+:root[data-theme="dark"] .custom-form-builder.drag-over{border-color:var(--green-700);background:rgba(42,157,110,.06)}
+:root[data-theme="dark"] .cfb-field{background:var(--surface);border-color:var(--line)}
+:root[data-theme="dark"] .cfb-field .cfb-type{background:var(--surface-2);color:var(--muted)}
+:root[data-theme="dark"] .cfb-field .cfb-req{color:#ff9b9b}
+:root[data-theme="dark"] .cfb-field .cfb-del{color:#ff9b9b}
+:root[data-theme="dark"] .cfb-add-btn{color:var(--green-700);background:rgba(42,157,110,.1);border-color:rgba(42,157,110,.25)}
+:root[data-theme="dark"] .cfb-add-btn:hover{background:rgba(42,157,110,.18);border-color:var(--green-700)}
+
+/* ── Selos de TIPO de documento (Geral / Requerimento / Listagem) ── */
+.doc-type-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.6rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:.15rem .5rem;border-radius:4px;vertical-align:middle}
+.doc-type-badge.general{background:#e5f5eb;color:#176b45;border:1px solid #bfe3cd}
+.doc-type-badge.request{background:var(--gold-100);color:#8a6d12;border:1px solid #ecd9a0}
+.doc-type-badge.listing{background:#eef2f0;color:#4c5a53;border:1px solid var(--line)}
+:root[data-theme="dark"] .doc-type-badge.general{background:#0f2a1c;color:#7fe0a8;border-color:#1d4a31}
+:root[data-theme="dark"] .doc-type-badge.request{background:#241f10;color:#e6c65c;border-color:#4a3d18}
+:root[data-theme="dark"] .doc-type-badge.listing{background:#16201b;color:#9db3a7;border-color:var(--line)}
+
+/* ── Linha de filtro de status no admin (select + input lado a lado) ── */
+.admin-filter-bar{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem}
+.admin-filter-bar select.input,.admin-filter-bar input.input{width:auto;min-width:140px;padding-left:.7rem}
+
+/* ── Transições extras para elementos que recebem gradiente inline ── */
+.dv-author-btn[style*="gradient"],
+.doc-page-card .dpc-icon[style*="gradient"],
+.priority-badge[style*="gradient"]{transition:background .3s ease}
