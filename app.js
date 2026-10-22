@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v38 (Fix Layout Encolhido | Isolamento CSS Real | Páginas Doc) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v39 (Fix CSS Persistente | Layout Full Width | Páginas Doc) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
@@ -701,7 +701,7 @@ window.submitRequest = async function(subtopicId){
 };
 
 /* ═══════════════════════════════════════════════════
-   DOCUMENTOS PRINCIPAIS — COM SISTEMA DE PÁGINAS E ISOLAMENTO CSS (v38)
+   DOCUMENTOS PRINCIPAIS — COM SISTEMA DE PÁGINAS E ISOLAMENTO CSS PERSISTENTE (v39)
    ═══════════════════════════════════════════════════ */
 let _wsDirty=false, _wsSaving=false;
 
@@ -846,7 +846,7 @@ window.viewDoc = async id => {
   if(!d) return toast('Não encontrado.','err');
   openModal(`<i class="fas fa-book-open text-gold-500 mr-2"></i>${esc(d.title)}`,
     `<div class="text-[11px] text-muted mb-3">por <b>${esc(d.profiles_view?.nickname||'—')}</b> • ${fmtDate(d.updated_at)}</div>
-     <article class="doc-body !bg-transparent !shadow-none !p-0 !min-h-0" style="pointer-events:none">${sanitizeHtml(d.body_html||'')}</article>`,
+     <article class="doc-body !bg-transparent !shadow-none !p-0 !min-h-0" style="pointer-events:none">${sanitizeHtmlPreservingStyles(d.body_html||'')}</article>`,
     `<button class="btn btn-outline btn-sm mr-auto" onclick="downloadDoc('${id}')"><i class="fas fa-download"></i> Baixar .doc</button>
      <button class="btn btn-outline btn-sm" onclick="closeModal()">Fechar</button>`);
 };
@@ -1063,7 +1063,7 @@ function manuallyApplyTag(tagName){
   }
 }
 
-/* ─── TOOLBAR v38 (ISOLAMENTO CSS REAL) ─── */
+/* ─── TOOLBAR v39 (ISOLAMENTO CSS PERSISTENTE) ─── */
 function initToolbar(){
   const bar = document.getElementById('dw-toolbar');
   bar.innerHTML = '';
@@ -1282,33 +1282,45 @@ window.applyCodeToDoc = function(){
     .replace(/on\w+='[^']*'/gi, '')
     .replace(/<\/?(html|head|body|meta|title|link)\b[^>]*>/gi, ''); // Remove tags estruturais
   
-  /* 3. Gera um ID único para isolar o CSS deste snippet específico */
-  const uniqueScopeId = 'scoped-doc-' + Date.now() + '-' + Math.floor(Math.random()*1000);
+  /* 3. Gera um PREFIXO ÚNICO PARA ESCOPEMENTO PERSISTENTE */
+  /* Usamos um hash simples baseado no timestamp + random para garantir unicidade */
+  const scopeHash = Math.abs(hashCode(rawContent.substring(0, 50))).toString(36).substring(0, 6);
+  const uniqueScopeClass = `famr-scope-${scopeHash}`;
   
-  /* 4. Constrói o snippet final combinando CSS isolado + HTML limpo envolvido no scope */
-  let finalSnippet = '';
-  
-  /* Se havia CSS extraído, injeta uma tag style temporária DENTRO do corpo do editor */
+  /* 4. Processa o CSS para adicionar o prefixo de classe a todos os seletores */
+  let processedCss = '';
   if(cssBlocks.length > 0){
-    const combinedCss = cssBlocks.join('\n');
-    /* Prefixa TODAS as regras CSS com o seletor único para isolamento total */
-    const scopedCss = combinedCss.split('}').map(rule => {
-      rule = rule.trim();
-      if(!rule) return '';
-      /* Divide regra em selector { properties } */
-      const match = rule.match(/^([^{}]+)\{(.*)$/s);
-      if(match){
-        const selectors = match[1].split(',').map(s => `#${uniqueScopeId} ${s.trim()}`).join(', ');
-        return `${selectors}{${match[2]}}`;
-      }
-      return rule;
-    }).join('\n');
-    
-    finalSnippet += `<style>\n${scopedCss}\n</style>\n`;
+    const combinedCss = cssBlocks.join('\n\n');
+    /* Regex para encontrar seletores CSS (simples mas eficaz para casos comuns) */
+    /* Substitui "selector {" por ".unique-class selector {" */
+    processedCss = combinedCss.replace(/(^|\}\s*)([^\{\}]+)(\s*\{)/gm, (match, before, selector, after) => {
+      /* Evita duplicar se já tiver o prefixo ou se for @media/@keyframes/etc */
+      if(selector.trim().startsWith('@') || selector.includes(uniqueScopeClass)) return match;
+      
+      /* Divide múltiplos seletores separados por vírgula */
+      const selectors = selector.split(',').map(s => {
+        const trimmed = s.trim();
+        if(trimmed === '*' || trimmed === ':root' || trimmed.startsWith(':')) {
+          /* Para *, :root, pseudo-elementos globais, aplicamos diretamente na classe wrapper */
+          return `.${uniqueScopeClass} ${trimmed}`;
+        }
+        return `.${uniqueScopeClass} ${trimmed}`;
+      }).join(', ');
+      
+      return `${before}${selectors}${after}`;
+    });
   }
   
-  /* Envolve o HTML limpo numa div com o ID único */
-  finalSnippet += `<div id="${uniqueScopeId}" class="isolated-html-block">\n${cleanHtml}\n</div>`;
+  /* 5. Constrói o snippet final */
+  let finalSnippet = '';
+  
+  /* Injeta o CSS processado DENTRO de uma tag style especial marcada para preservação */
+  if(processedCss){
+    finalSnippet += `<style data-famr-scoped="${uniqueScopeClass}">\n${processedCss}\n</style>\n`;
+  }
+  
+  /* Envolve o HTML limpo numa div com a classe única */
+  finalSnippet += `<div class="${uniqueScopeClass} isolated-html-block">\n${cleanHtml}\n</div>`;
   
   focusBody();
   document.execCommand('insertHTML', false, finalSnippet);
@@ -1316,6 +1328,17 @@ window.applyCodeToDoc = function(){
   closeCodeModal();
   toast('Código e estilos inseridos visualmente e isolados.');
 };
+
+/* Função auxiliar de Hash Code simples */
+function hashCode(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return hash;
+}
 
 function insertImage(body){
   const inp = document.createElement('input');
@@ -1485,7 +1508,7 @@ function setupImageInteractivity(){
 }
 
 function showEmojiPanel(body){
-  const emojis = ['😀','😁','😂','','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','','🤩','','🤨','','😑','😶','','😏','😣','😥','😮','','','😪','😫','','','','','😜','😝','','😒','','😔','😕','','🤑','😲','🙁','','','😟','😤','😢','😭','😦','😧','😨','😩','🤯','','😰','😱','','','😳','','','','','😡','','😷','','','','','🤧','','🥳','','','🤡','','⭐','✅','❌','⚠️','📌','','❤️','','✨','🎖️','','','','',''];
+  const emojis = ['😀','😁','😂','','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','','🤩','','🤨','','😑','😶','','😏','😣','😥','😮','','','😪','😫','','','','','😜','😝','','😒','','😔','😕','','🤑','','🙁','','','','😤','😢','😭','😦','😧','😨','😩','🤯','','😰','😱','','','😳','','','','','😡','','😷','','','','','🤧','','🥳','','','🤡','','⭐','✅','❌','⚠️','📌','','❤️','','✨','🎖️','','','','',''];
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#fff;border:1px solid #dadce0;border-radius:12px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);max-width:460px;max-height:360px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:2px';
   emojis.forEach(em=>{
@@ -2070,7 +2093,42 @@ async function tabConfig(b){
 window.saveMaint = async () => { const value = { enabled: document.getElementById('c-maint').checked, message: document.getElementById('c-maint-msg').value }; await supabase.from('settings').upsert({ key:'maintenance', value }); STATE.settings.maintenance = value; await famrLog('MANUTENCAO', value); toast('Salvo.'); document.getElementById('maintenance-banner').classList.toggle('hidden', !value.enabled); };
 window.saveAnn = async () => { const value = { text: document.getElementById('c-ann').value }; await supabase.from('settings').upsert({ key:'announcement', value }); STATE.settings.announcement = value; await famrLog('AVISO', value); toast('Aviso publicado.'); };
 
-function sanitizeHtml(h){ return String(h||'').replace(/<script[\s\S]*?<\/script>/gi,'').replace(/on\w+="[^"]*"/gi,'').replace(/on\w+='[^']*'/gi,''); }
+/* FUNÇÃO SANITIZE ATUALIZADA PARA PRESERVAR STYLES MARCADOS */
+function sanitizeHtml(h){ 
+  return String(h||'')
+    .replace(/<script[\s\S]*?<\/script>/gi,'')
+    .replace(/on\w+="[^"]*"/gi,'')
+    .replace(/on\w+='[^']*'/gi,''); 
+}
+
+/* NOVA FUNÇÃO: Preserva styles com atributo data-famr-scoped */
+function sanitizeHtmlPreservingStyles(h){
+  let result = String(h||'');
+  /* Remove scripts e eventos perigosos PRIMERO */
+  result = result
+    .replace(/<script[\s\S]*?<\/script>/gi,'')
+    .replace(/on\w+="[^"]*"/gi,'')
+    .replace(/on\w+='[^']*'/gi,'');
+  
+  /* Agora protege as tags <style> que têm nosso marcador seguro */
+  /* Substitui temporariamente por placeholders */
+  const stylePlaceholders = [];
+  result = result.replace(/<style\s+data-famr-scoped="([^"]+)">([\s\S]*?)<\/style>/gi, (match, scope, cssContent) => {
+    const placeholder = `<!--STYLE_PLACEHOLDER_${stylePlaceholders.length}-->`;
+    stylePlaceholders.push(match);
+    return placeholder;
+  });
+  
+  /* Remove outras tags style não autorizadas (segurança extra) */
+  result = result.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, '');
+  
+  /* Restaura nossos placeholders seguros */
+  stylePlaceholders.forEach((original, index) => {
+    result = result.replace(`<!--STYLE_PLACEHOLDER_${index}-->`, original);
+  });
+  
+  return result;
+}
 
 /* ══════════ famrLog SEMPRE ENVIA NICK ══════════ */
 async function famrLog(action, details={}){
