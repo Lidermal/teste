@@ -1,7 +1,7 @@
-/* ══════════ FAMR • APP.JS COMPLETO v39 (Fix CSS Persistente | Layout Full Width | Páginas Doc) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v40 (Visualização Página-Inteira | Grupos Gradiente | Páginas Doc | CSS Isolado Persistente) ══════════ */
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
 const statusChip = s => s==='approved' ? '<span class="chip chip-ok">APROVADO</span>' : s==='rejected' ? '<span class="chip chip-no">REPROVADO</span>' : '<span class="chip chip-wait">EM ANÁLISE</span>';
 
 const ICON_OPTIONS = [
@@ -75,8 +75,30 @@ async function cachedQuery(key, factory, ttl=60_000){
 }
 const PAGE_SIZE = 25;
 
-/* ══════════ HELPERS GRUPO ══════════ */
-function groupChip(g){ return g ? `<span class="chip" style="background:${g.color}18;color:${g.color};border:1px solid ${g.color}55"><i class="fas ${g.icon||'fa-shield-halved'}"></i> ${esc(g.name)}</span>` : '<span class="chip chip-neutral">Geral</span>'; }
+/* ══════════ HELPERS GRUPO (COM SUPORTE A GRADIENTE) ══════════ */
+function groupBg(g){
+  if(!g) return '#14563f';
+  /* Se tiver gradiente configurado, retorna linear-gradient */
+  if(g.color_mode === 'gradient' && g.color_end){
+    const angle = g.gradient_angle || '135deg';
+    return `linear-gradient(${angle}, ${g.color}, ${g.color_end})`;
+  }
+  return g.color || '#14563f';
+}
+function groupBorder(g){
+  if(!g) return '#14563f55';
+  if(g.color_mode === 'gradient' && g.color_end){
+    return `transparent`; /* borda sólida não combina com gradient */
+  }
+  return (g.color || '#14563f') + '55';
+}
+function groupChip(g){
+  if(!g) return '<span class="chip chip-neutral">Geral</span>';
+  const bg = g.color_mode === 'gradient' && g.color_end
+    ? `${g.color}22` /* fundo sólido translúcido pro chip */
+    : `${g.color}18`;
+  return `<span class="chip" style="background:${bg};color:${g.color};border:1px solid ${groupBorder(g)}"><i class="fas ${g.icon||'fa-shield-halved'}"></i> ${esc(g.name)}</span>`;
+}
 function sortGroups(list){ return [...(list||[])].sort((a,b)=>(a.order_index||0)-(b.order_index||0)); }
 function primaryGroupOf(list){ return sortGroups(list)[0] || null; }
 function colorGroupOf(list){ return sortGroups(list).find(g => g.apply_color) || null; }
@@ -206,7 +228,7 @@ function updateUserChip(){
   const gp = document.getElementById('user-group');
   if(nk) nk.textContent = nick;
   if(gp){ gp.textContent = main ? main.name : 'Sem grupo'; if(main) gp.style.color = main.color; }
-  if(av){ av.textContent = nick.charAt(0).toUpperCase(); av.style.background = cg ? cg.color : '#14563f'; }
+  if(av){ av.textContent = nick.charAt(0).toUpperCase(); av.style.background = groupBg(cg); }
 }
 
 function startQsClock(){
@@ -235,12 +257,13 @@ async function route(){
   const c = document.getElementById('content');
   if(!c) return;
   
-  /* FIX CRÍTICO: Garante largura total sempre que muda de rota */
   forceFullWidthContent();
 
   if(page==='doc-new'){ renderDocWorkspace(null, subParam); return; }
   if(page==='doc-edit'){ renderDocWorkspace(param, subParam); return; }
   if(page==='doc-page'){ await renderDocPage(c, param); return; }
+  if(page==='doc-view'){ await renderDocViewPage(c, param); return; }   /* NOVO: visualização página inteira */
+  if(page==='post-view'){ await renderPostViewPage(c, param); return; } /* NOVO: visualização tópico página inteira */
   closeDocWorkspace();
   c.innerHTML = '<div class="skeleton h-40"></div><div class="skeleton h-64 mt-4"></div>';
   try{
@@ -259,21 +282,16 @@ async function route(){
 }
 function updateSidebarActive(key){ document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.key === key)); }
 
-/* ══════════ FIX LAYOUT FULL-WIDTH (CORREÇÃO DEFINITIVA DO BUG ENCOLHIDO) ══════════ */
+/* ══════════ FIX LAYOUT FULL-WIDTH ══════════ */
 function forceFullWidthContent(){
   const c = document.getElementById('content');
   if(!c) return;
-  /* Remove qualquer classe residual que limite largura */
   c.classList.remove('max-w-4xl','max-w-5xl','max-w-6xl','max-w-7xl','mx-auto','container');
-  /* Aplica estilo inline garantindo 100% em qualquer viewport */
   c.style.width = '100%';
   c.style.maxWidth = '100%';
   c.style.minWidth = '0';
   c.style.marginLeft = '0';
   c.style.marginRight = '0';
-  c.style.paddingLeft = '';
-  c.style.paddingRight = '';
-  /* Força também o pai direto para evitar flex/grid shrinking */
   const parent = c.parentElement;
   if(parent){
     parent.style.flex = '1 1 auto';
@@ -281,14 +299,8 @@ function forceFullWidthContent(){
     parent.style.overflowX = 'auto';
   }
 }
-/* Executa uma vez no boot e após cada troca de rota */
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(forceFullWidthContent, 100);
-});
-window.addEventListener('resize', () => {
-  clearTimeout(window._rzT);
-  window._rzT = setTimeout(forceFullWidthContent, 150);
-});
+document.addEventListener('DOMContentLoaded', () => { setTimeout(forceFullWidthContent, 100); });
+window.addEventListener('resize', () => { clearTimeout(window._rzT); window._rzT = setTimeout(forceFullWidthContent, 150); });
 
 /* ══════════ SIDEBAR ══════════ */
 async function buildSidebar(){
@@ -314,18 +326,19 @@ async function buildSidebar(){
 /* ══════════ HOME ══════════ */
 async function renderHome(c){
   const bundle = await cachedQuery('home:data', async ()=>{
-    const [sections, subs, postsMeta, nMembers, newest, groups, allUG] = await Promise.all([
+    const [sections, subs, postsMeta, nMembers, newest, groups, allUG, recentDocs] = await Promise.all([
       supabase.from('sections').select('id,name,icon,slug,order_index,required_group_id').order('order_index'),
       supabase.from('subtopics').select('id,name,description,section_id,required_group_id,is_request_form,allow_posts').order('order_index'),
       supabase.from('posts').select('id,subtopic_id,title,created_at,profiles_view(nickname)').order('created_at',{ascending:false}).limit(500),
       supabase.from('profiles_view').select('*',{count:'exact',head:true}).eq('status','active').neq('nickname','admin master'),
       supabase.from('profiles_view').select('id,nickname,created_at').eq('status','active').eq('is_invisible',false).neq('nickname','admin master').order('created_at',{ascending:false}).limit(5),
-      supabase.from('groups').select('id,name,color,icon,apply_color,group_type,order_index,parent_id').neq('group_type','invisible').order('order_index'),
-      supabase.from('user_groups').select('group_id').limit(10000)
+      supabase.from('groups').select('id,name,color,color_end,color_mode,gradient_angle,icon,apply_color,group_type,order_index,parent_id').neq('group_type','invisible').order('order_index'),
+      supabase.from('user_groups').select('group_id').limit(10000),
+      supabase.from('documents').select('id,title,category,updated_at,cover_url,profiles_view(nickname)').order('updated_at',{ascending:false}).limit(8)
     ]);
-    return { sections:sections.data||[], subs:subs.data||[], posts:postsMeta.data||[], members:nMembers.count||0, newest:newest.data||[], groups:groups.data||[], ug:allUG.data||[] };
+    return { sections:sections.data||[], subs:subs.data||[], posts:postsMeta.data||[], members:nMembers.count||0, newest:newest.data||[], groups:groups.data||[], ug:allUG.data||[], docs:recentDocs.data||[] };
   }, 45_000);
-  const { sections, subs, posts, members:registeredCount, newest, groups, ug } = bundle;
+  const { sections, subs, posts, members:registeredCount, newest, groups, ug, docs:recentDocs } = bundle;
   const memberCount={}; (ug||[]).forEach(m=>memberCount[m.group_id]=(memberCount[m.group_id]||0)+1);
   let lastChip='<em>nenhum</em>';
   if(newest?.[0]){
@@ -373,6 +386,21 @@ async function renderHome(c){
     <div class="stat-tile"><span class="forum-ico"><i class="fas fa-folder-open"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Subtópicos</p><p class="font-display text-xl font-extrabold text-famr-800">${visibleSubs.length}</p></div></div>
     <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-user-plus"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Mais recente</p><p class="font-display text-sm font-extrabold text-famr-800 truncate">${esc(newest?.[0]?.nickname || '—')}</p></div></div>
   </section>
+
+  <!-- DOCUMENTOS RECENTES NA HOME -->
+  ${(recentDocs||[]).length ? `
+  <section class="card overflow-hidden fade-up">
+    <div class="cat-head"><i class="fas fa-file-lines"></i> Documentos Recentes
+      <a href="#/section/documentos" class="ml-auto text-[10px] font-bold text-gold-300 hover:text-white normal-case tracking-normal">ver todos →</a></div>
+    <div class="divide-y divide-line">
+      ${(recentDocs||[]).map(d => `<a href="#/doc-view/${d.id}" class="forum-row">
+        <span class="forum-ico"><i class="fas fa-file-alt"></i></span>
+        <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(d.title)}</b>
+          <p class="text-xs text-muted">por <b class="text-famr-700">${esc(d.profiles_view?.nickname||'—')}</b> • ${fmtDate(d.updated_at)}${d.category?` • <span class="chip chip-neutral ml-1">${esc(d.category)}</span>`:''}</p></div>
+        <i class="fas fa-chevron-right text-xs text-muted"></i></a>`).join('')}
+    </div>
+  </section>` : ''}
+
   ${(sections||[]).map(sec => {
     if(!canSeeSection(sec)) return '';
     if(sectionNeedsGroup(sec)){
@@ -437,6 +465,152 @@ function forumRow(s, counts, lastMap){
   </a>`;
 }
 
+/* ═══════════════════════════════════════════════════
+   VISUALIZAÇÃO PÁGINA-INTEIRA (ESTILO FÓRUM CLÁSSICO)
+   Perfil à esquerda + Conteúdo à direita
+   ═══════════════════════════════════════════════════ */
+async function renderDocViewPage(c, docId){
+  const { data:d } = await supabase.from('documents').select('*,profiles_view(*)').eq('id',docId).single();
+  if(!d){ c.innerHTML = '<div class="card card-body text-sm text-muted">Documento não encontrado.</div>'; return; }
+  const author = d.profiles_view || {};
+  const canManage = isAdmin();
+  
+  c.innerHTML = `
+  <div class="fade-up">
+    <p class="text-xs text-muted mb-3"><a href="#/section/documentos" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>Documentos Principais</a> / <b>${esc(d.title)}</b></p>
+    
+    <div class="doc-view-page">
+      <!-- HEADER DO DOCUMENTO (topo) -->
+      <div class="doc-view-header" style="background:${canManage ? 'linear-gradient(135deg,#0e4433,#14563f)' : 'linear-gradient(135deg,#0e4433,#14563f 60%,#c9a227)'}">
+        <div class="dvh-brand">
+          <img src="${CONFIG.logoUrl}" alt="" onerror="this.style.display='none'" class="dvh-logo">
+          <div class="dvh-titles">
+            <h1 class="dvh-title">${esc(d.title)}</h1>
+            <p class="dvh-meta">
+              <span><i class="fas fa-user-tie mr-1"></i>${esc(author.nickname||'—')}</span>
+              <span><i class="far fa-clock mr-1"></i>${fmtDate(d.updated_at)}</span>
+              ${d.category?`<span><i class="fas fa-tag mr-1"></i>${esc(d.category)}</span>`:''}
+            </p>
+          </div>
+        </div>
+        <div class="dvh-actions">
+          ${canManage?`<a href="#/doc-edit/${d.id}" class="btn btn-gold btn-sm"><i class="fas fa-pen"></i> Editar</a>`:''}
+          <button class="btn btn-outline btn-sm" onclick="downloadDoc('${d.id}')"><i class="fas fa-download"></i> Baixar</button>
+        </div>
+      </div>
+      
+      <!-- CORPO EM DUAS COLUNAS -->
+      <div class="doc-view-body">
+        <!-- PERFIL À ESQUERDA -->
+        <aside class="doc-view-profile">
+          <div class="dv-author-name">${esc(author.nickname||'Autor')}</div>
+          <div class="dv-author-status">ONLINE</div>
+          <div class="dv-author-avatar">
+            <img src="${CONFIG.logoUrl}" alt="" onerror="this.parentElement.innerHTML='<div class=&quot;dv-avatar-placeholder&quot;>${esc((author.nickname||'A')[0].toUpperCase())}</div>'">
+          </div>
+          <div class="dv-author-btn">
+            <i class="fas fa-user-shield mr-1"></i>${esc(author.nickname||'Perfil')}
+          </div>
+          <div class="dv-author-stats">
+            <span>Mensagens:</span> <b>${author.posts_count||0}</b>
+          </div>
+        </aside>
+        
+        <!-- CONTEÚDO À DIREITA -->
+        <article class="doc-view-content">
+          <div class="dvc-timestamp">Seg ${fmtDate(d.updated_at)}</div>
+          <div class="dvc-isolated" style="pointer-events:auto">${sanitizeHtmlPreservingStyles(d.body_html||'')}</div>
+          
+          ${d.cover_url ? `<figure class="dvc-cover"><img src="${esc(d.cover_url)}" alt=""></figure>` : ''}
+          
+          <footer class="dvc-footer">
+            <span><i class="fas fa-hashtag mr-1"></i>#${esc(d.id.slice(0,8))}</span>
+            ${canManage?`<button class="btn btn-danger btn-sm" onclick="delDoc('${d.id}')"><i class="fas fa-trash"></i> Excluir</button>`:''}
+          </footer>
+        </article>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function renderPostViewPage(c, postId){
+  const { data:p } = await supabase.from('posts').select('*,profiles_view(*),subtopics(name,section_id,sections(name,slug))').eq('id',postId).single();
+  if(!p){ c.innerHTML = '<div class="card card-body text-sm text-muted">Publicação não encontrada.</div>'; return; }
+  const author = p.profiles_view || {};
+  const mine = p.author_id === STATE.profile.id;
+  const canEdit = mine && canEditIn({section_id:p.subtopics?.section_id, id:p.subtopic_id});
+  const canDel = mine || canDeleteIn({section_id:p.subtopics?.section_id, id:p.subtopic_id});
+  
+  c.innerHTML = `
+  <div class="fade-up">
+    <p class="text-xs text-muted mb-3">
+      <a href="#/section/${p.subtopics?.sections?.slug}" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>${esc(p.subtopics?.sections?.name||'')}</a> / 
+      <a href="#/sub/${p.subtopic_id}" class="text-famr-700 font-bold hover:underline">${esc(p.subtopics?.name||'')}</a> / 
+      <b>${esc(p.title)}</b>
+    </p>
+    
+    <div class="doc-view-page">
+      <div class="doc-view-header">
+        <div class="dvh-brand">
+          <span class="forum-ico"><i class="fas fa-comment"></i></span>
+          <div class="dvh-titles">
+            <h1 class="dvh-title">${esc(p.title)}</h1>
+            <p class="dvh-meta">
+              <span><i class="fas fa-user-tie mr-1"></i>${esc(author.nickname||'—')}</span>
+              <span><i class="far fa-clock mr-1"></i>${fmtDate(p.created_at)}</span>
+            </p>
+          </div>
+        </div>
+        <div class="dvh-actions">
+          ${canEdit?`<button class="btn btn-outline btn-sm" onclick="editPostInline('${p.id}')"><i class="fas fa-pen"></i> Editar</button>`:''}
+          ${canDel?`<button class="btn btn-danger btn-sm" onclick="delPost('${p.id}')"><i class="fas fa-trash"></i> Excluir</button>`:''}
+        </div>
+      </div>
+      
+      <div class="doc-view-body">
+        <aside class="doc-view-profile">
+          <div class="dv-author-name">${esc(author.nickname||'Autor')}</div>
+          <div class="dv-author-status">ONLINE</div>
+          <div class="dv-author-avatar">
+            <img src="${CONFIG.logoUrl}" alt="" onerror="this.parentElement.innerHTML='<div class=&quot;dv-avatar-placeholder&quot;>${esc((author.nickname||'A')[0].toUpperCase())}</div>'">
+          </div>
+          <div class="dv-author-btn"><i class="fas fa-user-shield mr-1"></i>${esc(author.nickname||'Perfil')}</div>
+        </aside>
+        
+        <article class="doc-view-content">
+          <div class="dvc-timestamp">${fmtDate(p.created_at)}</div>
+          <div class="dvc-post-text">${esc(p.content)}</div>
+          ${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm mt-4"><i class="fab fa-google-drive"></i> Abrir anexo</a>` : ''}
+          <footer class="dvc-footer">
+            <span><i class="fas fa-hashtag mr-1"></i>#${esc(p.id.slice(0,8))}</span>
+          </footer>
+        </article>
+      </div>
+    </div>
+  </div>`;
+}
+
+window.editPostInline = id => {
+  const ta = document.querySelector('.dvc-post-text');
+  if(!ta) return;
+  const current = ta.innerText;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `<textarea id="ep-inline" class="input w-full" rows="8">${esc(current)}</textarea>
+                    <div class="mt-2 flex gap-2">
+                      <button class="btn btn-primary btn-sm" id="ep-save"><i class="fas fa-floppy-disk"></i> Salvar</button>
+                      <button class="btn btn-outline btn-sm" id="ep-cancel">Cancelar</button>
+                    </div>`;
+  ta.replaceWith(wrap);
+  document.getElementById('ep-cancel').onclick = () => location.reload();
+  document.getElementById('ep-save').onclick = async () => {
+    const nv = document.getElementById('ep-inline').value;
+    const { error } = await supabase.from('posts').update({ content: nv }).eq('id', id);
+    if(error) return toast('Erro: '+error.message,'err');
+    await famrLog('POST_EDITADO', { id });
+    invalidate('posts:'); invalidate('home:'); toast('Atualizado.'); location.reload();
+  };
+};
+
 /* ══════════ GRUPO ══════════ */
 async function renderGroupPage(c, groupId){
   const [{ data: grp }, { data: members }] = await Promise.all([
@@ -455,7 +629,10 @@ async function renderGroupPage(c, groupId){
   <div class="fade-up">
     <p class="text-xs text-muted mb-2"><a href="#/home" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>Início</a> / <b>${esc(grp.name)}</b></p>
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="font-display text-xl md:text-2xl font-extrabold text-famr-900"><i class="fas ${grp.icon||'fa-shield-halved'} mr-2" style="color:${grp.color}"></i>${esc(grp.name)}</h1>
+      <h1 class="font-display text-xl md:text-2xl font-extrabold text-famr-900">
+        <span class="inline-block w-9 h-9 rounded-lg align-middle mr-2" style="background:${groupBg(grp)}"></span>
+        ${esc(grp.name)}
+      </h1>
       <span class="chip ${grp.group_type==='open'?'chip-ok':grp.group_type==='closed'?'chip-wait':'chip-neutral'}">${GROUP_TYPES[grp.group_type]||grp.group_type}</span>
     </div>
     <p class="text-sm text-muted mt-1">${grp.groups ? 'Subgrupo de <b>'+esc(grp.groups.name)+'</b>' : 'Companhia principal'} • ${list.length} membro(s)</p>
@@ -544,7 +721,7 @@ async function renderCompanhias(c, sec){
     return;
   }
   const [{ data: groups }, { data: allUG }] = await Promise.all([
-    supabase.from('groups').select('id,name,color,icon,group_type,order_index,parent_id').neq('group_type','invisible').order('order_index'),
+    supabase.from('groups').select('id,name,color,color_end,color_mode,gradient_angle,icon,group_type,order_index,parent_id').neq('group_type','invisible').order('order_index'),
     supabase.from('user_groups').select('group_id').limit(10000)
   ]);
   const cnt = {}; (allUG||[]).forEach(m => cnt[m.group_id] = (cnt[m.group_id]||0)+1);
@@ -553,7 +730,7 @@ async function renderCompanhias(c, sec){
   <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up">
     ${(groups||[]).map(g => `<div class="card card-hover p-5">
       <div class="flex items-center justify-between">
-        <span class="forum-ico"><i class="fas ${g.icon||'fa-shield-halved'}" style="color:${g.color}"></i></span>
+        <span class="forum-ico" style="background:${groupBg(g)};color:#fff"><i class="fas ${g.icon||'fa-shield-halved'}"></i></span>
         <span class="chip ${g.group_type==='open'?'chip-ok':g.group_type==='closed'?'chip-wait':'chip-neutral'}">${GROUP_TYPES[g.group_type]||g.group_type}</span>
       </div>
       <h3 class="font-bold mt-3" style="color:${g.color}">${esc(g.name)}</h3>
@@ -593,7 +770,7 @@ async function renderSubtopic(c, id, page=0){
   <section class="card overflow-hidden fade-up">
     <div class="cat-head"><i class="fas fa-inbox"></i> Tópicos <span class="ml-auto text-[10px] normal-case tracking-normal text-gold-300">${count||0} no total</span></div>
     <div class="divide-y divide-line">
-      ${(posts||[]).map(p => `<div class="topic-row" onclick="openTopic('${p.id}')">
+      ${(posts||[]).map(p => `<div class="topic-row" onclick="location.hash='#/post-view/${p.id}'">
         <span class="forum-ico ${p.pinned?'new':''}"><i class="fas ${p.pinned?'fa-thumbtack':'fa-comment'}"></i></span>
         <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(p.title)}</b><p class="text-[11px] text-muted">por <b class="text-famr-700">${esc(p.profiles_view?.nickname||'—')}</b> • ${fmtDate(p.created_at)}</p></div>
         <i class="fas fa-chevron-right text-xs text-muted"></i></div>`).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhum tópico ainda.</p>'}
@@ -605,25 +782,8 @@ async function renderSubtopic(c, id, page=0){
     </div>` : ''}
   </section>`;
 }
-window.openTopic = id => {
-  const p = window._postsCache?.[id]; if(!p) return;
-  const sub = window._curSub;
-  const mine = p.author_id === STATE.profile.id;
-  openModal(`<i class="fas fa-comment text-gold-500 mr-2"></i>${esc(p.title)}`,
-    `<div class="text-[11px] text-muted mb-3">${esc(p.profiles_view?.nickname||'—')} • ${fmtDate(p.created_at)}</div>
-     <p class="text-sm whitespace-pre-wrap text-ink">${esc(p.content)}</p>
-     ${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm mt-4"><i class="fab fa-google-drive"></i> Abrir anexo</a>` : ''}`,
-    `${mine && canEditIn(sub) ? `<button class="btn btn-outline btn-sm mr-auto" onclick="editPost('${p.id}')"><i class="fas fa-pen"></i> Editar</button>` : ''}
-     ${mine || canDeleteIn(sub) ? `<button class="btn btn-danger btn-sm" onclick="delPost('${p.id}')"><i class="fas fa-trash"></i> Excluir</button>` : ''}
-     <button class="btn btn-outline btn-sm" onclick="closeModal()">Fechar</button>`);
-};
-window.editPost = id => {
-  const p = window._postsCache?.[id]; if(!p) return;
-  openModal('<i class="fas fa-pen text-gold-500 mr-2"></i>Editar',
-    `<label class="field"><span>Conteúdo</span><textarea id="edit-content" class="input" rows="6">${esc(p.content)}</textarea></label>`,
-    `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
-     <button class="btn btn-primary btn-sm" onclick="saveEditPost('${id}')"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
-};
+window.openTopic = id => { location.hash = '#/post-view/' + id; };
+window.editPost = id => { location.hash = '#/post-view/' + id; };
 window.saveEditPost = async id => {
   const content = document.getElementById('edit-content').value;
   const { error } = await supabase.from('posts').update({ content }).eq('id', id);
@@ -642,7 +802,7 @@ window.delPost = async function(id){
   if(!await confirmDlg('Excluir esta publicação?', { title:'Excluir', okText:'Excluir', danger:true })) return;
   await supabase.from('posts').delete().eq('id', id);
   await famrLog('POST_EXCLUIDO', { id });
-  invalidate('posts:'); invalidate('home:'); closeModal(); toast('Excluída.'); route();
+  invalidate('posts:'); invalidate('home:'); closeModal(); toast('Excluída.'); location.hash='#/home';
 };
 
 /* ══════════ LISTAGEM ══════════ */
@@ -701,7 +861,7 @@ window.submitRequest = async function(subtopicId){
 };
 
 /* ═══════════════════════════════════════════════════
-   DOCUMENTOS PRINCIPAIS — COM SISTEMA DE PÁGINAS E ISOLAMENTO CSS PERSISTENTE (v39)
+   DOCUMENTOS PRINCIPAIS — COM SISTEMA DE PÁGINAS
    ═══════════════════════════════════════════════════ */
 let _wsDirty=false, _wsSaving=false;
 
@@ -709,7 +869,6 @@ async function renderDocumentos(c, sec){
   if(!canViewSection(sec)){ c.innerHTML = secHead(sec)+lockCard(); return; }
   const canManage = isAdmin() || (STATE.perms?.['section:'+sec.id]?.create);
   
-  /* Carrega páginas (doc_pages) e documentos gerais */
   const [{ data: pages }, { data: generalDocs }] = await Promise.all([
     cachedQuery('docpages:list', ()=> supabase.from('doc_pages').select('*').order('order_index'), 30_000),
     cachedQuery('docs:list-general', ()=> supabase.from('documents').select('id,title,category,cover_url,updated_at,author_id,profiles_view(nickname)').is('page_id', null).order('updated_at',{ascending:false}), 30_000)
@@ -724,7 +883,6 @@ async function renderDocumentos(c, sec){
     <input id="doc-q" class="input !py-1.5 w-56 ml-auto" placeholder="Buscar..." oninput="filterDocs(this.value)">
   </div>
   
-  <!-- Páginas (sub-documentos) -->
   ${(pages||[]).length ? `
   <section class="mb-6 fade-up">
     <h2 class="font-display text-lg font-extrabold text-famr-900 mb-3"><i class="fas fa-layer-group text-gold-500 mr-2"></i>Páginas</h2>
@@ -733,7 +891,6 @@ async function renderDocumentos(c, sec){
     </div>
   </section>` : ''}
   
-  <!-- Documentos Gerais (sem página) -->
   <section class="fade-up">
     <h2 class="font-display text-lg font-extrabold text-famr-900 mb-3"><i class="fas fa-file-lines text-famr-700 mr-2"></i>Documentos Gerais</h2>
     <div id="doc-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -748,7 +905,7 @@ function docPageCard(p, canManage){
   return `<div class="card card-hover overflow-hidden doc-page-item" data-name="${esc((p.name||'').toLowerCase())}">
     <div class="p-5">
       <div class="flex items-start justify-between gap-2">
-        <span class="forum-ico"><i class="fas ${p.icon||'fa-folder-open'}" style="color:${p.color||'#14563f'}"></i></span>
+        <span class="forum-ico" style="background:${p.color||'#14563f'};color:#fff"><i class="fas ${p.icon||'fa-folder-open'}"></i></span>
         ${canManage?`
           <div class="flex gap-1">
             <button class="btn btn-outline btn-sm" onclick="docPageForm('${p.id}')" title="Editar"><i class="fas fa-pen"></i></button>
@@ -773,7 +930,7 @@ function docCard(d, canManage, pageId){
       </div>
       <p class="text-[11px] text-muted mt-1">por <b>${esc(d.profiles_view?.nickname||'—')}</b> • ${fmtDate(d.updated_at)}</p>
       <div class="flex gap-1 mt-3">
-        <button class="btn btn-outline btn-sm" onclick="viewDoc('${d.id}')"><i class="fas fa-book-open"></i> Ler</button>
+        <a href="#/doc-view/${d.id}" class="btn btn-outline btn-sm"><i class="fas fa-book-open"></i> Ler</a>
         ${canManage?`<a href="#/doc-edit/${d.id}" class="btn btn-outline btn-sm"><i class="fas fa-pen"></i></a>
         <button class="btn btn-danger btn-sm" onclick="delDoc('${d.id}')"><i class="fas fa-trash"></i></button>`:''}
       </div>
@@ -781,7 +938,6 @@ function docCard(d, canManage, pageId){
   </div>`;
 }
 
-/* Renderiza uma Página específica (lista seus documentos + botão novo) */
 async function renderDocPage(c, pageId){
   const { data: pg } = await supabase.from('doc_pages').select('*').eq('id', pageId).single();
   if(!pg){ c.innerHTML = '<div class="card card-body text-sm text-muted">Página não encontrada.</div>'; return; }
@@ -806,7 +962,6 @@ async function renderDocPage(c, pageId){
   </section>`;
 }
 
-/* Diálogo para escolher onde criar o novo documento */
 window.showNewDocDialog = async function(preferredPageId){
   const { data: pages } = await supabase.from('doc_pages').select('id,name,icon,color').order('order_index');
   const options = [
@@ -816,8 +971,7 @@ window.showNewDocDialog = async function(preferredPageId){
   openModal('<i class="fas fa-file-circle-plus text-gold-500 mr-2"></i>Novo Documento',
     `<label class="field"><span>Título</span><input id="nd-title" class="input" placeholder="Ex.: Relatório Mensal S3"></label>
      <label class="field"><span>Categoria (opcional)</span><input id="nd-category" class="input" placeholder="Ex.: Operacional"></label>
-     <label class="field"><span>Página destino</span><select id="nd-page" class="input">${options}</select></label>
-     <p class="text-xs text-muted mt-2"><i class="fas fa-info-circle"></i> Após confirmar, você será levado ao editor completo.</p>`,
+     <label class="field"><span>Página destino</span><select id="nd-page" class="input">${options}</select></label>`,
     `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
      <button class="btn btn-primary btn-sm" onclick="confirmNewDoc()"><i class="fas fa-check"></i> Criar e abrir editor</button>`);
 };
@@ -828,7 +982,6 @@ window.confirmNewDoc = async function(){
   const pageId = document.getElementById('nd-page').value || null;
   if(!title) return toast('Título obrigatório.','warn');
   closeModal();
-  /* Navega para o workspace com metadados passados via hash query-like */
   const meta = encodeURIComponent(JSON.stringify({ title, category, page_id: pageId }));
   location.hash = `#/doc-new/${meta}`;
 };
@@ -841,15 +994,7 @@ window.filterDocs = q => {
   });
 };
 
-window.viewDoc = async id => {
-  const { data:d } = await supabase.from('documents').select('*,profiles_view(nickname)').eq('id',id).single();
-  if(!d) return toast('Não encontrado.','err');
-  openModal(`<i class="fas fa-book-open text-gold-500 mr-2"></i>${esc(d.title)}`,
-    `<div class="text-[11px] text-muted mb-3">por <b>${esc(d.profiles_view?.nickname||'—')}</b> • ${fmtDate(d.updated_at)}</div>
-     <article class="doc-body !bg-transparent !shadow-none !p-0 !min-h-0" style="pointer-events:none">${sanitizeHtmlPreservingStyles(d.body_html||'')}</article>`,
-    `<button class="btn btn-outline btn-sm mr-auto" onclick="downloadDoc('${id}')"><i class="fas fa-download"></i> Baixar .doc</button>
-     <button class="btn btn-outline btn-sm" onclick="closeModal()">Fechar</button>`);
-};
+window.viewDoc = id => { location.hash = '#/doc-view/' + id; };
 window.downloadDoc = async id => {
   const { data:d } = await supabase.from('documents').select('title,body_html').eq('id',id).single();
   if(!d) return;
@@ -861,10 +1006,9 @@ window.delDoc = async id => {
   if(!await confirmDlg('Excluir este documento permanentemente?', { title:'Excluir', okText:'Excluir', danger:true })) return;
   await supabase.from('documents').delete().eq('id',id);
   await famrLog('DOC_DEL', { id });
-  invalidate('docs:'); invalidate('docpages:'); closeModal(); toast('Excluído.'); route();
+  invalidate('docs:'); invalidate('docpages:'); closeModal(); toast('Excluído.'); location.hash='#/section/documentos';
 };
 
-/* Formulário de criação/edição de Página */
 window.docPageForm = async id => {
   let p = { name:'', slug:'', description:'', icon:'fa-folder-open', color:'#14563f', order_index:0 };
   if(id){
@@ -932,7 +1076,6 @@ window.renderDocWorkspace = async function(docId, metaEncoded){
   closeDocWorkspace();
   let d = { title:'', category:'', body_html:'', cover_url:null, page_id:null };
   
-  /* Se vier metadados novos (criação via diálogo) */
   if(metaEncoded){
     try{
       const meta = JSON.parse(decodeURIComponent(metaEncoded));
@@ -948,7 +1091,6 @@ window.renderDocWorkspace = async function(docId, metaEncoded){
     d = r.data;
   }
   
-  /* Busca nome da página para exibir breadcrumb */
   let pageName = null;
   if(d.page_id){
     const pr = await supabase.from('doc_pages').select('name').eq('id', d.page_id).single();
@@ -1005,12 +1147,8 @@ window.exitDocWorkspace = async function(){
   else history.back();
 };
 
-/* ─── HELPERS DE EXECUÇÃO ROBUSTA ─── */
 function getBody(){ return document.getElementById('dw-body'); }
-function focusBody(){ 
-  const b = getBody(); 
-  if(b){ b.focus(); }
-}
+function focusBody(){ const b = getBody(); if(b){ b.focus(); } }
 
 function execSafe(cmd, val=null){
   focusBody();
@@ -1022,15 +1160,10 @@ function execSafe(cmd, val=null){
         const bare = val.replace(/[<>]/g,'');
         try{ success = document.execCommand('formatBlock', false, bare); }catch(e){}
       }
-      if(!success && val){
-        manuallyApplyTag(val.replace(/[<>]/g,''));
-      }
-    } else {
-      document.execCommand(cmd, false, val);
-    }
+      if(!success && val){ manuallyApplyTag(val.replace(/[<>]/g,'')); }
+    } else { document.execCommand(cmd, false, val); }
   }catch(e){ console.warn('[FAMR] Cmd fail:', cmd, e); }
-  markDirty();
-  syncState();
+  markDirty(); syncState();
 }
 
 function manuallyApplyTag(tagName){
@@ -1046,13 +1179,10 @@ function manuallyApplyTag(tagName){
      if(parent && parent.tagName !== tagName.toUpperCase()){
         const newEl = document.createElement(tagName);
         newEl.innerHTML = parent ? parent.innerHTML : node.textContent;
-        if(parent) parent.replaceWith(newEl);
-        else node.replaceWith(newEl);
+        if(parent) parent.replaceWith(newEl); else node.replaceWith(newEl);
         const r = document.createRange();
-        r.selectNodeContents(newEl);
-        r.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(r);
+        r.selectNodeContents(newEl); r.collapse(false);
+        sel.removeAllRanges(); sel.addRange(r);
      }
   } else if(node.nodeType === 1){
      if(node.tagName !== tagName.toUpperCase()){
@@ -1063,11 +1193,9 @@ function manuallyApplyTag(tagName){
   }
 }
 
-/* ─── TOOLBAR v39 (ISOLAMENTO CSS PERSISTENTE) ─── */
 function initToolbar(){
   const bar = document.getElementById('dw-toolbar');
   bar.innerHTML = '';
-
   const COLORS_TEXT = ['#000000','#434343','#666666','#999999','#b7b7b7','#cccccc','#efefef','#ffffff','#ff0000','#ff9900','#ffff00','#00ff00','#00ffff','#0000ff','#9900ff','#ff00ff'];
   const COLORS_HILITE = ['#fce8b2','#d9ead3','#c9daf8','#ead1dc','#fff2cc','#d0e3e3','#f4cccc','#e0e0e0'];
 
@@ -1076,50 +1204,33 @@ function initToolbar(){
     btn.type='button'; btn.className='dw-tool-fixed'; btn.title=label;
     btn.innerHTML = `<i class="fas ${iconClass}"></i>`;
     btn.onclick = (e) => { e.preventDefault(); actionFn(); };
-    if(isActiveCheck){ btn.dataset.check = 'true'; btn._checkFn = isActiveCheck; }
+    if(isActiveCheck){ btn._checkFn = isActiveCheck; }
     bar.appendChild(btn);
     return btn;
   }
-
   function addSep(){ const s=document.createElement('span'); s.className='dw-sep'; bar.appendChild(s); }
-
   function addSelect(options, onChangeFn){
-    const sel = document.createElement('select');
-    sel.className='dw-select';
-    options.forEach(([val,text])=>{
-      const o=document.createElement('option'); o.value=val; o.textContent=text; sel.appendChild(o);
-    });
+    const sel = document.createElement('select'); sel.className='dw-select';
+    options.forEach(([val,text])=>{ const o=document.createElement('option'); o.value=val; o.textContent=text; sel.appendChild(o); });
     sel.onchange = () => onChangeFn(sel.value);
-    bar.appendChild(sel);
-    return sel;
+    bar.appendChild(sel); return sel;
   }
-
   function addColorPicker(label, cmd, palette){
     const wrap = document.createElement('div');
     wrap.style.position='relative'; wrap.style.display='inline-block';
     const btn = document.createElement('button');
     btn.className='dw-color-btn dw-tool-fixed'; btn.title=label;
     btn.innerHTML = `<i class="fas ${cmd==='foreColor'?'fa-font':'fa-highlighter'}"></i><span class="bar" style="background:${cmd==='hiliteColor'?'#fce8b2':'#000'}"></span>`;
-    
-    const pop = document.createElement('div');
-    pop.className='dw-color-pop';
-    const grid = document.createElement('div');
-    grid.className='dw-color-grid';
-    
+    const pop = document.createElement('div'); pop.className='dw-color-pop';
+    const grid = document.createElement('div'); grid.className='dw-color-grid';
     palette.forEach(c=>{
       const cb = document.createElement('button');
       cb.style.background=c; cb.title=c;
       cb.onclick = () => { execSafe(cmd, c); pop.classList.remove('open'); };
       grid.appendChild(cb);
     });
-    
     pop.appendChild(grid);
-    btn.onclick = (e) => { 
-      e.stopPropagation(); 
-      document.querySelectorAll('.dw-color-pop.open').forEach(p=>p.classList.remove('open')); 
-      pop.classList.toggle('open'); 
-    };
-    
+    btn.onclick = (e) => { e.stopPropagation(); document.querySelectorAll('.dw-color-pop.open').forEach(p=>p.classList.remove('open')); pop.classList.toggle('open'); };
     wrap.appendChild(btn); wrap.appendChild(pop);
     bar.appendChild(wrap);
   }
@@ -1127,34 +1238,28 @@ function initToolbar(){
   addSelect([['Arial','Arial'],['Georgia','Georgia'],['Times New Roman','TNR'],['Verdana','Verdana']], v => execSafe('fontName', v));
   addSelect([['1','Peq'],['2','Norm'],['3','Med'],['4','Grande'],['5','Maior'],['6','Enorme']], v => execSafe('fontSize', v));
   addSep();
-
   addBtn('Negrito','fa-bold', () => execSafe('bold'), () => document.queryCommandState('bold'));
   addBtn('Itálico','fa-italic', () => execSafe('italic'), () => document.queryCommandState('italic'));
   addBtn('Sublinhado','fa-underline', () => execSafe('underline'), () => document.queryCommandState('underline'));
   addBtn('Tachado','fa-strikethrough', () => execSafe('strikeThrough'), () => document.queryCommandState('strikeThrough'));
-  
   addColorPicker('Cor Texto','foreColor',COLORS_TEXT);
   addColorPicker('Realce','hiliteColor',COLORS_HILITE);
   addSep();
-
   addBtn('Esquerda','fa-align-left', () => execSafe('justifyLeft'), () => document.queryCommandState('justifyLeft'));
   addBtn('Centro','fa-align-center', () => execSafe('justifyCenter'), () => document.queryCommandState('justifyCenter'));
   addBtn('Direita','fa-align-right', () => execSafe('justifyRight'), () => document.queryCommandState('justifyRight'));
   addBtn('Justificado','fa-align-justify', () => execSafe('justifyFull'), () => document.queryCommandState('justifyFull'));
   addSep();
-
   addBtn('Marcadores','fa-list-ul', () => execSafe('insertUnorderedList'), () => document.queryCommandState('insertUnorderedList'));
   addBtn('Numerada','fa-list-ol', () => execSafe('insertOrderedList'), () => document.queryCommandState('insertOrderedList'));
   addBtn('-Recuo','fa-outdent', () => execSafe('outdent'));
   addBtn('+Recuo','fa-indent', () => execSafe('indent'));
   addSep();
-
   addBtn('Título 1','fa-heading', () => execSafe('formatBlock','<h1>'));
   addBtn('Título 2','fa-heading', () => execSafe('formatBlock','<h2>'));
   addBtn('Título 3','fa-heading', () => execSafe('formatBlock','<h3>'));
   addBtn('Parágrafo','fa-paragraph', () => execSafe('formatBlock','<p>'));
   addSep();
-
   const quoteBtn = document.createElement('button');
   quoteBtn.type='button'; quoteBtn.className='dw-tool-fixed'; quoteBtn.title='Citação (Caixa Cinza)';
   quoteBtn.innerHTML = '<i class="fas fa-comment-dots"></i>';
@@ -1169,25 +1274,20 @@ function initToolbar(){
         const range = document.createRange();
         range.selectNodeContents(lastBox);
         const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
+        sel.removeAllRanges(); sel.addRange(range);
       }
     }, 10);
   };
   bar.appendChild(quoteBtn);
   addSep();
-
   addBtn('Subscrito','fa-subscript', () => execSafe('subscript'));
   addBtn('Superscrito','fa-superscript', () => execSafe('superscript'));
   addSep();
-
   addBtn('Inserir Link','fa-link', async () => {
-    const urlRaw = await promptDlg('Cole a URL completa (ex: https://site.com)','https://', { title:'Inserir Link', okText:'Aplicar' });
+    const urlRaw = await promptDlg('Cole a URL completa','https://', { title:'Inserir Link', okText:'Aplicar' });
     if(urlRaw){ 
       let finalUrl = urlRaw.trim();
-      if(finalUrl && !/^https?:\/\//i.test(finalUrl)){
-        finalUrl = 'https://' + finalUrl;
-      }
+      if(finalUrl && !/^https?:\/\//i.test(finalUrl)){ finalUrl = 'https://' + finalUrl; }
       focusBody();
       document.execCommand('createLink', false, finalUrl);
       markDirty();
@@ -1195,16 +1295,12 @@ function initToolbar(){
   });
   addBtn('Remover Link','fa-link-slash', () => execSafe('unlink'));
   addSep();
-
   addBtn('Imagem','fa-image', () => insertImage(getBody()));
   addSep();
-
   addBtn('Emoji','fa-face-smile', () => showEmojiPanel(getBody()));
   addSep();
-
   addBtn('Colar Código','fa-code', () => openCodeModal());
   addSep();
-
   addBtn('Linha Horiz.','fa-minus', () => execSafe('insertHorizontalRule'));
   addBtn('Limpar Formato','fa-eraser', () => execSafe('removeFormat'));
   addSep();
@@ -1228,11 +1324,9 @@ function syncState(){
   });
 }
 
-/* Modal Colar Código - VERSÃO SEGURA COM ISOLAMENTO TOTAL */
 function openCodeModal(){
   const old = document.getElementById('code-modal-root');
   if(old) old.remove();
-
   const overlay = document.createElement('div');
   overlay.id = 'code-modal-root';
   overlay.className = 'code-modal-overlay active';
@@ -1250,76 +1344,49 @@ function openCodeModal(){
         <button class="btn btn-outline btn-sm" onclick="closeCodeModal()">Cancelar</button>
         <button class="btn btn-primary btn-sm" onclick="applyCodeToDoc()"><i class="fas fa-check"></i> Inserir</button>
       </div>
-    </div>
-  `;
+    </div>`;
   document.body.appendChild(overlay);
   setTimeout(()=>document.getElementById('html-input-area').focus(), 100);
 }
-
-window.closeCodeModal = function(){
-  const m = document.getElementById('code-modal-root');
-  if(m) m.remove();
-};
+window.closeCodeModal = function(){ const m = document.getElementById('code-modal-root'); if(m) m.remove(); };
 
 window.applyCodeToDoc = function(){
   const input = document.getElementById('html-input-area');
   if(!input || !input.value.trim()) return closeCodeModal();
-  
   let rawContent = input.value;
-  
-  /* 1. Extrai blocos de estilo CSS */
   let cssBlocks = [];
   let htmlPart = rawContent.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (match, p1) => {
-    cssBlocks.push(p1);
-    return ''; /* Remove do HTML principal */
+    cssBlocks.push(p1); return '';
   });
-  
-  /* 2. Sanitização agressiva do HTML restante */
-  /* Remove scripts, event handlers e TAGS ESTRUTURAIS QUE QUEBRAM O SITE */
   let cleanHtml = htmlPart
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove Scripts
-    .replace(/on\w+="[^"]*"/gi, '') // Remove event handlers inline perigosos
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+="[^"]*"/gi, '')
     .replace(/on\w+='[^']*'/gi, '')
-    .replace(/<\/?(html|head|body|meta|title|link)\b[^>]*>/gi, ''); // Remove tags estruturais
+    .replace(/<\/?(html|head|body|meta|title|link)\b[^>]*>/gi, '');
   
-  /* 3. Gera um PREFIXO ÚNICO PARA ESCOPEMENTO PERSISTENTE */
-  /* Usamos um hash simples baseado no timestamp + random para garantir unicidade */
   const scopeHash = Math.abs(hashCode(rawContent.substring(0, 50))).toString(36).substring(0, 6);
   const uniqueScopeClass = `famr-scope-${scopeHash}`;
   
-  /* 4. Processa o CSS para adicionar o prefixo de classe a todos os seletores */
   let processedCss = '';
   if(cssBlocks.length > 0){
     const combinedCss = cssBlocks.join('\n\n');
-    /* Regex para encontrar seletores CSS (simples mas eficaz para casos comuns) */
-    /* Substitui "selector {" por ".unique-class selector {" */
     processedCss = combinedCss.replace(/(^|\}\s*)([^\{\}]+)(\s*\{)/gm, (match, before, selector, after) => {
-      /* Evita duplicar se já tiver o prefixo ou se for @media/@keyframes/etc */
       if(selector.trim().startsWith('@') || selector.includes(uniqueScopeClass)) return match;
-      
-      /* Divide múltiplos seletores separados por vírgula */
       const selectors = selector.split(',').map(s => {
         const trimmed = s.trim();
-        if(trimmed === '*' || trimmed === ':root' || trimmed.startsWith(':')) {
-          /* Para *, :root, pseudo-elementos globais, aplicamos diretamente na classe wrapper */
+        if(trimmed === '*' || trimmed === ':root' || trimmed.startsWith(':')){
           return `.${uniqueScopeClass} ${trimmed}`;
         }
         return `.${uniqueScopeClass} ${trimmed}`;
       }).join(', ');
-      
       return `${before}${selectors}${after}`;
     });
   }
   
-  /* 5. Constrói o snippet final */
   let finalSnippet = '';
-  
-  /* Injeta o CSS processado DENTRO de uma tag style especial marcada para preservação */
   if(processedCss){
     finalSnippet += `<style data-famr-scoped="${uniqueScopeClass}">\n${processedCss}\n</style>\n`;
   }
-  
-  /* Envolve o HTML limpo numa div com a classe única */
   finalSnippet += `<div class="${uniqueScopeClass} isolated-html-block">\n${cleanHtml}\n</div>`;
   
   focusBody();
@@ -1329,13 +1396,12 @@ window.applyCodeToDoc = function(){
   toast('Código e estilos inseridos visualmente e isolados.');
 };
 
-/* Função auxiliar de Hash Code simples */
 function hashCode(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
+    hash = hash & hash;
   }
   return hash;
 }
@@ -1350,7 +1416,6 @@ function insertImage(body){
     const { error } = await supabase.storage.from('docs-media').upload(path, f, {contentType:f.type});
     if(error){ setStatus('falha upload'); return toast('Upload falhou.','err'); }
     const { data:{ publicUrl } } = supabase.storage.from('docs-media').getPublicUrl(path);
-    
     focusBody();
     const wrapper = `<div class="img-wrapper drag-enabled" contenteditable="false" data-src="${publicUrl}" style="position:relative;display:inline-block;margin:8px;border:1px dashed transparent;">
       <div class="img-toolbar">
@@ -1374,46 +1439,22 @@ function insertImage(body){
   };
   inp.click();
 }
-
 window.setImgFloat = function(wrapper, side){
-  const img = wrapper.querySelector('img');
-  if(!img) return;
-  img.style.float = 'none';
-  img.style.display = 'block';
-  img.style.margin = '8px auto'; 
-  
-  if(side === 'left'){
-    img.style.float = 'left';
-    img.style.margin = '8px 12px 8px 0';
-    img.style.display = 'inline-block';
-  } else if(side === 'right'){
-    img.style.float = 'right';
-    img.style.margin = '8px 0 8px 12px';
-    img.style.display = 'inline-block';
-  }
+  const img = wrapper.querySelector('img'); if(!img) return;
+  img.style.float = 'none'; img.style.display = 'block'; img.style.margin = '8px auto'; 
+  if(side === 'left'){ img.style.float = 'left'; img.style.margin = '8px 12px 8px 0'; img.style.display = 'inline-block'; }
+  else if(side === 'right'){ img.style.float = 'right'; img.style.margin = '8px 0 8px 12px'; img.style.display = 'inline-block'; }
   markDirty();
 };
-
 window.setImgAlign = function(wrapper, align){
-  const img = wrapper.querySelector('img');
-  if(!img) return;
-  if(align === 'center'){
-    img.style.float = 'none';
-    img.style.display = 'block';
-    img.style.margin = '8px auto';
-  }
+  const img = wrapper.querySelector('img'); if(!img) return;
+  if(align === 'center'){ img.style.float = 'none'; img.style.display = 'block'; img.style.margin = '8px auto'; }
   markDirty();
 };
-
 window.resizeImg = function(wrapper, delta){
-  const img = wrapper.querySelector('img');
-  if(!img) return;
+  const img = wrapper.querySelector('img'); if(!img) return;
   if(delta===0){ img.style.width=''; img.style.height=''; }
-  else {
-    const w = img.offsetWidth || 300;
-    img.style.width = Math.max(50, w+delta)+'px';
-    img.style.height = 'auto';
-  }
+  else { const w = img.offsetWidth || 300; img.style.width = Math.max(50, w+delta)+'px'; img.style.height = 'auto'; }
   markDirty();
 };
 window.removeImg = function(wrapper){ wrapper.remove(); markDirty(); };
@@ -1424,91 +1465,56 @@ function setupImageInteractivity(){
   let selectedWrapper = null;
   let dragHandle = null, startX=0, startY=0, startW=0;
   let isDraggingMove = false;
-
   canvas.addEventListener('mousedown', e => {
     const handle = e.target.closest('.img-handle');
     const wrapper = e.target.closest('.img-wrapper');
-    
     if(wrapper && !handle && e.target.tagName === 'IMG'){
-       e.preventDefault();
-       selectWrapper(wrapper);
-       isDraggingMove = true;
-       startX = e.clientX;
-       startY = e.clientY;
-       return;
+       e.preventDefault(); selectWrapper(wrapper); isDraggingMove = true;
+       startX = e.clientX; startY = e.clientY; return;
     }
-
     if(handle && wrapper){
       e.preventDefault();
       dragHandle = handle.className.replace('img-handle ','').trim();
       startX = e.clientX; startY = e.clientY;
       const img = wrapper.querySelector('img');
       startW = img.offsetWidth;
-      selectWrapper(wrapper);
-      return;
+      selectWrapper(wrapper); return;
     }
     if(wrapper){ e.preventDefault(); selectWrapper(wrapper); return; }
     deselectAll();
   });
-
   document.addEventListener('mousemove', e => {
     if(!selectedWrapper) return;
-    
     if(isDraggingMove){
-       const dx = e.clientX - startX;
-       const dy = e.clientY - startY;
-       
+       const dx = e.clientX - startX; const dy = e.clientY - startY;
        const currentMarginLeft = parseInt(selectedWrapper.style.marginLeft || '0');
        const currentMarginTop = parseInt(selectedWrapper.style.marginTop || '0');
-       
        selectedWrapper.style.marginLeft = (currentMarginLeft + dx) + 'px';
        selectedWrapper.style.marginTop = (currentMarginTop + dy) + 'px';
-       
-       startX = e.clientX;
-       startY = e.clientY;
-       return;
+       startX = e.clientX; startY = e.clientY; return;
     }
-
     if(!dragHandle) return;
     const img = selectedWrapper.querySelector('img');
     const dx = e.clientX - startX;
     if(dragHandle.includes('e') || dragHandle==='se' || dragHandle==='ne'){
-      img.style.width = Math.max(40, startW+dx)+'px';
-      img.style.height = 'auto';
+      img.style.width = Math.max(40, startW+dx)+'px'; img.style.height = 'auto';
     }
     if(dragHandle.includes('w') || dragHandle==='sw' || dragHandle==='nw'){
-      img.style.width = Math.max(40, startW-dx)+'px';
-      img.style.height = 'auto';
+      img.style.width = Math.max(40, startW-dx)+'px'; img.style.height = 'auto';
     }
   });
-
-  document.addEventListener('mouseup', () => { 
-    if(dragHandle || isDraggingMove){ markDirty(); } 
-    dragHandle = null; 
-    isDraggingMove = false;
-  });
-
+  document.addEventListener('mouseup', () => { if(dragHandle || isDraggingMove){ markDirty(); } dragHandle = null; isDraggingMove = false; });
   function selectWrapper(w){ deselectAll(); selectedWrapper = w; w.classList.add('selected'); w.style.borderColor = '#c9a227'; }
-  function deselectAll(){ 
-    if(selectedWrapper) {
-      selectedWrapper.classList.remove('selected'); 
-      selectedWrapper.style.borderColor = 'transparent';
-    }
-    selectedWrapper = null; 
-  }
-
+  function deselectAll(){ if(selectedWrapper) { selectedWrapper.classList.remove('selected'); selectedWrapper.style.borderColor = 'transparent'; } selectedWrapper = null; }
   document.addEventListener('keydown', e => {
     if((e.key==='Delete'||e.key==='Backspace') && selectedWrapper){
-      e.preventDefault();
-      selectedWrapper.remove();
-      selectedWrapper = null;
-      markDirty();
+      e.preventDefault(); selectedWrapper.remove(); selectedWrapper = null; markDirty();
     }
   });
 }
 
 function showEmojiPanel(body){
-  const emojis = ['😀','😁','😂','','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','','🤩','','🤨','','😑','😶','','😏','😣','😥','😮','','','😪','😫','','','','','😜','😝','','😒','','😔','😕','','🤑','','🙁','','','','😤','😢','😭','😦','😧','😨','😩','🤯','','😰','😱','','','😳','','','','','😡','','😷','','','','','🤧','','🥳','','','🤡','','⭐','✅','❌','⚠️','📌','','❤️','','✨','🎖️','','','','',''];
+  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','🤗','🤩','🤔','🤨','😐','😑','😶','🙄','','😣','','😮','🤐','','😪','','😴','😌','😛','😜','😝','🤤','😒','😓','😔','😕','🙃','','😲','','😖','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','🥵','🥶','😳','🤪','','🤬','🤡','💀','☠️','','👽','','💩','⭐','✅','❌','️','📌','','❤️','','✨','🎖️','🏅','🥇','','🥉',''];
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#fff;border:1px solid #dadce0;border-radius:12px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);max-width:460px;max-height:360px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:2px';
   emojis.forEach(em=>{
@@ -1539,10 +1545,8 @@ function wireEvents(){
   });
   document.addEventListener('keydown', ctrlSaveHandler);
 }
-
 function setStatus(txt){ const el=document.getElementById('dw-status'); if(el) el.textContent=txt; }
 function markDirty(){ _wsDirty=true; setStatus('não salvo'); }
-
 function ctrlSaveHandler(e){
   if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s'){
     if(document.getElementById('doc-workspace')){ e.preventDefault(); const btn=document.getElementById('dw-save-btn'); if(btn) btn.click(); }
@@ -1575,7 +1579,7 @@ window.saveCurrentDoc = async function(existingId, pageId){
     setStatus('erro'); return toast('Erro: '+error.message,'err');
   }
   await famrLog(existingId?'DOC_UPDATE':'DOC_CREATE', { title, category, page_name: pid ? '(nesta página)' : '(geral)' });
-  invalidate('docs:'); invalidate('docpages:');
+  invalidate('docs:'); invalidate('docpages:'); invalidate('home:');
   _wsDirty = false; _wsSaving = false;
   saveBtn.disabled = false;
   saveBtn.innerHTML = '<i class="fas fa-check"></i> Salvo';
@@ -1608,10 +1612,10 @@ async function renderProfile(c, param){
   const cg = colorGroupOf(gs);
   c.innerHTML = `
   <div class="card fade-up overflow-hidden">
-    <div class="h-24" style="background:linear-gradient(120deg,#0e4433,#14563f 60%,#c9a227)"></div>
+    <div class="h-24" style="background:${groupBg(cg) || 'linear-gradient(120deg,#0e4433,#14563f 60%,#c9a227)'}"></div>
     <div class="p-6 -mt-12">
       <div class="flex flex-wrap items-end gap-4">
-        <span class="w-20 h-20 rounded-2xl grid place-items-center text-3xl font-extrabold text-white border-4 border-white shadow-lg" style="background:${cg?.color || '#14563f'}"><i class="fas ${main?.icon || 'fa-user'}"></i></span>
+        <span class="w-20 h-20 rounded-2xl grid place-items-center text-3xl font-extrabold text-white border-4 border-white shadow-lg" style="background:${groupBg(cg) || '#14563f'}"><i class="fas ${main?.icon || 'fa-user'}"></i></span>
         <div class="flex-1"><h1 class="font-display text-2xl font-extrabold">${esc(p.nickname)}</h1>
           <p class="text-xs text-muted">Desde ${fmtDate(p.created_at)} ${me ? `• ${esc(p.email)}` : ''}</p></div>
         <span class="chip ${p.status==='active'?'chip-ok':p.status==='pending'?'chip-wait':'chip-no'}">${p.status.toUpperCase()}</span>
@@ -1725,7 +1729,11 @@ async function tabGrupos(b){
     ${(data||[]).map((g,i,arr) => `<tr>
       <td><button class="ord-btn" onclick="moveGroup('${g.id}',-1)" ${i===0?'disabled':''}><i class="fas fa-chevron-up"></i></button>
           <button class="ord-btn" onclick="moveGroup('${g.id}',1)" ${i===arr.length-1?'disabled':''}><i class="fas fa-chevron-down"></i></button></td>
-      <td><i class="fas ${g.icon||'fa-shield-halved'} mr-2" style="color:${g.color}"></i><b style="color:${g.color}">${esc(g.name)}</b></td>
+      <td>
+        <span class="inline-block w-5 h-5 rounded mr-2 align-middle" style="background:${groupBg(g)}"></span>
+        <i class="fas ${g.icon||'fa-shield-halved'} mr-1" style="color:${g.color}"></i><b style="color:${g.color}">${esc(g.name)}</b>
+        ${g.color_mode==='gradient'?'<span class="chip chip-neutral ml-1 text-[9px]">GRADIENTE</span>':''}
+      </td>
       <td><span class="chip ${g.group_type==='open'?'chip-ok':g.group_type==='closed'?'chip-wait':'chip-neutral'}">${GROUP_TYPES[g.group_type]||g.group_type}</span></td>
       <td class="text-xs font-bold">${cnt[g.id]||0}</td>
       <td class="text-right space-x-1">
@@ -1744,8 +1752,8 @@ window.moveGroup = async (id, dir) => {
   invalidate('home:'); tabGrupos(document.getElementById('admin-body'));
 };
 window.groupForm = async id => {
-  let g = { name:'', color:'#14563f', icon:'fa-shield-halved', apply_color:true, group_type:'open', parent_id:null };
-  if(id){ const r = await supabase.from('groups').select('*').eq('id', id).single(); g = r.data; }
+  let g = { name:'', color:'#14563f', color_end:'#c9a227', color_mode:'solid', gradient_angle:'135deg', icon:'fa-shield-halved', apply_color:true, group_type:'open', parent_id:null };
+  if(id){ const r = await supabase.from('groups').select('*').eq('id', id).single(); if(r.data) g = {...g, ...r.data}; }
   const { data: all } = await supabase.from('groups').select('id,name').neq('id', id||'').order('order_index');
   openModal(`<i class="fas fa-layer-group text-gold-500 mr-2"></i>${id?'Editar':'Novo'} grupo`, `
     <label class="field"><span>Nome</span><input id="g-name" class="input" value="${esc(g.name)}"></label>
@@ -1755,27 +1763,117 @@ window.groupForm = async id => {
       </div>
       <input type="hidden" id="g-icon" value="${esc(g.icon||'fa-shield-halved')}">
     </div>
+    
+    <!-- SELEÇÃO DE MODO DE COR -->
+    <div class="field">
+      <span>Modo de cor</span>
+      <div class="flex gap-2">
+        <label class="flex-1 cursor-pointer">
+          <input type="radio" name="g-colormode" value="solid" ${g.color_mode!=='gradient'?'checked':''} onchange="toggleGradientMode()" class="sr-only peer">
+          <div class="peer-checked:border-famr-700 peer-checked:bg-famr-50 border-2 border-line rounded-lg p-3 text-center">
+            <i class="fas fa-fill-drip text-lg block mb-1"></i>
+            <span class="text-xs font-bold">Sólida</span>
+          </div>
+        </label>
+        <label class="flex-1 cursor-pointer">
+          <input type="radio" name="g-colormode" value="gradient" ${g.color_mode==='gradient'?'checked':''} onchange="toggleGradientMode()" class="sr-only peer">
+          <div class="peer-checked:border-famr-700 peer-checked:bg-famr-50 border-2 border-line rounded-lg p-3 text-center">
+            <i class="fas fa-blend text-lg block mb-1"></i>
+            <span class="text-xs font-bold">Gradiente</span>
+          </div>
+        </label>
+      </div>
+    </div>
+    
     <div class="grid grid-cols-2 gap-3">
-      <label class="field"><span>Cor</span><input id="g-color" type="color" class="input !p-1 h-11" value="${g.color}"></label>
+      <label class="field"><span>Cor inicial</span><input id="g-color" type="color" class="input !p-1 h-11" value="${g.color}"></label>
+      <label class="field" id="g-color-end-wrap" style="${g.color_mode!=='gradient'?'display:none':''}"><span>Cor final</span><input id="g-color-end" type="color" class="input !p-1 h-11" value="${g.color_end||'#c9a227'}"></label>
+      <label class="field" id="g-angle-wrap" style="${g.color_mode!=='gradient'?'display:none':''}"><span>Ângulo</span>
+        <select id="g-angle" class="input">
+          <option value="0deg" ${g.gradient_angle==='0deg'?'selected':''}>↑ Cima (0°)</option>
+          <option value="45deg" ${g.gradient_angle==='45deg'?'selected':''}>↗ Diagonal NE (45°)</option>
+          <option value="90deg" ${g.gradient_angle==='90deg'?'selected':''}>→ Direita (90°)</option>
+          <option value="135deg" ${g.gradient_angle==='135deg'?'selected':''}>↘ Diagonal SE (135°)</option>
+          <option value="180deg" ${g.gradient_angle==='180deg'?'selected':''}>↓ Baixo (180°)</option>
+          <option value="270deg" ${g.gradient_angle==='270deg'?'selected':''}>← Esquerda (270°)</option>
+          <option value="radial" ${g.gradient_angle==='radial'?'selected':''}>◎ Radial</option>
+        </select>
+      </label>
       <label class="field"><span>Tipo</span><select id="g-type" class="input">
         <option value="open" ${g.group_type==='open'?'selected':''}>Aberto</option>
         <option value="closed" ${g.group_type==='closed'?'selected':''}>Fechado</option>
         <option value="invisible" ${g.group_type==='invisible'?'selected':''}>Invisível</option>
       </select></label>
     </div>
-    <label class="flex items-center gap-3 text-sm font-bold"><input id="g-applycolor" type="checkbox" class="w-4 h-4 accent-[#14563f]" ${g.apply_color?'checked':''}> Aplicar cor aos membros</label>
+    
+    <!-- PREVIEW AO VIVO -->
+    <div class="field">
+      <span>Preview</span>
+      <div id="g-preview" class="rounded-lg h-16 flex items-center justify-center text-white font-bold text-sm" style="background:${groupBg(g)}">
+        <i class="fas ${g.icon||'fa-shield-halved'} mr-2"></i>${esc(g.name||'Prévia do Grupo')}
+      </div>
+    </div>
+    
+    <label class="flex items-center gap-3 text-sm font-bold mt-2"><input id="g-applycolor" type="checkbox" class="w-4 h-4 accent-[#14563f]" ${g.apply_color?'checked':''}> Aplicar cor aos membros</label>
     <label class="field mt-3"><span>Subgrupo de</span><select id="g-parent" class="input"><option value="">— nenhum —</option>
       ${(all||[]).map(p => `<option value="${p.id}" ${g.parent_id===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label>`,
     `<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
      <button class="btn btn-primary btn-sm" onclick="saveGroup('${id||''}')"><i class="fas fa-floppy-disk"></i> Salvar</button>`);
+  
+  /* Atualiza preview em tempo real */
+  setTimeout(()=>{
+    const upd = () => {
+      const mode = document.querySelector('input[name="g-colormode"]:checked').value;
+      const c1 = document.getElementById('g-color').value;
+      const c2 = document.getElementById('g-color-end').value;
+      const ang = document.getElementById('g-angle').value;
+      const nm = document.getElementById('g-name').value || 'Prévia';
+      const ic = document.getElementById('g-icon').value;
+      const prev = document.getElementById('g-preview');
+      if(prev){
+        prev.style.background = mode==='gradient' 
+          ? (ang==='radial' ? `radial-gradient(circle, ${c1}, ${c2})` : `linear-gradient(${ang}, ${c1}, ${c2})`)
+          : c1;
+        prev.innerHTML = `<i class="fas ${ic} mr-2"></i>${esc(nm)}`;
+      }
+    };
+    ['g-color','g-color-end','g-name'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.addEventListener('input', upd);
+    });
+    document.getElementById('g-angle')?.addEventListener('change', upd);
+    document.querySelectorAll('input[name="g-colormode"]').forEach(r=>r.addEventListener('change', upd));
+  }, 50);
+};
+window.toggleGradientMode = function(){
+  const mode = document.querySelector('input[name="g-colormode"]:checked').value;
+  const endWrap = document.getElementById('g-color-end-wrap');
+  const angWrap = document.getElementById('g-angle-wrap');
+  if(endWrap) endWrap.style.display = mode==='gradient' ? '' : 'none';
+  if(angWrap) angWrap.style.display = mode==='gradient' ? '' : 'none';
 };
 window.pickIcon = btn => {
   document.querySelectorAll('#g-icon-grid .icon-opt').forEach(b => b.classList.remove('sel'));
   btn.classList.add('sel');
   document.getElementById('g-icon').value = btn.dataset.icon;
+  document.getElementById('g-preview')?.querySelector('i')?.className && (()=>{
+    const prev = document.getElementById('g-preview');
+    if(prev) prev.innerHTML = `<i class="fas ${btn.dataset.icon} mr-2"></i>${esc(document.getElementById('g-name').value || 'Prévia')}`;
+  })();
 };
 window.saveGroup = async id => {
-  const row = { name: document.getElementById('g-name').value.trim(), color: document.getElementById('g-color').value, icon: document.getElementById('g-icon').value, apply_color: document.getElementById('g-applycolor').checked, group_type: document.getElementById('g-type').value, parent_id: document.getElementById('g-parent').value || null };
+  const mode = document.querySelector('input[name="g-colormode"]:checked').value;
+  const row = { 
+    name: document.getElementById('g-name').value.trim(), 
+    color: document.getElementById('g-color').value, 
+    color_end: mode==='gradient' ? document.getElementById('g-color-end').value : null,
+    color_mode: mode,
+    gradient_angle: mode==='gradient' ? document.getElementById('g-angle').value : null,
+    icon: document.getElementById('g-icon').value, 
+    apply_color: document.getElementById('g-applycolor').checked, 
+    group_type: document.getElementById('g-type').value, 
+    parent_id: document.getElementById('g-parent').value || null 
+  };
   if(!row.name) return toast('Nome obrigatório.','warn');
   let error;
   if(id){ ({ error } = await supabase.from('groups').update(row).eq('id', id)); }
@@ -1914,8 +2012,6 @@ async function tabTopicos(b){
       <button class="btn btn-gold btn-sm" onclick="docPageForm()"><i class="fas fa-file-circle-plus"></i> Nova Página Doc</button>
       <button class="btn btn-primary btn-sm" onclick="sectionForm()"><i class="fas fa-plus"></i> Novo setor</button>
     </div>
-    
-    <!-- Páginas de Documentos -->
     ${(docPages||[]).length ? `
     <div class="card">
       <div class="cat-head"><i class="fas fa-file-lines"></i> Páginas de Documentos <span class="chip chip-neutral ml-2 normal-case">${(docPages||[]).length}</span></div>
@@ -1933,8 +2029,6 @@ async function tabTopicos(b){
           </div>`).join('')}
       </div>
     </div>` : ''}
-    
-    <!-- Setores normais -->
     ${(secs||[]).map((s,i,arr) => `<div class="card">
       <div class="cat-head">
         <span class="flex items-center gap-1 mr-2">
@@ -2051,7 +2145,7 @@ async function tabLogs(b){
   b.innerHTML = `<div class="card fade-up">
     <div class="cat-head"><i class="fas fa-scroll"></i> Logs de ações <span class="chip chip-neutral ml-2 normal-case">${count??0} registros</span></div>
     <div class="log-filters">
-      <input placeholder="Busca livre (nome/título/nick)" value="${esc(f.search)}" onchange="A.logFilters.search=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
+      <input placeholder="Busca livre" value="${esc(f.search)}" onchange="A.logFilters.search=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
       <input placeholder="Usuário" value="${esc(f.user)}" onchange="A.logFilters.user=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
       <select onchange="A.logFilters.action=this.value;A.page=0;tabLogs(document.getElementById('admin-body'))">
         <option value="">Todas ações</option>
@@ -2069,7 +2163,7 @@ async function tabLogs(b){
       <td class="text-xs font-bold">${esc(l.actor_name||'sistema')}</td>
       <td class="text-[11px] text-muted max-w-md truncate" title="${esc(JSON.stringify(l.details))}">${esc(ptDetails(l.details, l.action))}</td>
       <td class="text-xs font-mono text-muted">${esc(l.ip || '—')}</td>
-    </tr>`).join('') || '<tr><td colspan="5" class="text-center text-muted py-8">Nenhum log encontrado com esses filtros.</td></tr>'}
+    </tr>`).join('') || '<tr><td colspan="5" class="text-center text-muted py-8">Nenhum log.</td></tr>'}
     </tbody></table></div>
     <div class="p-3 flex justify-center gap-2 items-center">
       ${A.page>0?`<button class="btn btn-outline btn-sm" onclick="A.page--;tabLogs(document.getElementById('admin-body'))">← Anterior</button>`:''}
@@ -2093,49 +2187,23 @@ async function tabConfig(b){
 window.saveMaint = async () => { const value = { enabled: document.getElementById('c-maint').checked, message: document.getElementById('c-maint-msg').value }; await supabase.from('settings').upsert({ key:'maintenance', value }); STATE.settings.maintenance = value; await famrLog('MANUTENCAO', value); toast('Salvo.'); document.getElementById('maintenance-banner').classList.toggle('hidden', !value.enabled); };
 window.saveAnn = async () => { const value = { text: document.getElementById('c-ann').value }; await supabase.from('settings').upsert({ key:'announcement', value }); STATE.settings.announcement = value; await famrLog('AVISO', value); toast('Aviso publicado.'); };
 
-/* FUNÇÃO SANITIZE ATUALIZADA PARA PRESERVAR STYLES MARCADOS */
-function sanitizeHtml(h){ 
-  return String(h||'')
-    .replace(/<script[\s\S]*?<\/script>/gi,'')
-    .replace(/on\w+="[^"]*"/gi,'')
-    .replace(/on\w+='[^']*'/gi,''); 
-}
-
-/* NOVA FUNÇÃO: Preserva styles com atributo data-famr-scoped */
+function sanitizeHtml(h){ return String(h||'').replace(/<script[\s\S]*?<\/script>/gi,'').replace(/on\w+="[^"]*"/gi,'').replace(/on\w+='[^']*'/gi,''); }
 function sanitizeHtmlPreservingStyles(h){
   let result = String(h||'');
-  /* Remove scripts e eventos perigosos PRIMERO */
-  result = result
-    .replace(/<script[\s\S]*?<\/script>/gi,'')
-    .replace(/on\w+="[^"]*"/gi,'')
-    .replace(/on\w+='[^']*'/gi,'');
-  
-  /* Agora protege as tags <style> que têm nosso marcador seguro */
-  /* Substitui temporariamente por placeholders */
-  const stylePlaceholders = [];
-  result = result.replace(/<style\s+data-famr-scoped="([^"]+)">([\s\S]*?)<\/style>/gi, (match, scope, cssContent) => {
-    const placeholder = `<!--STYLE_PLACEHOLDER_${stylePlaceholders.length}-->`;
-    stylePlaceholders.push(match);
-    return placeholder;
+  result = result.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/on\w+="[^"]*"/gi,'').replace(/on\w+='[^']*'/gi,'');
+  const placeholders = [];
+  result = result.replace(/<style\s+data-famr-scoped="([^"]+)">([\s\S]*?)<\/style>/gi, (match) => {
+    const ph = `<!--STYLE_PH_${placeholders.length}-->`;
+    placeholders.push(match); return ph;
   });
-  
-  /* Remove outras tags style não autorizadas (segurança extra) */
   result = result.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, '');
-  
-  /* Restaura nossos placeholders seguros */
-  stylePlaceholders.forEach((original, index) => {
-    result = result.replace(`<!--STYLE_PLACEHOLDER_${index}-->`, original);
-  });
-  
+  placeholders.forEach((orig, i) => { result = result.replace(`<!--STYLE_PH_${i}-->`, orig); });
   return result;
 }
 
-/* ══════════ famrLog SEMPRE ENVIA NICK ══════════ */
 async function famrLog(action, details={}){
   const enriched = { ...details };
-  if(!enriched.nick){
-    enriched.nick = STATE.profile?.nickname || details.nick || null;
-  }
+  if(!enriched.nick){ enriched.nick = STATE.profile?.nickname || details.nick || null; }
   try{
     const fnUrl = CONFIG.supabaseUrl + '/functions/v1/log-action';
     const { data:{ session } } = await supabase.auth.getSession();
@@ -2150,7 +2218,6 @@ async function famrLog(action, details={}){
   }
 }
 
-/* ══════════ ENTER SYSTEM ══════════ */
 async function enterSystem(userId){
   if(window._famrRecovery){ showScreen('screen-reset'); return; }
   const [profRes, groups, setsRes] = await Promise.all([
