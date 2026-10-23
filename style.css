@@ -1030,3 +1030,10 @@ select.input,textarea.input{padding-left:.9rem}
 :root[data-theme="dark"] .cat-head.gold i,:root[data-theme="dark"] .cat-head.gold a{color:#f0d98a!important}
 :root[data-theme="dark"] .fi-stat b{color:var(--ink)}
 :root[data-theme="dark"] .fi-avatar{background:var(--surface-2);border-color:var(--line)}
+
+/* ══════════ v45 — PALETAS MAIORES + FONTES ══════════ */
+.dw-color-pop{max-height:340px;overflow:auto;width:264px}
+.dw-color-grid{grid-template-columns:repeat(10,1fr);gap:4px}
+.dw-color-grid button{width:22px;height:22px;border-radius:5px}
+.dw-select-font{min-width:110px;max-width:140px}
+:root[data-theme="dark"] .dw-color-pop{max-height:340px}
