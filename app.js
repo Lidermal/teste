@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v43 (Recusar Alistamento | Índice Fórum | Views | Doc Hierárquico) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v45 (SQL Fix | +Fontes | +Cores | Home sem dup | Cache | Respostas doc_id/post_id) ══════════ */
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
 const statusChip = s => s==='approved' ? '<span class="chip chip-ok">APROVADO</span>' : s==='rejected' ? '<span class="chip chip-no">REPROVADO</span>' : '<span class="chip chip-wait">EM ANÁLISE</span>';
@@ -17,6 +17,43 @@ const SAFE_ICONS = [...new Set(ICON_OPTIONS.filter(i=>/^fa-/.test(i)))];
 const GROUP_TYPES = { open:'ABERTO', closed:'FECHADO', invisible:'INVISÍVEL' };
 const SLUGS_REQUIRE_GROUP = ['companhias'];
 const DOC_TYPES = { general:'GERAL', request:'REQUERIMENTO', listing:'LISTAGEM' };
+/* v45: selects padronizados com contagens EMBUTIDAS */
+const DOC_SEL = 'id,title,category,cover_url,updated_at,author_id,doc_type,views,body_html,page_id,post_replies(count),profiles_view(nickname)';
+const PAGE_SEL = 'id,name,slug,description,icon,color,order_index,documents(count)';
+const replyCountOf = d => (Array.isArray(d.post_replies) && d.post_replies[0]) ? (d.post_replies[0].count||0) : 0;
+const docCountOf = p => (Array.isArray(p.documents) && p.documents[0]) ? (p.documents[0].count||0) : 0;
+
+/* ══════════ v45: FONTES EXPANDIDAS ══════════ */
+const FONT_OPTIONS = [
+['Arial','Arial'],['Arial Black','Arial Black'],['Georgia','Georgia'],['Times New Roman','Times New Roman'],
+['Courier New','Courier New'],['Verdana','Verdana'],['Tahoma','Tahoma'],['Trebuchet MS','Trebuchet MS'],
+['Impact','Impact'],['Comic Sans MS','Comic Sans MS'],['Segoe UI','Segoe UI'],['Roboto','Roboto'],
+['Open Sans','Open Sans'],['Lato','Lato'],['Montserrat','Montserrat'],['Poppins','Poppins'],
+['Inter','Inter'],['Manrope','Manrope'],['Sora','Sora'],['Calibri','Calibri'],['Cambria','Cambria'],
+['Garamond','Garamond'],['Book Antiqua','Book Antiqua'],['Palatino Linotype','Palatino Linotype'],
+['Lucida Console','Lucida Console'],['Consolas','Consolas'],['Monaco','Monaco']
+];
+/* ══════════ v45: PALETAS DE CORES EXPANDIDAS ══════════ */
+const COLORS_TEXT = [
+'#000000','#434343','#666666','#999999','#b7b7b7','#cccccc','#efefef','#f3f3f3','#ffffff','#ff0000',
+'#980000','#e06666','#ff9900','#ffff00','#00ff00','#00ffff','#4a86e8','#0000ff','#9900ff','#ff00ff',
+'#e6b8af','#f4cccc','#fce5cd','#fff2cc','#d9ead3','#d0e0e3','#c9daf8','#cfe2f3','#d9d2e9','#ead1dc',
+'#dd7e6b','#ea9999','#f9cb9c','#ffe599','#b6d7a8','#a2c4c9','#a4c2f4','#9fc5e8','#b4a7d6','#d5a6bd',
+'#cc4125','#f6b26b','#ffd966','#93c47d','#76a5af','#6d9eeb','#6fa8dc','#8e7cc3','#c27ba0','#a64d79',
+'#a61c00','#cc0000','#e69138','#f1c232','#6aa84f','#45818e','#3c78d8','#3d85c6','#674ea7','#741b47',
+'#85200c','#990000','#b45f06','#bf9000','#38761d','#134f5c','#1155cc','#0b5394','#351c75','#4c1130',
+'#5b0f00','#660000','#783f04','#7f6000','#274e13','#0c343d','#1c4587','#073763','#20124d','#333333'
+];
+const COLORS_HILITE = [
+'#ffffff','#f3f3f3','#efefef','#e6e6e6','#d9d9d9','#cccccc','#bfbfbf','#b3b3b3','#a6a6a6','#999999',
+'#8c8c8c','#808080','#737373','#666666','#595959','#4d4d4d','#404040','#333333','#262626','#000000',
+'#fce8b2','#fff2cc','#ffe599','#ffd966','#f1c232','#bf9000','#7f6000','#fde9d9','#fbd5b5','#f8c191',
+'#d9ead3','#b6d7a8','#93c47d','#6aa84f','#38761d','#274e13','#d0e3e3','#a2c4c9','#76a5af','#45818e',
+'#134f5c','#0c343d','#c9daf8','#a4c2f4','#6d9eeb','#3c78d8','#1155cc','#1c4587','#cfe2f3','#9fc5e8',
+'#6fa8dc','#3d85c6','#0b5394','#073763','#d9d2e9','#b4a7d6','#8e7cc3','#674ea7','#351c75','#20124d',
+'#ead1dc','#d5a6bd','#c27ba0','#a64d79','#741b47','#4c1130','#f4cccc','#ea9999','#e06666','#cc0000',
+'#990000','#660000','#fce5cd','#f9cb9c','#f6b26b','#e69138','#b45f06','#783f04','#d0e0e3','#a2c4c9'
+];
 
 /* ══════════ TRADUÇÃO DE LOGS PT ══════════ */
 const ACTION_PT = {
@@ -79,11 +116,11 @@ async function cachedQuery(key, factory, ttl=60_000){
 const PAGE_SIZE = 25;
 const REPLIES_PER_PAGE = 10;
 
-/* ══════════ HELPERS GRUPO (PRIORIDADE, CHEFIA, GRADIENTE) ══════════ */
+/* ══════════ HELPERS GRUPO ══════════ */
 function groupBg(g){
   if(!g) return '#14563f';
   if(g.color_mode === 'gradient' && g.color_end){
-    const angle = g.gradient_angle || '135deg';
+    const angle = g.gradient_angle = g.gradient_angle || '135deg';
     return angle === 'radial' ? `radial-gradient(circle, ${g.color}, ${g.color_end})` : `linear-gradient(${angle}, ${g.color}, ${g.color_end})`;
   }
   return g.color || '#14563f';
@@ -326,10 +363,11 @@ async function buildSidebar(){
   if(STATE.settings.maintenance?.enabled && isAdmin()) document.getElementById('maintenance-banner').classList.remove('hidden');
 }
 
-/* ══════════ LINHAS ESTILO ÍNDICE DE FÓRUM (ANEXO 2) ══════════ */
+/* ══════════ LINHAS ÍNDICE FÓRUM ══════════ */
 function stripHtml(h){ return String(h||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim(); }
 function docForumRow(d, extra={}){
   const excerpt = stripHtml(d.body_html).slice(0,150);
+  const replies = extra.replies ?? replyCountOf(d);
   return `<a href="#/doc-view/${d.id}" class="forum-row fi-row" data-search="${esc((d.title+' '+excerpt).toLowerCase())}">
     <span class="forum-ico ${d.doc_type==='request'?'new':''}"><i class="fas ${d.doc_type==='request'?'fa-file-signature':d.doc_type==='listing'?'fa-list-ul':'fa-file-alt'}"></i></span>
     <div class="flex-1 min-w-0">
@@ -338,7 +376,7 @@ function docForumRow(d, extra={}){
       <p class="text-[10px] text-muted mt-0.5">por <b class="text-famr-700">${esc(d.profiles_view?.nickname||'—')}</b>${d.category?` • ${esc(d.category)}`:''}${d.doc_type?` • <span class="chip chip-neutral">${DOC_TYPES[d.doc_type]||d.doc_type}</span>`:''}</p>
     </div>
     <div class="fi-stats">
-      <div class="fi-stat"><b>${extra.replies??0}</b><span>mensagens</span></div>
+      <div class="fi-stat"><b>${replies}</b><span>mensagens</span></div>
       <div class="fi-stat"><b>${d.views??0}</b><span>visualizações</span></div>
     </div>
     <div class="fi-last">
@@ -347,11 +385,12 @@ function docForumRow(d, extra={}){
     </div>
   </a>`;
 }
-function pageForumRow(p, docCount){
+function pageForumRow(p, fallbackCount){
+  const cnt = docCountOf(p) || fallbackCount || 0;
   return `<a href="#/doc-page/${p.id}" class="forum-row fi-row" data-search="${esc((p.name+' '+(p.description||'')).toLowerCase())}">
     <span class="forum-ico" style="background:${p.color||'#14563f'};color:#fff"><i class="fas ${p.icon||'fa-folder-open'}"></i></span>
     <div class="flex-1 min-w-0"><b class="text-sm text-famr-800">${esc(p.name)}</b><p class="text-xs text-muted truncate">${esc(p.description||'')}</p></div>
-    <div class="fi-stats"><div class="fi-stat"><b>${docCount||0}</b><span>documentos</span></div></div>
+    <div class="fi-stats"><div class="fi-stat"><b>${cnt}</b><span>documentos</span></div></div>
     <i class="fas fa-chevron-right text-xs text-muted"></i>
   </a>`;
 }
@@ -362,7 +401,7 @@ window.filterDocs = q => {
   });
 };
 
-/* ══════════ HOME ══════════ */
+/* ══════════ HOME (SEM DUPLICIDADE + CACHE) ══════════ */
 async function renderHome(c){
   const bundle = await cachedQuery('home:data', async ()=>{
     const [sections, subs, postsMeta, nMembers, newest, groups, allUG, recentDocs, docPages] = await Promise.all([
@@ -373,21 +412,13 @@ async function renderHome(c){
       supabase.from('profiles_view').select('id,nickname,created_at').eq('status','active').eq('is_invisible',false).neq('nickname','admin master').order('created_at',{ascending:false}).limit(5),
       supabase.from('groups').select('id,name,color,color_end,color_mode,gradient_angle,icon,apply_color,group_type,order_index,parent_id,is_priority,priority_level,is_admin').neq('group_type','invisible').order('order_index'),
       supabase.from('user_groups').select('group_id').limit(10000),
-      supabase.from('documents').select('id,title,category,updated_at,cover_url,doc_type,views,body_html,profiles_view(nickname)').order('updated_at',{ascending:false}).limit(6),
-      supabase.from('doc_pages').select('id,name,description,icon,color,order_index').order('order_index')
+      supabase.from('documents').select(DOC_SEL).order('updated_at',{ascending:false}).limit(6),
+      supabase.from('doc_pages').select(PAGE_SEL).order('order_index')
     ]);
     return { sections:sections.data||[], subs:subs.data||[], posts:postsMeta.data||[], members:nMembers.count||0, newest:newest.data||[], groups:groups.data||[], ug:allUG.data||[], docs:recentDocs.data||[], pages:docPages.data||[] };
   }, 45_000);
   const { sections, subs, posts, members:registeredCount, newest, groups, ug, docs:recentDocs, pages:docPages } = bundle;
   const memberCount={}; (ug||[]).forEach(m=>memberCount[m.group_id]=(memberCount[m.group_id]||0)+1);
-
-  /* estatísticas para o índice de documentos */
-  const { data: allPageDocs } = await supabase.from('documents').select('page_id').not('page_id','is',null);
-  const pageDocCount={}; (allPageDocs||[]).forEach(r=>pageDocCount[r.page_id]=(pageDocCount[r.page_id]||0)+1);
-  const recentIds=(recentDocs||[]).map(d=>d.id);
-  const { data: repHome } = recentIds.length ? await supabase.from('post_replies').select('parent_doc_id').in('parent_doc_id',recentIds) : {data:[]};
-  const replyCountHome={}; (repHome||[]).forEach(r=>replyCountHome[r.parent_doc_id]=(replyCountHome[r.parent_doc_id]||0)+1);
-
   let lastChip='<em>nenhum</em>';
   if(newest?.[0]){
     const ic = userIconOf((await cachedQuery('lastug:'+newest[0].id, ()=> supabase.from('user_groups').select('groups(id,icon,order_index,apply_color,is_priority)').eq('user_id',newest[0].id), 120_000)).data||[]);
@@ -434,19 +465,17 @@ async function renderHome(c){
   <div class="stat-tile"><span class="forum-ico"><i class="fas fa-folder-open"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Subtópicos</p><p class="font-display text-xl font-extrabold text-famr-800">${visibleSubs.length}</p></div></div>
   <div class="stat-tile"><span class="forum-ico new"><i class="fas fa-user-plus"></i></span><div><p class="text-[10px] uppercase tracking-wider text-muted font-bold">Mais recente</p><p class="font-display text-sm font-extrabold text-famr-800 truncate">${esc(newest?.[0]?.nickname || '—')}</p></div></div>
 </section>
-
-<!-- v43: ÍNDICE DE DOCUMENTOS PRINCIPAIS NA HOME (ESTILO ANEXO 2) -->
 ${((docPages||[]).length || (recentDocs||[]).length) ? `
 <section class="card overflow-hidden fade-up">
   <div class="cat-head gold"><i class="fas fa-folder-open"></i> Documentos Principais
     <a href="#/section/documentos" class="ml-auto text-[10px] font-bold hover:underline normal-case tracking-normal">ver setor →</a></div>
   <div class="divide-y divide-line">
-    ${(docPages||[]).map(p=>pageForumRow(p, pageDocCount[p.id])).join('')}
-    ${(recentDocs||[]).map(d=>docForumRow(d,{replies:replyCountHome[d.id]})).join('')}
+    ${(docPages||[]).map(p=>pageForumRow(p, 0)).join('')}
+    ${(recentDocs||[]).map(d=>docForumRow(d)).join('')}
   </div>
 </section>` : ''}
-
 ${(sections||[]).map(sec => {
+    if(sec.slug==='documentos' || sec.slug==='listagem') return '';
     if(!canSeeSection(sec)) return '';
     if(sectionNeedsGroup(sec)){
       const grows = (groups||[]).map(g => `<a href="#/grupo/${g.id}" class="forum-row">
@@ -510,9 +539,7 @@ function forumRow(s, counts, lastMap){
   </a>`;
 }
 
-/* ═══════════════════════════════════════════════════
-   VISUALIZAÇÃO PÁGINA-INTEIRA (ANEXO 3) — PERFIL À ESQUERDA
-   ═══════════════════════════════════════════════════ */
+/* ══════════ VISUALIZAÇÃO PÁGINA-INTEIRA (PERFIL À ESQUERDA) ══════════ */
 async function getAuthorInfo(userId){
   const [{ data: profile }, { count: postCount }] = await Promise.all([
     supabase.from('profiles_view').select('*').eq('id', userId).single(),
@@ -522,6 +549,7 @@ async function getAuthorInfo(userId){
   const gs = (userGroups||[]).map(r=>r.groups).filter(Boolean);
   return { profile: profile||{}, groups: gs, messageCount: postCount||0 };
 }
+function getAuthorInfoCached(userId){ return cachedQuery('author:'+userId, ()=>getAuthorInfo(userId), 60_000); }
 function renderAuthorPanel(info){
   const pg = priorityGroupOf(info.groups);
   return `
@@ -542,12 +570,13 @@ function renderAuthorPanel(info){
 async function renderDocViewPage(c, docId){
   const { data:d } = await supabase.from('documents').select('*,profiles_view(*)').eq('id',docId).single();
   if(!d){ c.innerHTML = '<div class="card card-body text-sm text-muted">Documento não encontrado.</div>'; return; }
-  /* v43: contabiliza visualização (fire-and-forget) */
   supabase.rpc('famr_bump_doc_views', { p_id: docId }).then(()=>{}).catch(()=>{});
-  const authorInfo = await getAuthorInfo(d.author_id);
-  const canManage = isAdmin();
-  const { data: replies } = await supabase.from('post_replies').select('*,profiles_view(nickname)').eq('parent_doc_id', docId).order('created_at',{ascending:true}).limit(REPLIES_PER_PAGE*50);
   const rp = window._docReplyPage || 0;
+  const [authorInfo, { data: replies }] = await Promise.all([
+    getAuthorInfoCached(d.author_id),
+    supabase.from('post_replies').select('*,profiles_view(nickname)').eq('doc_id', docId).order('created_at',{ascending:true}).limit(REPLIES_PER_PAGE*50)
+  ]);
+  const canManage = isAdmin();
   const replyPages = Math.ceil(((replies||[]).length)/REPLIES_PER_PAGE) || 1;
   const pageReplies = (replies||[]).slice(rp*REPLIES_PER_PAGE, rp*REPLIES_PER_PAGE+REPLIES_PER_PAGE);
   c.innerHTML = `
@@ -622,24 +651,28 @@ window.submitReply = async function(e, parentId, parentType){
   const f = e.target;
   const content = f.content.value.trim();
   if(!content) return toast('Escreva algo.','warn');
-  const payload = { parent_id: parentId, parent_type: parentType, content, author_id: STATE.profile.id };
+  const payload = { content, author_id: STATE.profile.id };
+  if(parentType==='doc') payload.doc_id = parentId; else payload.post_id = parentId;
   const { error } = await supabase.from('post_replies').insert([payload]);
   if(error) return toast('Erro: '+error.message,'err');
-  await famrLog('REPLY_POSTED', { postId: parentType==='post'?parentId:null, docId: parentType==='doc'?parentId:null });
-  invalidate('docs:'); invalidate('posts:'); invalidate('home:');
+  await famrLog('REPLY_POSTED', { docId: parentType==='doc'?parentId:null, postId: parentType==='post'?parentId:null });
+  invalidate('docs:'); invalidate('docpage:'); invalidate('home:');
   toast('Resposta enviada!');
-  location.reload();
+  f.reset();
+  route();
   return false;
 };
 async function renderPostViewPage(c, postId){
   const { data:p } = await supabase.from('posts').select('*,profiles_view(*),subtopics(name,section_id,sections(name,slug))').eq('id',postId).single();
   if(!p){ c.innerHTML = '<div class="card card-body text-sm text-muted">Publicação não encontrada.</div>'; return; }
-  const authorInfo = await getAuthorInfo(p.author_id);
+  const rp = window._postReplyPage || 0;
+  const [authorInfo, { data: replies }] = await Promise.all([
+    getAuthorInfoCached(p.author_id),
+    supabase.from('post_replies').select('*,profiles_view(nickname)').eq('post_id', postId).order('created_at',{ascending:true}).limit(REPLIES_PER_PAGE*50)
+  ]);
   const mine = p.author_id === STATE.profile.id;
   const canEdit = mine && canEditIn({section_id:p.subtopics?.section_id, id:p.subtopic_id});
   const canDel = mine || canDeleteIn({section_id:p.subtopics?.section_id, id:p.subtopic_id});
-  const { data: replies } = await supabase.from('post_replies').select('*,profiles_view(nickname)').eq('parent_post_id', postId).order('created_at',{ascending:true}).limit(REPLIES_PER_PAGE*50);
-  const rp = window._postReplyPage || 0;
   const replyPages = Math.ceil(((replies||[]).length)/REPLIES_PER_PAGE) || 1;
   const pageReplies = (replies||[]).slice(rp*REPLIES_PER_PAGE, rp*REPLIES_PER_PAGE+REPLIES_PER_PAGE);
   c.innerHTML = `
@@ -703,13 +736,13 @@ window.editPostInline = id => {
   const wrap = document.createElement('div');
   wrap.innerHTML = `<textarea id="ep-inline" class="input w-full" rows="8">${esc(current)}</textarea><div class="mt-2 flex gap-2"><button class="btn btn-primary btn-sm" id="ep-save"><i class="fas fa-floppy-disk"></i> Salvar</button><button class="btn btn-outline btn-sm" id="ep-cancel">Cancelar</button></div>`;
   ta.replaceWith(wrap);
-  document.getElementById('ep-cancel').onclick = () => location.reload();
+  document.getElementById('ep-cancel').onclick = () => route();
   document.getElementById('ep-save').onclick = async () => {
     const nv = document.getElementById('ep-inline').value;
     const { error } = await supabase.from('posts').update({ content: nv }).eq('id', id);
     if(error) return toast('Erro: '+error.message,'err');
     await famrLog('POST_EDITADO', { id });
-    invalidate('posts:'); invalidate('home:'); toast('Atualizado.'); location.reload();
+    invalidate('posts:'); invalidate('home:'); toast('Atualizado.'); route();
   };
 };
 
@@ -804,15 +837,18 @@ async function renderSection(c, slug){
   if(slug === 'documentos')    return await renderDocumentos(c, sec);
   if(slug === 'companhias')    return await renderCompanhias(c, sec);
   if(!canViewSection(sec)){ c.innerHTML = `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2></div>`; return; }
-  const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id).order('order_index');
-  const ids = (subs||[]).map(s => s.id);
-  const { data: posts } = ids.length ? await supabase.from('posts').select('id,subtopic_id,title,created_at,profiles_view(nickname)').in('subtopic_id', ids).order('created_at',{ascending:false}).limit(300) : { data: [] };
+  const data = await cachedQuery('section:'+slug, async ()=>{
+    const { data: subs } = await supabase.from('subtopics').select('*').eq('section_id', sec.id).order('order_index');
+    const ids = (subs||[]).map(s => s.id);
+    const { data: posts } = ids.length ? await supabase.from('posts').select('id,subtopic_id,title,created_at,profiles_view(nickname)').in('subtopic_id', ids).order('created_at',{ascending:false}).limit(300) : { data: [] };
+    return { subs: subs||[], posts: posts||[] };
+  }, 30_000);
   const counts = {}, lastMap = {};
-  (posts||[]).forEach(p => { counts[p.subtopic_id]=(counts[p.subtopic_id]||0)+1; if(!lastMap[p.subtopic_id]) lastMap[p.subtopic_id]=p; });
+  (data.posts||[]).forEach(p => { counts[p.subtopic_id]=(counts[p.subtopic_id]||0)+1; if(!lastMap[p.subtopic_id]) lastMap[p.subtopic_id]=p; });
   c.innerHTML = secHead(sec) + `
 <section class="card overflow-hidden fade-up">
   <div class="cat-head"><i class="fas ${esc(sec.icon)}"></i> ${esc(sec.name)}</div>
-  <div class="divide-y divide-line">${(subs||[]).filter(canViewSub).map(s => forumRow(s, counts, lastMap)).join('') || '<p class="p-5 text-sm text-muted text-center">Nenhum subtópico.</p>'}</div>
+  <div class="divide-y divide-line">${(data.subs||[]).filter(canViewSub).map(s => forumRow(s, counts, lastMap)).join('') || '<p class="p-5 text-sm text-muted text-center">Nenhum subtópico.</p>'}</div>
 </section>`;
 }
 const secHead = sec => `<div class="flex flex-wrap items-center justify-between gap-3 fade-up">
@@ -970,22 +1006,21 @@ window.submitRequest = async function(subtopicId){
   closeModal(); toast('Protocolo enviado!'); route();
 };
 
-/* ═══════════════════════════════════════════════════
-   DOCUMENTOS PRINCIPAIS — ÍNDICE ESTILO FÓRUM (ANEXO 2)
-   ═══════════════════════════════════════════════════ */
+/* ══════════ DOCUMENTOS PRINCIPAIS (ÍNDICE COM CACHE) ══════════ */
 let _wsDirty=false, _wsSaving=false;
 async function renderDocumentos(c, sec){
   if(!canViewSection(sec)){ c.innerHTML = secHead(sec)+lockCard(); return; }
   const canManage = isAdmin() || (STATE.perms?.['section:'+sec.id]?.create);
-  const [{ data: pages }, { data: docs }] = await Promise.all([
-    supabase.from('doc_pages').select('*').order('order_index'),
-    supabase.from('documents').select('id,title,category,cover_url,updated_at,author_id,doc_type,views,body_html,page_id,profiles_view(nickname)').order('updated_at',{ascending:false}).limit(200)
-  ]);
-  const docIds=(docs||[]).map(d=>d.id);
-  const { data: repRows } = docIds.length ? await supabase.from('post_replies').select('parent_doc_id').in('parent_doc_id',docIds) : {data:[]};
-  const replyCount={}; (repRows||[]).forEach(r=>replyCount[r.parent_doc_id]=(replyCount[r.parent_doc_id]||0)+1);
-  const pageDocCount={}; (docs||[]).forEach(d=>{ if(d.page_id) pageDocCount[d.page_id]=(pageDocCount[d.page_id]||0)+1; });
-  const generalDocs=(docs||[]).filter(d=>!d.page_id);
+  const data = await cachedQuery('docs:index:'+sec.id, async ()=>{
+    const [{ data: pages }, { data: docs }] = await Promise.all([
+      supabase.from('doc_pages').select(PAGE_SEL).order('order_index'),
+      supabase.from('documents').select(DOC_SEL).order('updated_at',{ascending:false}).limit(200)
+    ]);
+    return { pages: pages||[], docs: docs||[] };
+  }, 30_000);
+  const pages = data.pages, docs = data.docs;
+  const pageDocCount={}; docs.forEach(d=>{ if(d.page_id) pageDocCount[d.page_id]=(pageDocCount[d.page_id]||0)+1; });
+  const generalDocs = docs.filter(d=>!d.page_id);
   c.innerHTML = `
 <div class="fade-up">
   <p class="text-xs text-muted mb-2">FAMR › <b>${esc(sec.name)}</b></p>
@@ -1004,23 +1039,23 @@ async function renderDocumentos(c, sec){
 <section class="card overflow-hidden fade-up mt-4">
   <div class="cat-head gold"><i class="fas fa-bullhorn"></i> Páginas & Documentos</div>
   <div class="divide-y divide-line">
-    ${(pages||[]).map(p=>pageForumRow(p, pageDocCount[p.id])).join('')}
-    ${generalDocs.map(d=>docForumRow(d,{replies:replyCount[d.id]})).join('')}
-    ${!(pages||[]).length && !generalDocs.length ? '<p class="p-6 text-sm text-muted text-center">Nenhuma página ou documento ainda.</p>' : ''}
+    ${pages.map(p=>pageForumRow(p, pageDocCount[p.id])).join('')}
+    ${generalDocs.map(d=>docForumRow(d)).join('')}
+    ${!pages.length && !generalDocs.length ? '<p class="p-6 text-sm text-muted text-center">Nenhuma página ou documento ainda.</p>' : ''}
   </div>
 </section>`;
 }
 function lockCard(){ return `<div class="card card-body text-center py-14"><i class="fas fa-lock text-3xl text-gold-500"></i><h2 class="font-display font-bold text-xl mt-3">Acesso restrito</h2></div>`; }
-
-/* Página específica (índice estilo anexo 2) */
 async function renderDocPage(c, pageId){
-  const { data: pg } = await supabase.from('doc_pages').select('*').eq('id', pageId).single();
+  const data = await cachedQuery('docpage:'+pageId, async ()=>{
+    const { data: pg } = await supabase.from('doc_pages').select('*').eq('id', pageId).single();
+    if(!pg) return { pg:null, docs:[] };
+    const { data: docs } = await supabase.from('documents').select(DOC_SEL).eq('page_id', pageId).order('updated_at',{ascending:false});
+    return { pg, docs: docs||[] };
+  }, 30_000);
+  const pg = data.pg, docs = data.docs;
   if(!pg){ c.innerHTML = '<div class="card card-body text-sm text-muted">Página não encontrada.</div>'; return; }
   const canManage = isAdmin();
-  const { data: docs } = await supabase.from('documents').select('id,title,category,cover_url,updated_at,author_id,doc_type,views,body_html,profiles_view(nickname)').eq('page_id', pageId).order('updated_at',{ascending:false});
-  const docIds=(docs||[]).map(d=>d.id);
-  const { data: repRows } = docIds.length ? await supabase.from('post_replies').select('parent_doc_id').in('parent_doc_id',docIds) : {data:[]};
-  const replyCount={}; (repRows||[]).forEach(r=>replyCount[r.parent_doc_id]=(replyCount[r.parent_doc_id]||0)+1);
   c.innerHTML = `
 <div class="fade-up">
   <p class="text-xs text-muted mb-2"><a href="#/section/documentos" class="text-famr-700 font-bold hover:underline"><i class="fas fa-arrow-left mr-1"></i>Documentos Principais</a> › <b>${esc(pg.name)}</b></p>
@@ -1038,13 +1073,12 @@ async function renderDocPage(c, pageId){
   </div>
 </div>
 <section class="card overflow-hidden fade-up mt-4">
-  <div class="cat-head gold"><i class="fas fa-file-lines"></i> Documentos <span class="ml-auto text-[10px] normal-case tracking-normal">${(docs||[]).length} item(ns)</span></div>
+  <div class="cat-head gold"><i class="fas fa-file-lines"></i> Documentos <span class="ml-auto text-[10px] normal-case tracking-normal">${docs.length} item(ns)</span></div>
   <div class="divide-y divide-line">
-    ${(docs||[]).map(d=>docForumRow(d,{replies:replyCount[d.id]})).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhum documento nesta página.</p>'}
+    ${docs.map(d=>docForumRow(d)).join('') || '<p class="p-6 text-sm text-muted text-center">Nenhum documento nesta página.</p>'}
   </div>
 </section>`;
 }
-
 window.showNewDocDialog = async function(preferredPageId){
   const { data: pages } = await supabase.from('doc_pages').select('id,name,icon,color').order('order_index');
   const options = [
@@ -1087,7 +1121,7 @@ window.delDoc = async id => {
   if(!await confirmDlg('Excluir este documento permanentemente?', { title:'Excluir', okText:'Excluir', danger:true })) return;
   await supabase.from('documents').delete().eq('id',id);
   await famrLog('DOC_DEL', { id });
-  invalidate('docs:'); invalidate('docpages:'); invalidate('home:'); closeModal(); toast('Excluído.'); location.hash='#/section/documentos';
+  invalidate('docs:'); invalidate('docpage:'); invalidate('home:'); closeModal(); toast('Excluído.'); location.hash='#/section/documentos';
 };
 window.docPageForm = async id => {
   let p = { name:'', slug:'', description:'', icon:'fa-folder-open', color:'#14563f', order_index:0 };
@@ -1134,7 +1168,7 @@ window.saveDocPage = async id => {
   }
   if(error) return toast('Erro: '+error.message,'err');
   await famrLog('DOC_PAGE_SAVE', row);
-  invalidate('docpages:'); invalidate('docs:'); invalidate('home:');
+  invalidate('docpage:'); invalidate('docs:'); invalidate('home:');
   closeModal(); toast('Página salva.'); route();
 };
 window.delDocPage = async id => {
@@ -1142,7 +1176,7 @@ window.delDocPage = async id => {
   await supabase.from('documents').update({ page_id: null }).eq('page_id', id);
   await supabase.from('doc_pages').delete().eq('id', id);
   await famrLog('DOC_PAGE_DEL', { id });
-  invalidate('docpages:'); invalidate('docs:'); invalidate('home:'); toast('Excluída.'); route();
+  invalidate('docpage:'); invalidate('docs:'); invalidate('home:'); toast('Excluída.'); route();
 };
 
 /* ══════════ EDITOR DE DOCUMENTOS ══════════ */
@@ -1267,11 +1301,10 @@ function manuallyApplyTag(tagName){
     }
   }
 }
+/* ══════════ TOOLBAR v45 (FONTES + CORES EXPANDIDAS) ══════════ */
 function initToolbar(){
   const bar = document.getElementById('dw-toolbar');
   bar.innerHTML = '';
-  const COLORS_TEXT = ['#000000','#434343','#666666','#999999','#b7b7b7','#cccccc','#efefef','#ffffff','#ff0000','#ff9900','#ffff00','#00ff00','#00ffff','#0000ff','#9900ff','#ff00ff'];
-  const COLORS_HILITE = ['#fce8b2','#d9ead3','#c9daf8','#ead1dc','#fff2cc','#d0e3e3','#f4cccc','#e0e0e0'];
   function addBtn(label, iconClass, actionFn, isActiveCheck=null){
     const btn = document.createElement('button');
     btn.type='button'; btn.className='dw-tool-fixed'; btn.title=label;
@@ -1282,8 +1315,8 @@ function initToolbar(){
     return btn;
   }
   function addSep(){ const s=document.createElement('span'); s.className='dw-sep'; bar.appendChild(s); }
-  function addSelect(options, onChangeFn){
-    const sel = document.createElement('select'); sel.className='dw-select';
+  function addSelect(options, onChangeFn, extraClass=''){
+    const sel = document.createElement('select'); sel.className='dw-select '+extraClass;
     options.forEach(([val,text])=>{ const o=document.createElement('option'); o.value=val; o.textContent=text; sel.appendChild(o); });
     sel.onchange = () => onChangeFn(sel.value);
     bar.appendChild(sel); return sel;
@@ -1307,15 +1340,16 @@ function initToolbar(){
     wrap.appendChild(btn); wrap.appendChild(pop);
     bar.appendChild(wrap);
   }
-  addSelect([['Arial','Arial'],['Georgia','Georgia'],['Times New Roman','TNR'],['Verdana','Verdana']], v => execSafe('fontName', v));
-  addSelect([['1','Peq'],['2','Norm'],['3','Med'],['4','Grande'],['5','Maior'],['6','Enorme']], v => execSafe('fontSize', v));
+  /* v45: lista de fontes expandida */
+  addSelect(FONT_OPTIONS, v => execSafe('fontName', v), 'dw-select-font');
+  addSelect([['1','Peq'],['2','Norm'],['3','Med'],['4','Grande'],['5','Maior'],['6','Enorme'],['7','Gigante']], v => execSafe('fontSize', v));
   addSep();
   addBtn('Negrito','fa-bold', () => execSafe('bold'), () => document.queryCommandState('bold'));
   addBtn('Itálico','fa-italic', () => execSafe('italic'), () => document.queryCommandState('italic'));
   addBtn('Sublinhado','fa-underline', () => execSafe('underline'), () => document.queryCommandState('underline'));
   addBtn('Tachado','fa-strikethrough', () => execSafe('strikeThrough'), () => document.queryCommandState('strikeThrough'));
-  addColorPicker('Cor Texto','foreColor',COLORS_TEXT);
-  addColorPicker('Realce','hiliteColor',COLORS_HILITE);
+  addColorPicker('Cor do texto','foreColor',COLORS_TEXT);
+  addColorPicker('Cor de realce','hiliteColor',COLORS_HILITE);
   addSep();
   addBtn('Esquerda','fa-align-left', () => execSafe('justifyLeft'), () => document.queryCommandState('justifyLeft'));
   addBtn('Centro','fa-align-center', () => execSafe('justifyCenter'), () => document.queryCommandState('justifyCenter'));
@@ -1567,7 +1601,7 @@ function setupImageInteractivity(){
   });
 }
 function showEmojiPanel(body){
-  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','️','🤗','🤩','🤔','🤨','😐','😑','😶','🙄','😏','😣','😥','😮','🤐','','😪','😫','😴','😌','😛','😜','😝','','😒','😓','😔','😕','🙃','','😲','🙁','','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','🥵','','😳','','','😡','','😷','🤒','🤕','🤢','🤮','🤧','😇','🥳','🥸','🤠','🤡','🥹','⭐','✅','❌','️','📌','','❤️','🔥','✨','🎖️','🏅','','🥈','','🏆'];
+  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','🤗','','🤔','','😐','😑','😶','🙄','😏','😣','😥','😮','🤐','😯','😪','😫','😴','😌','😛','😜','😝','','😒','😓','😔','😕','🙃','🤑','😲','🙁','😖','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','🥵','','😳','','😡','😷','🤒','🤕','🤢','🤮','🤧','','🥳','','🤠','','🥹','⭐','✅','❌','️','📌','💼','❤️','🔥','✨','🎖️','🏅','','🥈','🥉','🏆'];
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#fff;border:1px solid #dadce0;border-radius:12px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);max-width:460px;max-height:360px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:2px';
   emojis.forEach(em=>{
@@ -1632,7 +1666,7 @@ window.saveCurrentDoc = async function(existingId, pageId){
     setStatus('erro'); return toast('Erro: '+error.message,'err');
   }
   await famrLog(existingId?'DOC_UPDATE':'DOC_CREATE', { title, category, doc_type, page_name: pid ? '(nesta página)' : '(geral)' });
-  invalidate('docs:'); invalidate('docpages:'); invalidate('home:');
+  invalidate('docs:'); invalidate('docpage:'); invalidate('home:');
   _wsDirty = false; _wsSaving = false;
   saveBtn.disabled = false;
   saveBtn.innerHTML = '<i class="fas fa-check"></i> Salvo';
@@ -1727,8 +1761,6 @@ window.adminTab = async function(tab){
   const b = document.getElementById('admin-body'); b.innerHTML = '<div class="skeleton h-64"></div>';
   ({usuarios:tabUsuarios, grupos:tabGrupos, topicos:tabTopicos, protocolos:tabProtocolos, logs:tabLogs, config:tabConfig})[tab](b);
 };
-
-/* v43: lê da TABELA BASE + botão RECUSAR para pendentes */
 async function tabUsuarios(b){
   const from = A.page*20;
   let q = supabase.from('profiles')
@@ -1802,7 +1834,6 @@ window.approveAllPending = async function(){
   toast(`${ids.length} usuário(s) aprovado(s)!`);
   tabUsuarios(document.getElementById('admin-body'));
 };
-/* v43: RECUSAR alistamento */
 window.rejectUser = async id => {
   if(!await confirmDlg('Recusar este alistamento? A conta será marcada como BANIDA e não poderá entrar no quartel.', { title:'Recusar Alistamento', okText:'Recusar', danger:true })) return;
   const { error } = await supabase.from('profiles').update({ status:'banned' }).eq('id', id);
@@ -2191,7 +2222,7 @@ window.moveSection = async (id, dir) => {
   if(i < 0 || j < 0 || j >= data.length) return;
   await supabase.from('sections').update({ order_index: data[j].order_index }).eq('id', data[i].id);
   await supabase.from('sections').update({ order_index: data[i].order_index }).eq('id', data[j].id);
-  invalidate('home:'); tabTopicos(document.getElementById('admin-body'));
+  invalidate('home:'); invalidate('section:'); tabTopicos(document.getElementById('admin-body'));
 };
 window.sectionForm = async id => {
   let s = { name:'', slug:'', icon:'fa-folder-open', description:'', required_group_id:null };
@@ -2211,10 +2242,10 @@ window.saveSection = async id => {
   else { const { count } = await supabase.from('sections').select('*', { count:'exact', head:true }); row.order_index = (count||0)+1; ({ error } = await supabase.from('sections').insert([row])); }
   if(error) return toast('Erro: '+error.message,'err');
   await famrLog('SECTION_SAVE', row);
-  invalidate('home:'); closeModal(); toast('Setor salvo.'); buildSidebar(); tabTopicos(document.getElementById('admin-body'));
+  invalidate('home:'); invalidate('section:'); closeModal(); toast('Setor salvo.'); buildSidebar(); tabTopicos(document.getElementById('admin-body'));
 };
-window.delSection = async id => { if(await confirmDlg('Excluir setor?', { title:'Excluir', okText:'Excluir', danger:true })) { await supabase.from('sections').delete().eq('id', id); invalidate('home:'); buildSidebar(); tabTopicos(document.getElementById('admin-body')); } };
-window.delSubtopic = async id => { if(await confirmDlg('Excluir subtópico?', { title:'Excluir', okText:'Excluir', danger:true })) { await supabase.from('subtopics').delete().eq('id', id); invalidate('home:'); tabTopicos(document.getElementById('admin-body')); } };
+window.delSection = async id => { if(await confirmDlg('Excluir setor?', { title:'Excluir', okText:'Excluir', danger:true })) { await supabase.from('sections').delete().eq('id', id); invalidate('home:'); invalidate('section:'); buildSidebar(); tabTopicos(document.getElementById('admin-body')); } };
+window.delSubtopic = async id => { if(await confirmDlg('Excluir subtópico?', { title:'Excluir', okText:'Excluir', danger:true })) { await supabase.from('subtopics').delete().eq('id', id); invalidate('home:'); invalidate('section:'); tabTopicos(document.getElementById('admin-body')); } };
 window.subtopicForm = async (sid, tid) => {
   let t = { name:'', description:'', required_group_id:null, allow_posts:true, is_request_form:false, form_fields:[], auto_listagem_category:null };
   if(tid){ const r = await supabase.from('subtopics').select('*').eq('id', tid).single(); if(r.data) t = r.data; }
@@ -2238,7 +2269,7 @@ window.saveSubtopic = async () => {
   else { ({ error } = await supabase.from('subtopics').insert([row])); }
   if(error) return toast('Erro: '+error.message,'err');
   await famrLog('SUBTOPIC_SAVE', row);
-  invalidate('home:'); closeModal(); toast('Salvo.'); tabTopicos(document.getElementById('admin-body'));
+  invalidate('home:'); invalidate('section:'); closeModal(); toast('Salvo.'); tabTopicos(document.getElementById('admin-body'));
 };
 async function tabProtocolos(b){
   const { data } = await supabase.from('requests').select('*,profiles_view(nickname),subtopics(name,auto_listagem_category)').eq('status','pending').order('created_at');
