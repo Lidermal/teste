@@ -287,24 +287,36 @@ async function enterSystem(userId){
 /* ... (mantenha doRegister, doForgot, doResetSave iguais aos originais) ... */
 
 async function doRegister(e){
-  if(!sbOk()){ toast('Falha de conexão.', 'err'); return; }
-  const nick = document.getElementById('reg-nick').value.trim();
+  if(!sbOk()){ toast('Falha de conexão com o servidor. Tente novamente.', 'err'); return; }
+  const nick  = document.getElementById('reg-nick').value.trim();
   const email = document.getElementById('reg-email').value.trim();
-  const pass = document.getElementById('reg-pass').value;
+  const pass  = document.getElementById('reg-pass').value;
   const btn = e.target.querySelector('button'); btn.disabled = true;
   try{
+    /* ═══ v43: BLOQUEIA E-MAIL / NICKNAME DUPLICADOS ANTES DE CRIAR ═══ */
+    const { data: chk, error: chkErr } = await supabase.rpc('famr_check_alistamento', { p_email: email, p_nick: nick });
+    if(!chkErr && chk){
+      if(chk.email_exists){ toast('Este e-mail já está cadastrado no quartel. Use "Esqueci a senha".', 'warn'); return; }
+      if(chk.nick_exists){  toast('Este nickname já está em uso. Escolha outro.', 'warn'); return; }
+    }
     const { data, error } = await supabase.auth.signUp({ email, password: pass, options: { data: { nickname: nick } } });
-    if(error){ toast('Erro: ' + error.message, 'err'); return; }
+    if(error){ toast('Erro no alistamento: ' + error.message, 'err'); return; }
+    if(data.user && (data.user.identities || []).length === 0){
+      toast('Este e-mail já está cadastrado. Use "Esqueci a senha".', 'warn');
+      return;
+    }
     if(data.session){
       const { error: rpcErr } = await supabase.rpc('famr_set_credentials', { new_pass: pass });
-      if(rpcErr) console.error(rpcErr);
+      if(rpcErr) console.error('[FAMR] Falha ao gravar hash imediato:', rpcErr);
       await supabase.auth.signOut();
     }
     document.getElementById('form-register').classList.add('hidden');
     document.getElementById('register-success').classList.remove('hidden');
-    await famrLog('REGISTRO', { nick });
-  } catch(err){ toast('Erro inesperado.', 'err'); } 
-  finally { btn.disabled = false; }
+    try{ await supabase.rpc('log_action', { action:'REGISTRO', details:{ nick } }); }catch(err){}
+  } catch(err){
+    console.error('[FAMR] registro:', err);
+    toast('Erro inesperado no alistamento. Tente novamente.', 'err');
+  } finally { btn.disabled = false; }
 }
 
 async function doForgot(e){
