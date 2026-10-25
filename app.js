@@ -1,4 +1,4 @@
-/* ══════════ FAMR • APP.JS COMPLETO v45 (SQL Fix | +Fontes | +Cores | Home sem dup | Cache | Respostas doc_id/post_id) ══════════ */
+/* ══════════ FAMR • APP.JS COMPLETO v47 (Fix confirmed_at gerado | doc-new page_id | Aprova confirma auth | +Fontes | +Cores | Cache) ══════════ */
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = d => new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
 const statusChip = s => s==='approved' ? '<span class="chip chip-ok">APROVADO</span>' : s==='rejected' ? '<span class="chip chip-no">REPROVADO</span>' : '<span class="chip chip-wait">EM ANÁLISE</span>';
@@ -17,13 +17,10 @@ const SAFE_ICONS = [...new Set(ICON_OPTIONS.filter(i=>/^fa-/.test(i)))];
 const GROUP_TYPES = { open:'ABERTO', closed:'FECHADO', invisible:'INVISÍVEL' };
 const SLUGS_REQUIRE_GROUP = ['companhias'];
 const DOC_TYPES = { general:'GERAL', request:'REQUERIMENTO', listing:'LISTAGEM' };
-/* v45: selects padronizados com contagens EMBUTIDAS */
 const DOC_SEL = 'id,title,category,cover_url,updated_at,author_id,doc_type,views,body_html,page_id,post_replies(count),profiles_view(nickname)';
 const PAGE_SEL = 'id,name,slug,description,icon,color,order_index,documents(count)';
 const replyCountOf = d => (Array.isArray(d.post_replies) && d.post_replies[0]) ? (d.post_replies[0].count||0) : 0;
 const docCountOf = p => (Array.isArray(p.documents) && p.documents[0]) ? (p.documents[0].count||0) : 0;
-
-/* ══════════ v45: FONTES EXPANDIDAS ══════════ */
 const FONT_OPTIONS = [
 ['Arial','Arial'],['Arial Black','Arial Black'],['Georgia','Georgia'],['Times New Roman','Times New Roman'],
 ['Courier New','Courier New'],['Verdana','Verdana'],['Tahoma','Tahoma'],['Trebuchet MS','Trebuchet MS'],
@@ -33,7 +30,6 @@ const FONT_OPTIONS = [
 ['Garamond','Garamond'],['Book Antiqua','Book Antiqua'],['Palatino Linotype','Palatino Linotype'],
 ['Lucida Console','Lucida Console'],['Consolas','Consolas'],['Monaco','Monaco']
 ];
-/* ══════════ v45: PALETAS DE CORES EXPANDIDAS ══════════ */
 const COLORS_TEXT = [
 '#000000','#434343','#666666','#999999','#b7b7b7','#cccccc','#efefef','#f3f3f3','#ffffff','#ff0000',
 '#980000','#e06666','#ff9900','#ffff00','#00ff00','#00ffff','#4a86e8','#0000ff','#9900ff','#ff00ff',
@@ -120,7 +116,7 @@ const REPLIES_PER_PAGE = 10;
 function groupBg(g){
   if(!g) return '#14563f';
   if(g.color_mode === 'gradient' && g.color_end){
-    const angle = g.gradient_angle = g.gradient_angle || '135deg';
+    const angle = g.gradient_angle || '135deg';
     return angle === 'radial' ? `radial-gradient(circle, ${g.color}, ${g.color_end})` : `linear-gradient(${angle}, ${g.color}, ${g.color_end})`;
   }
   return g.color || '#14563f';
@@ -149,8 +145,6 @@ function priorityGroupOf(list){
 function primaryGroupOf(list){ return priorityGroupOf(list); }
 function colorGroupOf(list){ return sortGroups(list).find(g => g.apply_color) || null; }
 function userIconOf(list){ return priorityGroupOf(list)?.icon || 'fa-user'; }
-
-/* ══════════ isAdmin() POR GRUPO (RBAC) ══════════ */
 function isAdmin(){
   if(!STATE.profile) return false;
   if(STATE.profile.nickname === 'admin master') return true;
@@ -286,7 +280,7 @@ function startQsClock(){
   window._qsTimer = setInterval(tick, 1000);
 }
 
-/* ══════════ ROUTER ══════════ */
+/* ══════════ ROUTER (v46+: doc-new recebe meta em param) ══════════ */
 window.addEventListener('hashchange', route);
 async function route(){
   if(!STATE.profile) return;
@@ -302,8 +296,8 @@ async function route(){
   const c = document.getElementById('content');
   if(!c) return;
   forceFullWidthContent();
-  if(page==='doc-new'){ renderDocWorkspace(null, subParam); return; }
-  if(page==='doc-edit'){ renderDocWorkspace(param, subParam); return; }
+  if(page==='doc-new'){ renderDocWorkspace(null, param); return; }
+  if(page==='doc-edit'){ renderDocWorkspace(param, null); return; }
   if(page==='doc-page'){ await renderDocPage(c, param); return; }
   if(page==='doc-view'){ await renderDocViewPage(c, param); return; }
   if(page==='post-view'){ await renderPostViewPage(c, param); return; }
@@ -324,8 +318,6 @@ async function route(){
   }
 }
 function updateSidebarActive(key){ document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.key === key)); }
-
-/* ══════════ FIX LAYOUT FULL-WIDTH ══════════ */
 function forceFullWidthContent(){
   const c = document.getElementById('content');
   if(!c) return;
@@ -401,7 +393,7 @@ window.filterDocs = q => {
   });
 };
 
-/* ══════════ HOME (SEM DUPLICIDADE + CACHE) ══════════ */
+/* ══════════ HOME ══════════ */
 async function renderHome(c){
   const bundle = await cachedQuery('home:data', async ()=>{
     const [sections, subs, postsMeta, nMembers, newest, groups, allUG, recentDocs, docPages] = await Promise.all([
@@ -539,7 +531,7 @@ function forumRow(s, counts, lastMap){
   </a>`;
 }
 
-/* ══════════ VISUALIZAÇÃO PÁGINA-INTEIRA (PERFIL À ESQUERDA) ══════════ */
+/* ══════════ VISUALIZAÇÃO PÁGINA-INTEIRA ══════════ */
 async function getAuthorInfo(userId){
   const [{ data: profile }, { count: postCount }] = await Promise.all([
     supabase.from('profiles_view').select('*').eq('id', userId).single(),
@@ -1006,7 +998,7 @@ window.submitRequest = async function(subtopicId){
   closeModal(); toast('Protocolo enviado!'); route();
 };
 
-/* ══════════ DOCUMENTOS PRINCIPAIS (ÍNDICE COM CACHE) ══════════ */
+/* ══════════ DOCUMENTOS PRINCIPAIS ══════════ */
 let _wsDirty=false, _wsSaving=false;
 async function renderDocumentos(c, sec){
   if(!canViewSection(sec)){ c.innerHTML = secHead(sec)+lockCard(); return; }
@@ -1179,7 +1171,7 @@ window.delDocPage = async id => {
   invalidate('docpage:'); invalidate('docs:'); invalidate('home:'); toast('Excluída.'); route();
 };
 
-/* ══════════ EDITOR DE DOCUMENTOS ══════════ */
+/* ══════════ EDITOR ══════════ */
 function closeDocWorkspace(){
   const old = document.getElementById('doc-workspace');
   if(old) old.remove();
@@ -1189,7 +1181,7 @@ function closeDocWorkspace(){
 window.renderDocWorkspace = async function(docId, metaEncoded){
   closeDocWorkspace();
   let d = { title:'', category:'', body_html:'', cover_url:null, page_id:null, doc_type:'general' };
-  if(metaEncoded){
+  if(metaEncoded && (metaEncoded.startsWith('%') || metaEncoded.startsWith('{'))){
     try{
       const meta = JSON.parse(decodeURIComponent(metaEncoded));
       d.title = meta.title || '';
@@ -1301,7 +1293,6 @@ function manuallyApplyTag(tagName){
     }
   }
 }
-/* ══════════ TOOLBAR v45 (FONTES + CORES EXPANDIDAS) ══════════ */
 function initToolbar(){
   const bar = document.getElementById('dw-toolbar');
   bar.innerHTML = '';
@@ -1340,7 +1331,6 @@ function initToolbar(){
     wrap.appendChild(btn); wrap.appendChild(pop);
     bar.appendChild(wrap);
   }
-  /* v45: lista de fontes expandida */
   addSelect(FONT_OPTIONS, v => execSafe('fontName', v), 'dw-select-font');
   addSelect([['1','Peq'],['2','Norm'],['3','Med'],['4','Grande'],['5','Maior'],['6','Enorme'],['7','Gigante']], v => execSafe('fontSize', v));
   addSep();
@@ -1601,7 +1591,7 @@ function setupImageInteractivity(){
   });
 }
 function showEmojiPanel(body){
-  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','🤗','','🤔','','😐','😑','😶','🙄','😏','😣','😥','😮','🤐','😯','😪','😫','😴','😌','😛','😜','😝','','😒','😓','😔','😕','🙃','🤑','😲','🙁','😖','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','🥵','','😳','','😡','😷','🤒','🤕','🤢','🤮','🤧','','🥳','','🤠','','🥹','⭐','✅','❌','️','📌','💼','❤️','🔥','✨','🎖️','🏅','','🥈','🥉','🏆'];
+  const emojis = ['😀','😁','😂','🤣','😊','🙂','😉','😍','','😘','😗','😙','😚','☺️','🤗','','🤔','','','😑','😶','🙄','😏','😣','😥','😮','🤐','😯','😪','😫','😴','😌','😛','😜','😝','🤤','😒','😓','😔','😕','🙃','🤑','😲','🙁','😖','😞','😟','😤','😢','😭','😦','😧','😨','😩','🤯','😬','😰','😱','🥵','','😳','','','😷','','🤕','','🤮','','😇','🥳','','🤠','🤡','🥹','⭐','✅','❌','️','📌','💼','❤️','🔥','✨','🎖️','🏅','','','','🏆'];
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:#fff;border:1px solid #dadce0;border-radius:12px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);max-width:460px;max-height:360px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:2px';
   emojis.forEach(em=>{
@@ -1821,6 +1811,10 @@ async function tabUsuarios(b){
     <span class="text-xs text-muted self-center">Pág ${A.page+1}${totalPages>1?`/${totalPages}`:''}</span>
     ${(data||[]).length===20?`<button class="btn btn-outline btn-sm" onclick="A.page++;tabUsuarios(document.getElementById('admin-body'))">Próxima →</button>`:''}</div></div>`;
 }
+/* v47: confirma o auth.users ao ativar (compatível com confirmed_at gerado) */
+async function confirmAuthFor(id){
+  try{ await supabase.rpc('famr_confirm_by_profile', { p_id: id }); }catch(e){ console.warn('[FAMR] confirm auth:', e); }
+}
 window.approveAllPending = async function(){
   if(!await confirmDlg('Aprovar TODOS os usuários pendentes de uma vez?', { title:'Aprovação em Massa', okText:'Aprovar Todos' })) return;
   const { data: pending, error } = await supabase.from('profiles').select('id,nickname').eq('status','pending').neq('nickname','admin master');
@@ -1829,6 +1823,7 @@ window.approveAllPending = async function(){
   const ids = pending.map(p => p.id);
   const { error: upErr } = await supabase.from('profiles').update({ status:'active' }).in('id', ids);
   if(upErr) return toast('Erro: '+upErr.message,'err');
+  for(const id of ids){ await confirmAuthFor(id); }
   await famrLog('USER_STATUS', { bulk:true, count:ids.length, status:'active' });
   invalidate('home:');
   toast(`${ids.length} usuário(s) aprovado(s)!`);
@@ -1842,7 +1837,13 @@ window.rejectUser = async id => {
   toast('Alistamento recusado.');
   tabUsuarios(document.getElementById('admin-body'));
 };
-window.setUser = async (id, status) => { const { error } = await supabase.from('profiles').update({ status }).eq('id', id); if(error) return toast('Erro: '+error.message,'err'); await famrLog('USER_STATUS', { id, status }); toast('Status atualizado.'); tabUsuarios(document.getElementById('admin-body')); };
+window.setUser = async (id, status) => {
+  const { error } = await supabase.from('profiles').update({ status }).eq('id', id);
+  if(error) return toast('Erro: '+error.message,'err');
+  if(status==='active') await confirmAuthFor(id);
+  await famrLog('USER_STATUS', { id, status });
+  toast('Status atualizado.'); tabUsuarios(document.getElementById('admin-body'));
+};
 window.unlockUser = async (id) => { const { error } = await supabase.from('profiles').update({ login_locked:false, failed_logins:0 }).eq('id', id); if(error) return toast('Erro: '+error.message,'err'); await famrLog('LOCK_REMOVIDO_ADMIN', { id }); toast('Destravada.'); tabUsuarios(document.getElementById('admin-body')); };
 window.manageGroups = async (userId, nick) => {
   const [{ data: all }, { data: mine }] = await Promise.all([
