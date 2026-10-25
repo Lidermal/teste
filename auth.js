@@ -1,4 +1,4 @@
-/* ══════════ FAMR • AUTENTICAÇÃO v47 (Completo | Fix Alistamento | 1 Ícone | Watchdog | Recovery) ══════════ */
+/* ══════════ FAMR • AUTENTICAÇÃO v47 FIX (Botão Registro | Alistamento Funcionando) ══════════ */
 
 const SCREENS = ['screen-login','screen-register','screen-forgot','screen-reset','screen-maintenance'];
 const INACTIVITY_MS = 60*60*1000, BROWSER_WINDOW_MS = 5*60*1000, BROWSER_BLOCK_MS = 5*60*1000;
@@ -6,7 +6,6 @@ const MAX_REQ_WINDOW = 4, MAX_WRONG_PASS = 4;
 let watchTimer = null, lastTouch = 0, cdTimer = null;
 const dayStr = () => new Date().toISOString().slice(0,10);
 
-/* ── DETECÇÃO IMEDIATA DE RECUPERAÇÃO ── */
 const _urlHash = location.hash || '';
 const _urlSearch = location.search || '';
 const _hasRecoveryToken = /type=recovery|recovery_token=|access_token=[^&]+.*type=recovery/i.test(_urlHash + _urlSearch);
@@ -35,9 +34,6 @@ function showScreen(id){
   else document.getElementById(id)?.classList.remove('hidden');
 }
 
-/* ── ALERTA COM UM ÚNICO ÍCONE (v47 fix) ──
-   IMPORTANTE: NÃO inclua <i class="fas..."> nas mensagens.
-   O ícone é inserido automaticamente aqui. */
 function showAlert(boxId, kind, html){
   const box = document.getElementById(boxId);
   if(!box) return;
@@ -102,7 +98,10 @@ async function endSession(msg){
 
 document.addEventListener('DOMContentLoaded', () => {
   try{
-    const on = (id, ev, fn) => document.getElementById(id)?.addEventListener(ev, fn);
+    const on = (id, ev, fn) => {
+      const el = document.getElementById(id);
+      if(el) el.addEventListener(ev, fn);
+    };
     on('form-login','submit', e => { e.preventDefault(); doLogin(e); });
     on('form-register','submit', e => { e.preventDefault(); doRegister(e); });
     on('form-forgot','submit', e => { e.preventDefault(); doForgot(e); });
@@ -158,7 +157,7 @@ async function initSession(){
   }
 }
 
-/* ══════════ LOGIN (spinner + verificação no banco) ══════════ */
+/* ══════════ LOGIN ══════════ */
 async function doLogin(e){
   loginAlertHide();
   if(!sbOk()){ loginAlert(MSG_SERVIDOR, 'err'); return; }
@@ -179,7 +178,11 @@ async function doLogin(e){
   arr.push(now); localStorage.setItem(attKey, JSON.stringify(arr));
   if(arr.length > MAX_REQ_WINDOW){ const u = now + BROWSER_BLOCK_MS; localStorage.setItem(blkKey, String(u)); startCountdown(u); return; }
 
-  const btn = e.currentTarget.querySelector('button[type="submit"]') || e.target.closest('form').querySelector('button[type="submit"]');
+  /* CORREÇÃO: encontra botão de forma segura */
+  const form = e.target.closest('form') || e.currentTarget;
+  const btn = form.querySelector('button[type="submit"]');
+  if(!btn){ console.error('[FAMR] Botão não encontrado'); return; }
+  
   btn.disabled = true;
   btn.classList.add('btn-auth-loading');
   const textSpan = btn.querySelector('#btn-login-text');
@@ -266,20 +269,33 @@ async function enterSystem(userId){
   try{ await route(); }catch(err){ console.error(err); }
 }
 
-/* ══════════ ALISTAMENTO (v47: cria perfil E confirma auth) ══════════ */
+/* ══════════ ALISTAMENTO (CORRIGIDO) ══════════ */
 async function doRegister(e){
+  loginAlertHide();
   if(!sbOk()){ loginAlert(MSG_SERVIDOR, 'err'); return; }
-  const nick  = document.getElementById('reg-nick').value.trim();
-  const email = document.getElementById('reg-email').value.trim().toLowerCase();
-  const pass  = document.getElementById('reg-pass').value;
+  
+  const nick  = document.getElementById('reg-nick')?.value.trim();
+  const email = document.getElementById('reg-email')?.value.trim().toLowerCase();
+  const pass  = document.getElementById('reg-pass')?.value;
   const pass2El = document.getElementById('reg-pass2');
   const pass2 = pass2El ? pass2El.value : pass;
+  
   if(!nick || !email || !pass){ loginAlert('Preencha todos os campos.', 'warn'); return; }
   if(pass !== pass2){ loginAlert('As senhas não conferem.', 'warn'); return; }
   if(pass.length < 6){ loginAlert('A senha deve ter no mínimo 6 caracteres.', 'warn'); return; }
 
-  const btn = e.currentTarget.querySelector('button[type="submit"]') || e.target.closest('form').querySelector('button[type="submit"]');
+  /* CORREÇÃO CRÍTICA: encontra botão de forma segura */
+  const form = e.target.closest('form') || e.currentTarget;
+  const btn = form.querySelector('button[type="submit"]');
+  if(!btn){ 
+    console.error('[FAMR] Botão de registro não encontrado no formulário');
+    loginAlert('Erro interno: botão não encontrado.', 'err');
+    return; 
+  }
+  
   btn.disabled = true;
+  btn.innerHTML = '<span class="spin-sm"></span> CRIANDO CONTA...';
+  
   try{
     const { data: chk, error: chkErr } = await supabase.rpc('famr_check_alistamento', { p_email: email, p_nick: nick });
     if(!chkErr && chk){
@@ -288,21 +304,28 @@ async function doRegister(e){
     }
 
     const { data, error } = await supabase.auth.signUp({ email, password: pass, options: { data: { nickname: nick } } });
-    if(error){ loginAlert('Erro no alistamento: '+error.message, 'err'); return; }
-    if(!data || !data.user){ loginAlert('Não foi possível criar a conta.', 'err'); return; }
+    if(error){ 
+      console.error('[FAMR] signUp error:', error);
+      loginAlert('Erro no alistamento: '+error.message, 'err'); 
+      return; 
+    }
+    if(!data || !data.user){ 
+      loginAlert('Não foi possível criar a conta.', 'err'); 
+      return; 
+    }
     if(data.user.identities && data.user.identities.length === 0){
       loginAlert('Este e-mail já está cadastrado. Use "Esqueci a senha".', 'warn');
       return;
     }
 
-    /* v47: cria perfil pendente E confirma email no auth
-       Garante que a senha funcione após aprovação da chefia */
+    /* Cria perfil pendente E confirma email no auth */
     const { error: rpcErr } = await supabase.rpc('famr_finalize_alistamento', {
       p_user_id: data.user.id, p_email: email, p_nickname: nick
     });
     if(rpcErr){
       console.error('[FAMR] finalize alistamento:', rpcErr);
       loginAlert('Conta criada, mas o registro falhou. Contate a chefia.', 'warn');
+      return;
     }
 
     if(data.session){ await supabase.auth.signOut(); }
@@ -312,37 +335,48 @@ async function doRegister(e){
     try{ await supabase.rpc('log_action', { action:'REGISTRO', details:{ nick } }); }catch(err){}
   } catch(err){
     console.error('[FAMR] registro:', err);
-    loginAlert('Erro inesperado no alistamento.', 'err');
+    loginAlert('Erro inesperado no alistamento: ' + err.message, 'err');
   } finally {
     btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-user-plus"></i> ALISTAR-SE';
   }
 }
 
 async function doForgot(e){
+  loginAlertHide();
   if(!sbOk()){ loginAlert(MSG_SERVIDOR, 'err'); return; }
-  const nick = document.getElementById('forgot-nick').value.trim();
+  const nick = document.getElementById('forgot-nick')?.value.trim();
   if(!nick){ loginAlert('Informe o nickname.', 'warn'); return; }
-  const btn = e.target.querySelector('button'); btn.disabled = true;
+  
+  const form = e.target.closest('form') || e.currentTarget;
+  const btn = form.querySelector('button[type="submit"]');
+  if(btn) btn.disabled = true;
+  
   try{
     const { data: email, error } = await supabase.rpc('resolve_login_email', { nick });
     if(error || !email){ loginAlert('Nickname não encontrado.', 'err'); return; }
     const redirectURL = location.origin + location.pathname;
     const { error: rErr } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: redirectURL });
     if(rErr){ loginAlert('Erro ao enviar link: '+rErr.message, 'err'); return; }
-    document.getElementById('form-forgot').classList.add('hidden');
+    document.getElementById('form-forgot')?.classList.add('hidden');
     document.getElementById('forgot-ok')?.classList.remove('hidden');
     await famrLog('SENHA_LINK_ENVIADO', { nick });
   } catch(err){ loginAlert('Erro inesperado.', 'err'); }
-  finally { btn.disabled = false; }
+  finally { if(btn) btn.disabled = false; }
 }
 
 async function doResetSave(){
-  const p1 = document.getElementById('reset-pass').value;
-  const p2 = document.getElementById('reset-pass2').value;
+  const p1 = document.getElementById('reset-pass')?.value;
+  const p2 = document.getElementById('reset-pass2')?.value;
+  if(!p1 || !p2){ loginAlert('Preencha as senhas.', 'warn'); return; }
   if(p1.length < 6){ loginAlert('Senha mínima: 6 caracteres.', 'warn'); return; }
   if(p1 !== p2){ loginAlert('As senhas não conferem.', 'err'); return; }
+  
+  const btn = document.getElementById('btn-reset-save');
+  if(btn) btn.disabled = true;
+  
   const { error } = await supabase.auth.updateUser({ password: p1 });
-  if(error){ loginAlert('Erro ao salvar senha.', 'err'); return; }
+  if(error){ loginAlert('Erro ao salvar senha: ' + error.message, 'err'); return; }
   try{ await supabase.rpc('famr_set_credentials', { new_pass: p1 }); }catch(e){}
   await famrLog('SENHA_REDEFINIDA', {});
   window._famrRecovery = false;
@@ -352,7 +386,6 @@ async function doResetSave(){
   loginAlert('Senha redefinida. Faça login novamente.', 'ok');
 }
 
-/* ══════════ LOGOUT ══════════ */
 async function doLogout(){
   const nick = STATE.profile?.nickname || 'usuário';
   await famrLog('LOGOUT', { nick });
@@ -363,7 +396,6 @@ async function doLogout(){
   location.reload();
 }
 
-/* ══════════ FAMRLOG HELPER ══════════ */
 async function famrLog(action, details={}){
   const enriched = { ...details };
   if(!enriched.nick && STATE.profile) enriched.nick = STATE.profile.nickname;
