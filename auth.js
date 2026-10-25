@@ -179,7 +179,7 @@ async function doLogin(e){
   arr.push(now); localStorage.setItem(attKey, JSON.stringify(arr));
   if(arr.length > MAX_REQ_WINDOW){ const u = now + BROWSER_BLOCK_MS; localStorage.setItem(blkKey, String(u)); startCountdown(u); return; }
 
-  const btn = e.target.querySelector('button');
+  const btn = e.currentTarget.querySelector('button[type="submit"]') || e.target.closest('form').querySelector('button[type="submit"]');
   btn.disabled = true;
   btn.classList.add('btn-auth-loading');
   const textSpan = btn.querySelector('#btn-login-text');
@@ -278,7 +278,7 @@ async function doRegister(e){
   if(pass !== pass2){ loginAlert('As senhas não conferem.', 'warn'); return; }
   if(pass.length < 6){ loginAlert('A senha deve ter no mínimo 6 caracteres.', 'warn'); return; }
 
-  const btn = e.target.querySelector('button');
+  const btn = e.currentTarget.querySelector('button[type="submit"]') || e.target.closest('form').querySelector('button[type="submit"]');
   btn.disabled = true;
   try{
     const { data: chk, error: chkErr } = await supabase.rpc('famr_check_alistamento', { p_email: email, p_nick: nick });
