@@ -1,6 +1,5 @@
-/* ══════════ FAMR • AUTENTICAÇÃO v-final (Login delegado p/ contas novas | Nomes de parâmetro batendo | Watchdog | Recovery | Spinner) ══════════ */
+/* ══════════ FAMR • AUTENTICAÇÃO v-final4 (remove .catch() de rpc | delegação contas novas | watchdog | recovery) ══════════ */
 
-/* Helper local de escape (autocontido — não depende da ordem de carga do app.js) */
 const escA = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 const SCREENS = ['screen-login','screen-register','screen-forgot','screen-reset','screen-maintenance'];
@@ -54,7 +53,6 @@ function hideAlert(boxId){
 function loginAlert(msg, type='err'){ showAlert('login-alert', type, msg); }
 const loginAlertHide = () => hideAlert('login-alert');
 
-/* Alerta VISÍVEL em qualquer tela (alistamento/esqueci) via toast global + console */
 function authToast(msg, type='err'){
   console[type==='err'?'error':'warn']('[FAMR]', msg);
   if(typeof toast === 'function'){ toast(msg, type); return; }
@@ -68,6 +66,13 @@ const setLoginDisabled = d => {
 
 function sbOk(){ try{ return typeof supabase !== 'undefined' && !!supabase && typeof supabase.from === 'function'; }catch(e){ return false; } }
 const MSG_SERVIDOR = 'Falha interna ao conectar com o servidor. Tente novamente em instantes.';
+
+/* ★ v-final4: helper seguro p/ RPCs OPCIONAIS. O builder do supabase.rpc() NÃO tem .catch()
+   em várias versões → usar try/catch em volta do await. Nunca mais "is not a function". */
+async function tryRpc(name, params){
+  try{ return await supabase.rpc(name, params); }
+  catch(e){ console.warn('[FAMR] rpc opcional "'+name+'" falhou:', e && e.message); return { data:null, error:e }; }
+}
 
 function startCountdown(until){
   clearInterval(cdTimer);
@@ -167,7 +172,7 @@ async function initSession(){
   }
 }
 
-/* ══════════ LOGIN v-final (delegação segura p/ contas novas) ══════════ */
+/* ══════════ LOGIN v-final4 (delegação + sem .catch() em rpc) ══════════ */
 async function doLogin(e){
   loginAlertHide();
   if(!sbOk()){ loginAlert(MSG_SERVIDOR, 'err'); return false; }
@@ -196,7 +201,6 @@ async function doLogin(e){
   }
 
   try{
-    /* 1) verify — NOMES DE PARÂMETRO BATENDO COM O SQL (p_nick / p_pass) */
     const { data: v, error } = await supabase.rpc('famr_login_verify', { p_nick: nick, p_pass: pass });
     if(error){ console.error('[FAMR] login_verify:', error); throw new Error('Falha na verificação de segurança.'); }
     const row = Array.isArray(v) ? v[0] : v;
@@ -206,15 +210,13 @@ async function doLogin(e){
     let sessionUser = null;
 
     if(row.delegated){
-      /* CONTA NOVA: a validação REAL é feita aqui pelo Supabase Auth (GoTrue).
-         O verify só devolveu ok=true + email. Se a senha estiver errada, o erro
-         vem daqui e É AÍ que contamos a falha (no banco, via famr_bump_failed). */
+      /* CONTA NOVA: validação REAL pelo Supabase Auth (GoTrue). Erro de credencial = falha de senha. */
       const { data, error: le } = await supabase.auth.signInWithPassword({ email: row.email, password: pass });
       if(le){
         console.error('[FAMR] signIn (delegado):', le);
         const credErr = /invalid login credentials|invalid credential|wrong password|senha/i.test(le.message||'');
         if(credErr){
-          await supabase.rpc('famr_bump_failed', { p_email: row.email }).catch(()=>{});
+          await tryRpc('famr_bump_failed', { p_email: row.email });   // ★ sem .catch()
           let f = (row.fails || 0) + 1;
           try{
             const { data: lk } = await supabase.rpc('famr_login_lookup', { p_nick: nick });
@@ -223,24 +225,23 @@ async function doLogin(e){
           if(f >= MAX_WRONG_PASS) throw new Error('CONTA_BLOQUEADA');
           throw new Error(`Senha incorreta (${f}/${MAX_WRONG_PASS}).`);
         }
-        /* não é senha (ex.: e-mail não confirmado / rate limit): não pune */
+        /* não é senha (ex.: e-mail não confirmado / rate limit): não pune, mostra o motivo real */
         throw new Error(le.message || 'Falha ao abrir sessão.');
       }
       sessionUser = data.user;
-      await supabase.rpc('famr_reset_failed', { p_email: row.email }).catch(()=>{});
+      await tryRpc('famr_reset_failed', { p_email: row.email });        // ★ sem .catch()  ← este era o vilão do login da conta nova
     } else {
       /* CONTA LEGADA: o verify já validou bcrypt no banco e contou a falha. */
       if(row.ok !== true){ throw new Error(`Senha incorreta (${row.fails||0}/${MAX_WRONG_PASS}).`); }
       const { data, error: le } = await supabase.auth.signInWithPassword({ email: row.email, password: pass });
       if(le){
-        /* bcrypt bateu no verify mas o auth divergiu → anomalia de dados, não pune */
         console.error('[FAMR] signIn (legado) anomalia:', le);
         throw new Error('Falha ao abrir sessão. Contate a chefia.');
       }
       sessionUser = data.user;
     }
 
-    /* 2) sucesso: limpa contadores locais */
+    /* sucesso: limpa contadores locais */
     localStorage.removeItem(attKey); localStorage.removeItem(blkKey);
 
     const { data: prof } = await supabase.from('profiles_view').select('nickname,status,login_locked').eq('id', sessionUser.id).single();
@@ -292,7 +293,7 @@ async function enterSystem(userId){
   try{ await route(); }catch(err){ console.error(err); }
 }
 
-/* ══════════ ALISTAMENTO (erros SEMPRE visíveis) ══════════ */
+/* ══════════ ALISTAMENTO ══════════ */
 async function doRegister(e){
   if(e) e.preventDefault();
   if(!sbOk()){ authToast(MSG_SERVIDOR, 'err'); return false; }
@@ -334,7 +335,6 @@ async function doRegister(e){
       authToast('Este e-mail já possui conta. Faça login.', 'warn'); return false;
     }
 
-    /* cria perfil PENDENTE + confirma e-mail no auth (senha passa a valer) */
     const { error: rpcErr } = await supabase.rpc('famr_finalize_alistamento', {
       p_user_id: data.user.id, p_email: email, p_nickname: nick
     });
@@ -349,7 +349,7 @@ async function doRegister(e){
     form?.classList.add('hidden');
     document.getElementById('register-success')?.classList.remove('hidden');
     if(typeof toast === 'function') toast('Alistamento enviado! Aguarde a aprovação da chefia.', 'ok');
-    supabase.rpc('log_action', { action:'REGISTRO', details:{ nick } }).catch(()=>{});
+    tryRpc('log_action', { action:'REGISTRO', details:{ nick } });        // ★ sem .catch()
   } catch(err){
     console.error('[FAMR] registro:', err);
     authToast('Erro inesperado no alistamento: '+err.message, 'err');
@@ -359,7 +359,7 @@ async function doRegister(e){
   return false;
 }
 
-/* ══════════ ESQUECI A SENHA (usa famr_login_lookup — nome p_nick batendo) ══════════ */
+/* ══════════ ESQUECI A SENHA ══════════ */
 async function doForgot(e){
   if(e) e.preventDefault();
   if(!sbOk()){ authToast(MSG_SERVIDOR, 'err'); return false; }
@@ -412,7 +412,7 @@ async function doLogout(){
   location.reload();
 }
 
-/* ══════════ FAMRLOG ══════════ */
+/* ══════════ FAMRLOG (já usava try/catch, mantido) ══════════ */
 async function famrLog(action, details={}){
   const enriched = { ...details };
   if(!enriched.nick && STATE.profile) enriched.nick = STATE.profile.nickname;
