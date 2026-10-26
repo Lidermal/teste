@@ -1,4 +1,7 @@
-/* ══════════ FAMR • AUTENTICAÇÃO v47 FIX (Botão Registro | Alistamento Funcionando) ══════════ */
+/* ══════════ FAMR • AUTENTICAÇÃO v-final (Login delegado p/ contas novas | Nomes de parâmetro batendo | Watchdog | Recovery | Spinner) ══════════ */
+
+/* Helper local de escape (autocontido — não depende da ordem de carga do app.js) */
+const escA = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 const SCREENS = ['screen-login','screen-register','screen-forgot','screen-reset','screen-maintenance'];
 const INACTIVITY_MS = 60*60*1000, BROWSER_WINDOW_MS = 5*60*1000, BROWSER_BLOCK_MS = 5*60*1000;
@@ -6,6 +9,7 @@ const MAX_REQ_WINDOW = 4, MAX_WRONG_PASS = 4;
 let watchTimer = null, lastTouch = 0, cdTimer = null;
 const dayStr = () => new Date().toISOString().slice(0,10);
 
+/* ── DETECÇÃO IMEDIATA DE RECUPERAÇÃO ── */
 const _urlHash = location.hash || '';
 const _urlSearch = location.search || '';
 const _hasRecoveryToken = /type=recovery|recovery_token=|access_token=[^&]+.*type=recovery/i.test(_urlHash + _urlSearch);
@@ -34,6 +38,7 @@ function showScreen(id){
   else document.getElementById(id)?.classList.remove('hidden');
 }
 
+/* ── ALERTA COM UM ÚNICO ÍCONE (não passe <i> na mensagem) ── */
 function showAlert(boxId, kind, html){
   const box = document.getElementById(boxId);
   if(!box) return;
@@ -46,9 +51,15 @@ function hideAlert(boxId){
   const box = document.getElementById(boxId);
   if(box){ box.classList.add('hidden'); box.innerHTML=''; }
 }
-
 function loginAlert(msg, type='err'){ showAlert('login-alert', type, msg); }
 const loginAlertHide = () => hideAlert('login-alert');
+
+/* Alerta VISÍVEL em qualquer tela (alistamento/esqueci) via toast global + console */
+function authToast(msg, type='err'){
+  console[type==='err'?'error':'warn']('[FAMR]', msg);
+  if(typeof toast === 'function'){ toast(msg, type); return; }
+  showAlert('login-alert', type, escA(msg));
+}
 
 const setLoginDisabled = d => {
   const b = document.querySelector('#form-login button[type=submit]');
@@ -56,7 +67,7 @@ const setLoginDisabled = d => {
 };
 
 function sbOk(){ try{ return typeof supabase !== 'undefined' && !!supabase && typeof supabase.from === 'function'; }catch(e){ return false; } }
-const MSG_SERVIDOR = 'Falha interna ao conectar com o servidor.<br><span class="text-xs font-normal">Tente novamente em instantes.</span>';
+const MSG_SERVIDOR = 'Falha interna ao conectar com o servidor. Tente novamente em instantes.';
 
 function startCountdown(until){
   clearInterval(cdTimer);
@@ -93,15 +104,13 @@ async function endSession(msg){
   try{ await supabase.auth.signOut(); }catch(e){}
   localStorage.removeItem('famr_day');
   showScreen('screen-login');
-  loginAlert(msg, 'warn');
+  loginAlert(escA(msg), 'warn');
 }
 
+/* ── LISTENERS ── */
 document.addEventListener('DOMContentLoaded', () => {
   try{
-    const on = (id, ev, fn) => {
-      const el = document.getElementById(id);
-      if(el) el.addEventListener(ev, fn);
-    };
+    const on = (id, ev, fn) => document.getElementById(id)?.addEventListener(ev, fn);
     on('form-login','submit', e => { e.preventDefault(); doLogin(e); });
     on('form-register','submit', e => { e.preventDefault(); doRegister(e); });
     on('form-forgot','submit', e => { e.preventDefault(); doForgot(e); });
@@ -121,7 +130,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if(event === 'SIGNED_OUT' && !window._famrRecovery){
         STATE.profile = null; STATE.groups = []; stopWatchdog();
-        if(!document.getElementById('shell').classList.contains('hidden')){
+        const shell = document.getElementById('shell');
+        if(shell && !shell.classList.contains('hidden')){
           showScreen('screen-login'); loginAlert('Sessão encerrada.', 'warn');
         }
       }
@@ -157,16 +167,16 @@ async function initSession(){
   }
 }
 
-/* ══════════ LOGIN v50 (bcrypt validado no banco | spinner | anti-brute) ══════════ */
+/* ══════════ LOGIN v-final (delegação segura p/ contas novas) ══════════ */
 async function doLogin(e){
   loginAlertHide();
   if(!sbOk()){ loginAlert(MSG_SERVIDOR, 'err'); return false; }
 
-  const nick = document.getElementById('login-nick').value.trim();
-  const pass = document.getElementById('login-pass').value;
+  const nick = (document.getElementById('login-nick')?.value || '').trim();
+  const pass = document.getElementById('login-pass')?.value || '';
   if(!nick || !pass) return false;
 
-  /* anti-brute-force local (igual v31/v48) */
+  /* anti-brute-force local */
   const nk = nick.toLowerCase(), blkKey = 'famr_blk_'+nk, attKey = 'famr_att_'+nk;
   const until = +localStorage.getItem(blkKey) || 0;
   if(Date.now() < until){ startCountdown(until); return false; }
@@ -186,26 +196,54 @@ async function doLogin(e){
   }
 
   try{
-    /* 1) verify valida bcrypt no banco (legado OU conta nova) e já conta a falha */
+    /* 1) verify — NOMES DE PARÂMETRO BATENDO COM O SQL (p_nick / p_pass) */
     const { data: v, error } = await supabase.rpc('famr_login_verify', { p_nick: nick, p_pass: pass });
     if(error){ console.error('[FAMR] login_verify:', error); throw new Error('Falha na verificação de segurança.'); }
     const row = Array.isArray(v) ? v[0] : v;
     if(!row){ throw new Error('Nickname não encontrado ou conta banida.'); }
     if(row.locked){ throw new Error('CONTA_BLOQUEADA'); }
-    if(row.ok !== true){ throw new Error(`Senha incorreta (${row.fails||0}/${MAX_WRONG_PASS}).`); }
 
-    /* 2) abre a sessão no Supabase Auth (confere de novo e emite tokens) */
-    const { data, error: le } = await supabase.auth.signInWithPassword({ email: row.email, password: pass });
-    if(le){
-      console.error('[FAMR] signIn:', le);
-      if(/confirm/i.test(le.message)) throw new Error('E-mail não confirmado. Contate a chefia.');
-      throw new Error('Falha ao abrir sessão: ' + le.message);
+    let sessionUser = null;
+
+    if(row.delegated){
+      /* CONTA NOVA: a validação REAL é feita aqui pelo Supabase Auth (GoTrue).
+         O verify só devolveu ok=true + email. Se a senha estiver errada, o erro
+         vem daqui e É AÍ que contamos a falha (no banco, via famr_bump_failed). */
+      const { data, error: le } = await supabase.auth.signInWithPassword({ email: row.email, password: pass });
+      if(le){
+        console.error('[FAMR] signIn (delegado):', le);
+        const credErr = /invalid login credentials|invalid credential|wrong password|senha/i.test(le.message||'');
+        if(credErr){
+          await supabase.rpc('famr_bump_failed', { p_email: row.email }).catch(()=>{});
+          let f = (row.fails || 0) + 1;
+          try{
+            const { data: lk } = await supabase.rpc('famr_login_lookup', { p_nick: nick });
+            if(lk && lk[0] && lk[0].failed_logins != null) f = lk[0].failed_logins;
+          }catch(_){}
+          if(f >= MAX_WRONG_PASS) throw new Error('CONTA_BLOQUEADA');
+          throw new Error(`Senha incorreta (${f}/${MAX_WRONG_PASS}).`);
+        }
+        /* não é senha (ex.: e-mail não confirmado / rate limit): não pune */
+        throw new Error(le.message || 'Falha ao abrir sessão.');
+      }
+      sessionUser = data.user;
+      await supabase.rpc('famr_reset_failed', { p_email: row.email }).catch(()=>{});
+    } else {
+      /* CONTA LEGADA: o verify já validou bcrypt no banco e contou a falha. */
+      if(row.ok !== true){ throw new Error(`Senha incorreta (${row.fails||0}/${MAX_WRONG_PASS}).`); }
+      const { data, error: le } = await supabase.auth.signInWithPassword({ email: row.email, password: pass });
+      if(le){
+        /* bcrypt bateu no verify mas o auth divergiu → anomalia de dados, não pune */
+        console.error('[FAMR] signIn (legado) anomalia:', le);
+        throw new Error('Falha ao abrir sessão. Contate a chefia.');
+      }
+      sessionUser = data.user;
     }
 
-    /* 3) sucesso: limpa contadores locais */
+    /* 2) sucesso: limpa contadores locais */
     localStorage.removeItem(attKey); localStorage.removeItem(blkKey);
 
-    const { data: prof } = await supabase.from('profiles_view').select('nickname,status,login_locked').eq('id', data.user.id).single();
+    const { data: prof } = await supabase.from('profiles_view').select('nickname,status,login_locked').eq('id', sessionUser.id).single();
     if(!prof){ await supabase.auth.signOut(); throw new Error('Perfil não encontrado.'); }
     if(prof.status !== 'active'){
       await supabase.auth.signOut();
@@ -213,15 +251,15 @@ async function doLogin(e){
     }
     if(prof.login_locked){ await supabase.auth.signOut(); throw new Error('CONTA_BLOQUEADA'); }
 
-    showAlert('login-alert', 'ok', `<b>${esc(prof.nickname)}</b> logado com sucesso! Entrando no quartel...`);
+    showAlert('login-alert', 'ok', `<b>${escA(prof.nickname)}</b> logado com sucesso! Entrando no quartel...`);
     await famrLog('LOGIN', { nick: prof.nickname });
-    await enterSystem(data.user.id);
+    await enterSystem(sessionUser.id);
 
   } catch(err){
     console.error('[FAMR] login:', err);
     const msg = err.message || 'Erro desconhecido.';
     if(msg.includes('CONTA_BLOQUEADA')) showLockedMsg();
-    else loginAlert(esc(msg), 'err');
+    else loginAlert(escA(msg), 'err');
   } finally {
     if(btn){
       btn.disabled = false; btn.classList.remove('btn-auth-loading');
@@ -232,123 +270,138 @@ async function doLogin(e){
   return false;
 }
 
-/* ══════════ ALISTAMENTO (CORRIGIDO) ══════════ */
+async function enterSystem(userId){
+  if(window._famrRecovery){ showScreen('screen-reset'); return; }
+  const { data: profile, error } = await supabase.from('profiles_view').select('*').eq('id', userId).single();
+  if(error || !profile){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Perfil não encontrado.', 'err'); return; }
+  if(profile.status === 'banned'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta BANIDA.', 'err'); return; }
+  if(profile.status === 'pending'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta não ativada. Aguarde a aprovação da chefia.', 'warn'); return; }
+  if(profile.login_locked){ await supabase.auth.signOut(); showScreen('screen-login'); showLockedMsg(); return; }
+
+  STATE.profile = profile;
+  const { data: ug } = await supabase.from('user_groups').select('group_id, groups(*)').eq('user_id', userId);
+  STATE.groups = (ug||[]).map(r => r.groups).filter(Boolean).sort((a,b) => (a.order_index||0)-(b.order_index||0));
+
+  if(STATE.settings.maintenance?.enabled && !isAdmin()){
+    document.getElementById('maintenance-msg').textContent = STATE.settings.maintenance.message || '';
+    showScreen('screen-maintenance'); return;
+  }
+  startWatchdog(); showScreen('shell');
+  try{ await buildSidebar(); }catch(err){ console.error(err); }
+  if(!location.hash || location.hash === '#') location.hash = '#/home';
+  try{ await route(); }catch(err){ console.error(err); }
+}
+
+/* ══════════ ALISTAMENTO (erros SEMPRE visíveis) ══════════ */
 async function doRegister(e){
-  loginAlertHide();
-  if(!sbOk()){ loginAlert(MSG_SERVIDOR, 'err'); return; }
-  
-  const nick  = document.getElementById('reg-nick')?.value.trim();
-  const email = document.getElementById('reg-email')?.value.trim().toLowerCase();
-  const pass  = document.getElementById('reg-pass')?.value;
+  if(e) e.preventDefault();
+  if(!sbOk()){ authToast(MSG_SERVIDOR, 'err'); return false; }
+
+  const nick  = (document.getElementById('reg-nick')?.value || '').trim();
+  const email = (document.getElementById('reg-email')?.value || '').trim().toLowerCase();
+  const pass  = document.getElementById('reg-pass')?.value || '';
   const pass2El = document.getElementById('reg-pass2');
   const pass2 = pass2El ? pass2El.value : pass;
-  
-  if(!nick || !email || !pass){ loginAlert('Preencha todos os campos.', 'warn'); return; }
-  if(pass !== pass2){ loginAlert('As senhas não conferem.', 'warn'); return; }
-  if(pass.length < 6){ loginAlert('A senha deve ter no mínimo 6 caracteres.', 'warn'); return; }
 
-  /* CORREÇÃO CRÍTICA: encontra botão de forma segura */
-  const form = e.target.closest('form') || e.currentTarget;
-  const btn = form.querySelector('button[type="submit"]');
-  if(!btn){ 
-    console.error('[FAMR] Botão de registro não encontrado no formulário');
-    loginAlert('Erro interno: botão não encontrado.', 'err');
-    return; 
-  }
-  
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spin-sm"></span> CRIANDO CONTA...';
-  
+  if(!nick || !email || !pass){ authToast('Preencha todos os campos.', 'warn'); return false; }
+  if(pass !== pass2){ authToast('As senhas não conferem.', 'warn'); return false; }
+  if(pass.length < 6){ authToast('A senha deve ter no mínimo 6 caracteres.', 'warn'); return false; }
+
+  const form = document.getElementById('form-register');
+  const btn = form ? form.querySelector('button[type="submit"]') : null;
+  if(btn){ btn.disabled = true; btn.classList.add('btn-auth-loading'); btn.innerHTML = '<span class="spin-sm"></span> CRIANDO CONTA...'; }
+
   try{
     const { data: chk, error: chkErr } = await supabase.rpc('famr_check_alistamento', { p_email: email, p_nick: nick });
-    if(!chkErr && chk){
-      if(chk.email_exists){ loginAlert('Este e-mail já está cadastrado. Use "Esqueci a senha".', 'warn'); return; }
-      if(chk.nick_exists){ loginAlert('Este nickname já está em uso. Escolha outro.', 'warn'); return; }
+    if(chkErr){ console.warn('[FAMR] check_alistamento:', chkErr.message); }
+    else if(chk){
+      if(chk.email_exists){ authToast('Este e-mail já está cadastrado. Faça login ou use "Esqueci a senha".', 'warn'); return false; }
+      if(chk.nick_exists){ authToast('Este nickname já está em uso. Escolha outro.', 'warn'); return false; }
     }
 
-    const { data, error } = await supabase.auth.signUp({ email, password: pass, options: { data: { nickname: nick } } });
-    if(error){ 
-      console.error('[FAMR] signUp error:', error);
-      loginAlert('Erro no alistamento: '+error.message, 'err'); 
-      return; 
+    const { data, error } = await supabase.auth.signUp({ email, password: pass, options:{ data:{ nickname: nick } } });
+    if(error){
+      console.error('[FAMR] signUp:', error);
+      if(/already registered|already exists|duplicate/i.test(error.message)){
+        authToast('Este e-mail já está cadastrado. Faça login ou use "Esqueci a senha".', 'warn');
+      } else {
+        authToast('Erro no alistamento: '+error.message, 'err');
+      }
+      return false;
     }
-    if(!data || !data.user){ 
-      loginAlert('Não foi possível criar a conta.', 'err'); 
-      return; 
-    }
-    if(data.user.identities && data.user.identities.length === 0){
-      loginAlert('Este e-mail já está cadastrado. Use "Esqueci a senha".', 'warn');
-      return;
+    if(!data || !data.user){ authToast('Não foi possível criar a conta.', 'err'); return false; }
+    if((data.user.identities || []).length === 0){
+      authToast('Este e-mail já possui conta. Faça login.', 'warn'); return false;
     }
 
-    /* Cria perfil pendente E confirma email no auth */
+    /* cria perfil PENDENTE + confirma e-mail no auth (senha passa a valer) */
     const { error: rpcErr } = await supabase.rpc('famr_finalize_alistamento', {
       p_user_id: data.user.id, p_email: email, p_nickname: nick
     });
     if(rpcErr){
-      console.error('[FAMR] finalize alistamento:', rpcErr);
-      loginAlert('Conta criada, mas o registro falhou. Contate a chefia.', 'warn');
-      return;
+      console.error('[FAMR] finalize_alistamento:', rpcErr);
+      authToast('Conta criada, mas o perfil não foi registrado: '+rpcErr.message, 'err');
+      return false;
     }
 
     if(data.session){ await supabase.auth.signOut(); }
 
-    document.getElementById('form-register')?.classList.add('hidden');
+    form?.classList.add('hidden');
     document.getElementById('register-success')?.classList.remove('hidden');
-    try{ await supabase.rpc('log_action', { action:'REGISTRO', details:{ nick } }); }catch(err){}
+    if(typeof toast === 'function') toast('Alistamento enviado! Aguarde a aprovação da chefia.', 'ok');
+    supabase.rpc('log_action', { action:'REGISTRO', details:{ nick } }).catch(()=>{});
   } catch(err){
     console.error('[FAMR] registro:', err);
-    loginAlert('Erro inesperado no alistamento: ' + err.message, 'err');
+    authToast('Erro inesperado no alistamento: '+err.message, 'err');
   } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-user-plus"></i> ALISTAR-SE';
+    if(btn){ btn.disabled = false; btn.classList.remove('btn-auth-loading'); btn.innerHTML = '<i class="fas fa-user-plus"></i> ALISTAR-SE'; }
   }
+  return false;
 }
 
+/* ══════════ ESQUECI A SENHA (usa famr_login_lookup — nome p_nick batendo) ══════════ */
 async function doForgot(e){
-  loginAlertHide();
-  if(!sbOk()){ loginAlert(MSG_SERVIDOR, 'err'); return; }
-  const nick = document.getElementById('forgot-nick')?.value.trim();
-  if(!nick){ loginAlert('Informe o nickname.', 'warn'); return; }
-  
-  const form = e.target.closest('form') || e.currentTarget;
-  const btn = form.querySelector('button[type="submit"]');
+  if(e) e.preventDefault();
+  if(!sbOk()){ authToast(MSG_SERVIDOR, 'err'); return false; }
+  const nick = (document.getElementById('forgot-nick')?.value || '').trim();
+  if(!nick){ authToast('Informe o nickname.', 'warn'); return false; }
+  const btn = e.target.querySelector('button[type="submit"]');
   if(btn) btn.disabled = true;
-  
   try{
-    const { data: email, error } = await supabase.rpc('resolve_login_email', { nick });
-    if(error || !email){ loginAlert('Nickname não encontrado.', 'err'); return; }
-    const redirectURL = location.origin + location.pathname;
-    const { error: rErr } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: redirectURL });
-    if(rErr){ loginAlert('Erro ao enviar link: '+rErr.message, 'err'); return; }
+    const { data: lk, error } = await supabase.rpc('famr_login_lookup', { p_nick: nick });
+    const row = Array.isArray(lk) ? lk[0] : lk;
+    if(error || !row || !row.email){ authToast('Nickname não encontrado.', 'err'); return false; }
+    const { error: rErr } = await supabase.auth.resetPasswordForEmail(row.email, { redirectTo: location.origin + location.pathname });
+    if(rErr){ authToast('Erro ao enviar link: '+rErr.message, 'err'); return false; }
     document.getElementById('form-forgot')?.classList.add('hidden');
     document.getElementById('forgot-ok')?.classList.remove('hidden');
     await famrLog('SENHA_LINK_ENVIADO', { nick });
-  } catch(err){ loginAlert('Erro inesperado.', 'err'); }
+  } catch(err){ authToast('Erro inesperado.', 'err'); }
   finally { if(btn) btn.disabled = false; }
+  return false;
 }
 
 async function doResetSave(){
-  const p1 = document.getElementById('reset-pass')?.value;
-  const p2 = document.getElementById('reset-pass2')?.value;
-  if(!p1 || !p2){ loginAlert('Preencha as senhas.', 'warn'); return; }
-  if(p1.length < 6){ loginAlert('Senha mínima: 6 caracteres.', 'warn'); return; }
-  if(p1 !== p2){ loginAlert('As senhas não conferem.', 'err'); return; }
-  
+  const p1 = document.getElementById('reset-pass')?.value || '';
+  const p2 = document.getElementById('reset-pass2')?.value || '';
+  if(p1.length < 6){ authToast('Senha mínima: 6 caracteres.', 'warn'); return; }
+  if(p1 !== p2){ authToast('As senhas não conferem.', 'err'); return; }
   const btn = document.getElementById('btn-reset-save');
   if(btn) btn.disabled = true;
-  
-  const { error } = await supabase.auth.updateUser({ password: p1 });
-  if(error){ loginAlert('Erro ao salvar senha: ' + error.message, 'err'); return; }
-  try{ await supabase.rpc('famr_set_credentials', { new_pass: p1 }); }catch(e){}
-  await famrLog('SENHA_REDEFINIDA', {});
-  window._famrRecovery = false;
-  cleanRecoveryHash();
-  await supabase.auth.signOut();
-  showScreen('screen-login');
-  loginAlert('Senha redefinida. Faça login novamente.', 'ok');
+  try{
+    const { error } = await supabase.auth.updateUser({ password: p1 });
+    if(error){ authToast('Erro ao salvar senha: '+error.message, 'err'); return; }
+    try{ await supabase.rpc('famr_set_credentials', { new_pass: p1 }); }catch(e){}
+    await famrLog('SENHA_REDEFINIDA', {});
+    window._famrRecovery = false;
+    cleanRecoveryHash();
+    await supabase.auth.signOut();
+    showScreen('screen-login');
+    loginAlert('Senha redefinida. Faça login novamente.', 'ok');
+  } finally { if(btn) btn.disabled = false; }
 }
 
+/* ══════════ LOGOUT ══════════ */
 async function doLogout(){
   const nick = STATE.profile?.nickname || 'usuário';
   await famrLog('LOGOUT', { nick });
@@ -359,10 +412,10 @@ async function doLogout(){
   location.reload();
 }
 
+/* ══════════ FAMRLOG ══════════ */
 async function famrLog(action, details={}){
   const enriched = { ...details };
   if(!enriched.nick && STATE.profile) enriched.nick = STATE.profile.nickname;
-
   try{
     const fnUrl = CONFIG.supabaseUrl + '/functions/v1/log-action';
     const { data:{ session } } = await supabase.auth.getSession();
