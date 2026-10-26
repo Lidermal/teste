@@ -157,116 +157,79 @@ async function initSession(){
   }
 }
 
-/* ══════════ LOGIN ══════════ */
+/* ══════════ LOGIN v50 (bcrypt validado no banco | spinner | anti-brute) ══════════ */
 async function doLogin(e){
   loginAlertHide();
-  if(!sbOk()){ loginAlert(MSG_SERVIDOR, 'err'); return; }
+  if(!sbOk()){ loginAlert(MSG_SERVIDOR, 'err'); return false; }
 
-  const nickInput = document.getElementById('login-nick');
-  const passInput = document.getElementById('login-pass');
-  const nick = nickInput.value.trim();
-  const pass = passInput.value.trim();
-  if(!nick || !pass) return;
+  const nick = document.getElementById('login-nick').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  if(!nick || !pass) return false;
 
+  /* anti-brute-force local (igual v31/v48) */
   const nk = nick.toLowerCase(), blkKey = 'famr_blk_'+nk, attKey = 'famr_att_'+nk;
   const until = +localStorage.getItem(blkKey) || 0;
-  if(Date.now() < until){ startCountdown(until); return; }
+  if(Date.now() < until){ startCountdown(until); return false; }
   const now = Date.now();
-  if(now - (+localStorage.getItem('famr_last_submit') || 0) < 3000) return;
+  if(now - (+localStorage.getItem('famr_last_submit') || 0) < 3000) return false;
   localStorage.setItem('famr_last_submit', String(now));
   const arr = (JSON.parse(localStorage.getItem(attKey) || '[]')).filter(t => now - t < BROWSER_WINDOW_MS);
   arr.push(now); localStorage.setItem(attKey, JSON.stringify(arr));
-  if(arr.length > MAX_REQ_WINDOW){ const u = now + BROWSER_BLOCK_MS; localStorage.setItem(blkKey, String(u)); startCountdown(u); return; }
+  if(arr.length > MAX_REQ_WINDOW){ const u = now + BROWSER_BLOCK_MS; localStorage.setItem(blkKey, String(u)); startCountdown(u); return false; }
 
-  /* CORREÇÃO: encontra botão de forma segura */
-  const form = e.target.closest('form') || e.currentTarget;
-  const btn = form.querySelector('button[type="submit"]');
-  if(!btn){ console.error('[FAMR] Botão não encontrado'); return; }
-  
-  btn.disabled = true;
-  btn.classList.add('btn-auth-loading');
-  const textSpan = btn.querySelector('#btn-login-text');
-  if(textSpan){
-    textSpan.textContent = 'AUTENTICANDO...';
-    if(!btn.querySelector('.spin-sm')){
-      const sp = document.createElement('span'); sp.className='spin-sm'; sp.style.marginRight='.5rem';
-      btn.insertBefore(sp, btn.firstChild);
-    }
-  } else {
-    btn.innerHTML = '<span class="spin-sm"></span> AUTENTICANDO...';
+  const btn = e.target.querySelector('button[type="submit"]') || e.target.querySelector('button');
+  const textSpan = btn?.querySelector('#btn-login-text');
+  if(btn){
+    btn.disabled = true; btn.classList.add('btn-auth-loading');
+    if(textSpan){ textSpan.textContent = 'AUTENTICANDO...'; }
+    else { btn.innerHTML = '<span class="spin-sm"></span> AUTENTICANDO...'; }
   }
 
   try{
-    const { data: v, error } = await supabase.rpc('famr_login_verify', { nick, pass });
-    if(error){ throw new Error('Falha na verificação de segurança.'); }
-    if(!v){ throw new Error('Nickname não encontrado ou conta banida.'); }
-    if(v.locked){ throw new Error('CONTA_BLOQUEADA'); }
-    if(v.ok !== true){ throw new Error(`Senha incorreta (${v.fails}/${MAX_WRONG_PASS}).`); }
+    /* 1) verify valida bcrypt no banco (legado OU conta nova) e já conta a falha */
+    const { data: v, error } = await supabase.rpc('famr_login_verify', { p_nick: nick, p_pass: pass });
+    if(error){ console.error('[FAMR] login_verify:', error); throw new Error('Falha na verificação de segurança.'); }
+    const row = Array.isArray(v) ? v[0] : v;
+    if(!row){ throw new Error('Nickname não encontrado ou conta banida.'); }
+    if(row.locked){ throw new Error('CONTA_BLOQUEADA'); }
+    if(row.ok !== true){ throw new Error(`Senha incorreta (${row.fails||0}/${MAX_WRONG_PASS}).`); }
 
-    const { data, error: le } = await supabase.auth.signInWithPassword({ email: v.email, password: pass });
-    if(le){ throw new Error('Falha ao abrir sessão.'); }
+    /* 2) abre a sessão no Supabase Auth (confere de novo e emite tokens) */
+    const { data, error: le } = await supabase.auth.signInWithPassword({ email: row.email, password: pass });
+    if(le){
+      console.error('[FAMR] signIn:', le);
+      if(/confirm/i.test(le.message)) throw new Error('E-mail não confirmado. Contate a chefia.');
+      throw new Error('Falha ao abrir sessão: ' + le.message);
+    }
 
+    /* 3) sucesso: limpa contadores locais */
     localStorage.removeItem(attKey); localStorage.removeItem(blkKey);
 
     const { data: prof } = await supabase.from('profiles_view').select('nickname,status,login_locked').eq('id', data.user.id).single();
+    if(!prof){ await supabase.auth.signOut(); throw new Error('Perfil não encontrado.'); }
     if(prof.status !== 'active'){
       await supabase.auth.signOut();
       throw new Error(prof.status==='banned' ? 'Conta BANIDA.' : 'Conta não ativada pelo Alto Comando.');
     }
-    if(prof.login_locked){
-      await supabase.auth.signOut();
-      throw new Error('CONTA_BLOQUEADA');
-    }
+    if(prof.login_locked){ await supabase.auth.signOut(); throw new Error('CONTA_BLOQUEADA'); }
 
-    const displayName = prof.nickname;
-
-    showAlert('login-alert', 'ok', `<b>${esc(displayName)}</b> logado com sucesso! Entrando no quartel...`);
-    await famrLog('LOGIN', { nick: displayName });
+    showAlert('login-alert', 'ok', `<b>${esc(prof.nickname)}</b> logado com sucesso! Entrando no quartel...`);
+    await famrLog('LOGIN', { nick: prof.nickname });
     await enterSystem(data.user.id);
 
   } catch(err){
     console.error('[FAMR] login:', err);
-    let msg = err.message;
-    if(msg.includes('CONTA_BLOQUEADA')){
-      showLockedMsg();
-    } else {
-      loginAlert(esc(msg), 'err');
-    }
+    const msg = err.message || 'Erro desconhecido.';
+    if(msg.includes('CONTA_BLOQUEADA')) showLockedMsg();
+    else loginAlert(esc(msg), 'err');
   } finally {
-    btn.disabled = false;
-    btn.classList.remove('btn-auth-loading');
-    const sp = btn.querySelector('.spin-sm'); if(sp) sp.remove();
-    if(textSpan){
-      textSpan.textContent = 'ACESSAR O QUARTEL';
-    } else {
-      btn.innerHTML = '<i class="fas fa-right-to-bracket"></i> ACESSAR O QUARTEL';
+    if(btn){
+      btn.disabled = false; btn.classList.remove('btn-auth-loading');
+      if(textSpan){ textSpan.textContent = 'ACESSAR O QUARTEL'; }
+      else { btn.innerHTML = '<i class="fas fa-right-to-bracket"></i> ACESSAR O QUARTEL'; }
     }
   }
-}
-
-async function enterSystem(userId){
-  if(window._famrRecovery){ showScreen('screen-reset'); return; }
-
-  const { data: profile, error } = await supabase.from('profiles_view').select('*').eq('id', userId).single();
-  if(error || !profile){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Perfil não encontrado.', 'err'); return; }
-  if(profile.status === 'banned'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta BANIDA.', 'err'); return; }
-  if(profile.status === 'pending'){ await supabase.auth.signOut(); showScreen('screen-login'); loginAlert('Conta não ativada. Aguarde a aprovação da chefia.', 'warn'); return; }
-  if(profile.login_locked){ await supabase.auth.signOut(); showScreen('screen-login'); showLockedMsg(); return; }
-
-  STATE.profile = profile;
-  const { data: ug } = await supabase.from('user_groups').select('group_id, groups(*)').eq('user_id', userId);
-  STATE.groups = (ug||[]).map(r => r.groups).filter(Boolean).sort((a,b) => (a.order_index||0)-(b.order_index||0));
-
-  if(STATE.settings.maintenance?.enabled && !isAdmin()){
-    document.getElementById('maintenance-msg').textContent = STATE.settings.maintenance.message || '';
-    showScreen('screen-maintenance'); return;
-  }
-
-  startWatchdog();
-  showScreen('shell');
-  try{ await buildSidebar(); }catch(err){ console.error(err); }
-  if(!location.hash || location.hash === '#') location.hash = '#/home';
-  try{ await route(); }catch(err){ console.error(err); }
+  return false;
 }
 
 /* ══════════ ALISTAMENTO (CORRIGIDO) ══════════ */
